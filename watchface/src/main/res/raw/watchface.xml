@@ -208,20 +208,49 @@
          Note Variant/@target is xs:string and unchecked: a misspelled target
          passes validation and is silently ignored at runtime.
          ============================================================ -->
+    <!-- THE TWO COPIES NO LONGER OVERLAP AT ALL. This is the third timing on
+         this crossfade and the reasoning is worth keeping.
+
+         v1 was both copies on the defaults: duration 1.0, LINEAR, no offset.
+         Both sat near alpha 128 at the midpoint, and because BOLD (700) and
+         LIGHT (300) are four enum steps apart, the thin white stem sat inside a
+         much wider semi-transparent cream stem. That halo is the "smear".
+
+         v2 staggered them 0.55/0.45. Better, but 0.55 + 0.45 still leaves the
+         windows overlapping between 0.45 and 0.55 - and that overlap is
+         centred exactly on the moment both copies are near half alpha, which
+         is the worst possible place to put it. It looked "different but not
+         smooth", which is precisely what a shortened halo looks like.
+
+         v3, here: the windows are DISJOINT. The bold copy is fully gone by
+         0.45; the light copy does not begin until 0.50. Two copies of the
+         clock are never simultaneously visible, so the halo cannot form at
+         any weight difference - which also means this does not depend on the
+         weights being close, and BOLD can stay.
+
+         Interpolations are chosen to keep the dark gap short rather than to
+         look graceful in isolation: EASE_IN on the way out holds the bold copy
+         at full strength and then drops it quickly, EASE_OUT on the way in
+         brings the light copy up quickly and then settles. The handover reads
+         as a cut with soft edges instead of a dissolve.
+
+         Watch the 1.0 ceiling: startOffset + duration must be &lt;= 1.0 or the
+         offset is SILENTLY IGNORED and you are back to v1 behaviour with no
+         warning anywhere. 0.50 + 0.50 is exactly at the limit. -->
     <DigitalClock x="0" y="0" width="450" height="450">
-      <!-- Interactive: bold cream. Eases out over the first 55%. -->
+      <!-- Interactive: bold cream. Gone by 45% of the transition. -->
       <TimeText format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER"
                 x="0" y="68" width="450" height="120" alpha="255">
         <Variant mode="AMBIENT" target="alpha" value="0"
-                 duration="0.55" startOffset="0" interpolation="EASE_OUT" />
+                 duration="0.45" startOffset="0" interpolation="EASE_IN" />
         <Font family="SYNC_TO_DEVICE" size="100" weight="BOLD" slant="NORMAL" color="#fff6e8" />
       </TimeText>
-      <!-- Ambient: light white, cheap to light up on OLED. Eases in over the
-           last 55%, by which point the bold copy is essentially gone. -->
+      <!-- Ambient: light white, cheap to light up on OLED. Starts at 50%,
+           after the bold copy is already at alpha 0. -->
       <TimeText format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER"
                 x="0" y="68" width="450" height="120" alpha="0">
         <Variant mode="AMBIENT" target="alpha" value="255"
-                 duration="0.55" startOffset="0.45" interpolation="EASE_IN" />
+                 duration="0.50" startOffset="0.50" interpolation="EASE_OUT" />
         <Font family="SYNC_TO_DEVICE" size="100" weight="LIGHT" slant="NORMAL" color="#ffffff" />
       </TimeText>
     </DigitalClock>
@@ -523,37 +552,92 @@
     <Group name="chip_steps" x="172" y="216" width="98" height="36" alpha="255">
       <Variant mode="AMBIENT" target="alpha" value="0" />
 
-      <!-- TWO footprints, offset diagonally - the conventional "footsteps"
-           mark rather than a single print.
+      <!-- ONE footprint, tilted. Fourth version of this icon.
 
-           Third attempt at this icon. It began as two teal tapered ovals meant
-           to read as a pair of prints and read as water droplets; it was then
-           one beige sole plus a detached heel, rotated -24 degrees, which on
-           the watch read as nothing but a big circle and a small circle. Two
-           things were wrong with that: a lone print has no context telling you
-           it is a print, and the rotation was applied to a PartDraw whose box
-           was exactly its content, so the corners clipped and flattened the
-           taper that was doing the work.
+           History, because the same two mistakes keep getting made: it was two
+           teal tapered ovals (read as water droplets), then one beige
+           sole-plus-heel rotated -24 degrees (read as a big circle and a small
+           circle), then two unrotated prints staggered diagonally.
 
-           This version drops rotation entirely - at 26px a tilt costs more in
-           clipping than it buys in character - and instead relies on the one
-           cue that is unambiguous at any size: two of them, staggered. Each
-           print is still sole-plus-heel, with the rear print low-left and the
-           lead print high-right.
+           Back to a single print, tilted, on request. The reason the earlier
+           single print failed was NOT that one print is illegible - it was that
+           the rotation silently ate the shape. `angle` on a PartDraw rotates
+           the content but content is still clipped to the box, so a box sized
+           exactly to its content loses every corner the rotation swings out,
+           which flattened the sole's taper into a circle.
+
+           So the box here is deliberately oversized: 28 x 34 around a print
+           that only occupies 10 x 19, exactly the trick the leaf tufts use.
+           Worst-case corner is sqrt(5^2 + 11^2) = 12.1 from the pivot, against
+           14 to the left/right edge and 17 to the top/bottom, so nothing can
+           clip at any angle.
+
+           NOTE pivotX/pivotY are FRACTIONS of the box (0.5 = centre), not
+           coordinates - see the leaf tufts.
+
+           The box stops at x 28, exactly where steps_value starts, so the
+           icon-to-number gap is unchanged.
 
            Beige rather than teal on purpose: teal against black reads as
            liquid, which is what made the first version look like droplets. -->
-      <PartDraw name="steps_icon" x="0" y="3" width="26" height="30">
-        <Ellipse x="0" y="13" width="10" height="11">
+      <!-- A SHOE PRINT: broad rounded toe tapering to a narrower squared-off
+           bottom, then a separate heel that is flat on top and round below.
+
+           Four shapes have been tried here. One ellipse plus a heel read as a
+           circle above a dot. Two overlapping ellipses meant to taper gave a
+           lumpy waisted outline. An ellipse squared off by a rectangle OF THE
+           SAME WIDTH got the flat cut right but had parallel sides, so it read
+           as a capsule rather than a foot.
+
+           THE TAPER AND THE FLAT CUT ARE BOTH ADDITIVE - no masking anywhere,
+           so none of this depends on the background colour. The trick is that
+           a union takes the WIDEST shape at each height, so stacking parts of
+           decreasing width produces a taper, and the flat edges come from
+           rectangles that are exactly as wide as the part they continue:
+
+             toe   ellipse  7.5..19  x  4.5..17.5  half-width 5.5, centre y 11
+             waist ellipse  9.25..16.75 x 11..20   half-width 3.75, centre y 15.5
+             cut   rect     9.25..16.75 x 15.5..19.5  flat base at 19.5
+
+           Because the cut rectangle and the waist ellipse are the same width,
+           they meet with no step: the silhouette follows the toe's curve down
+           to about y 16, by which point it has narrowed to the rectangle's
+           width, and from there runs straight to the flat base.
+
+           PROPORTIONS MATTER MORE THAN THE TAPER HERE. An earlier attempt had
+           the same construction but a sole 12 wide by 12.5 tall - practically
+           circular - and the taper was invisible because there was no length
+           for it to happen over. A real sole is about 1:1.6; this one is 11 by
+           15, and only then does it read as a foot rather than a blob.
+
+           The heel is the same idea inverted: a rectangle for the flat top and
+           straight sides, an ellipse of the SAME width for the round bottom.
+           7 wide against the sole's 7.5, so it reads as the narrower end.
+
+           On the rotation and the oversized box: `angle` clips to the PartDraw
+           box, so the box is 28 x 34 around content spanning only 7.5..19 x
+           4.5..28.5. The bounding-box corners look close to the limit but the
+           SHAPE is not - the furthest filled point is 12.6 from the pivot,
+           against 14 to the nearer edge - so nothing clips at any angle.
+           pivotX/pivotY are FRACTIONS of the box, not coordinates.
+
+           The box stops at x 28, exactly where steps_value starts, so the
+           icon-to-number gap is unchanged. -->
+      <PartDraw name="steps_icon" x="0" y="1" width="28" height="34"
+                pivotX="0.5" pivotY="0.5" angle="-25">
+        <Ellipse x="7.5" y="4.5" width="11" height="13">
           <Fill color="#e9dccb" />
         </Ellipse>
-        <Ellipse x="2" y="25" width="6" height="4">
+        <Ellipse x="9.25" y="11" width="7.5" height="9">
           <Fill color="#e9dccb" />
         </Ellipse>
-        <Ellipse x="15" y="0" width="10" height="11">
+        <Rectangle x="9.25" y="15.5" width="7.5" height="4">
           <Fill color="#e9dccb" />
-        </Ellipse>
-        <Ellipse x="17" y="12" width="6" height="4">
+        </Rectangle>
+        <Rectangle x="10.5" y="21.5" width="7" height="3.5">
+          <Fill color="#e9dccb" />
+        </Rectangle>
+        <Ellipse x="10.5" y="22" width="7" height="6.5">
           <Fill color="#e9dccb" />
         </Ellipse>
       </PartDraw>
@@ -821,7 +905,9 @@
       <!-- Screen-LEFT arm, the long one. Two poses.
 
            Raised is the default wave, and it is also the hand the umbrella
-           shaft terminates in (absolute 206, 297 = group-local 10, 35). At
+           shaft terminates in (group-local 10.5, 35 = absolute 217.5, 297 -
+           the group is at x 207, so this used to be written as 206 and was
+           simply wrong arithmetic left over from the pre-mirror position). At
            night the arm drops to rest along the body instead - a blob that is
            asleep with its eyes shut and z's floating beside it should not
            still be waving.
@@ -1025,10 +1111,27 @@
         </Default>
       </Condition>
 
-      <!-- Below freezing: scarf and gloves.
+      <!-- COLD: scarf and gloves. Now 10 degrees or below, not 0.
 
-           "Below 0" has to be written with the operands reversed, as
-           0 &gt; TEMPERATURE, because the operator set has no "<".
+           There are two cold states as of 2026-08-03:
+             cold      TEMPERATURE &lt;= 10   scarf + gloves
+             freezing  TEMPERATURE &lt;= 0    scarf + gloves + a snowflake
+           Freezing is a strict subset of cold, so this expression covers both
+           and the snowflake is a separate Condition further down the scene.
+           Nothing here needs to exclude freezing.
+
+           Written with "&lt;=" directly. The old comment here claimed the
+           operator set has no "<" and reversed the operands as
+           0 &gt; TEMPERATURE to work around it. That was verified false on the
+           watch on 2026-08-03 - "&lt;", "&lt;=" and "!=" all work; see the
+           operator finding in TODO.md.
+
+           THE IS_AVAILABLE GUARD IS LOAD-BEARING AND MUST STAY. With no
+           weather data TEMPERATURE reads 0, and 0 &lt;= 10 is true, so without
+           the guard both blobs would put scarves on every time weather dropped
+           out - which it does routinely. The old 0 &gt; TEMPERATURE form
+           happened to be false at 0 and so was accidentally safe; this one is
+           not, and depends on the guard.
 
            Drawn after the body and the face so the scarf sits in front, and
            the glove ovals land on top of the hands the limb pass already drew.
@@ -1036,7 +1139,7 @@
            hanging tail can fall past the body outline without being clipped. -->
       <Condition>
         <Expressions>
-          <Expression name="hero_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; 0 &gt; [WEATHER.TEMPERATURE]</Expression>
+          <Expression name="hero_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 10</Expression>
         </Expressions>
         <Compare expression="hero_cold">
           <PartDraw name="hero_scarf" x="14" y="36" width="72" height="96">
@@ -1174,18 +1277,32 @@
                                at 55.5 - minus half of the 3.4 stroke = 53.8
 
                The cluster was at y 42 spanning 16px, i.e. down to y 58, which
-               put the outer two beads straight through the eye arcs. It now
-               starts at 40 and is 12 tall, bottoming out at 49 - about 5px
-               clear of the arcs, with the stagger kept so it still reads as
-               three separate beads rather than a row. -->
-          <PartDraw name="hero_sweat" x="39" y="40" width="26" height="12">
-            <Ellipse x="0" y="2" width="6" height="7">
+               put the outer two beads straight through the eye arcs.
+
+               A SHALLOW ARC, MATCHING THE COMPANION'S. This was briefly a
+               triangle - one bead up, two below - which grouped them but read
+               as too deliberate a shape, and it no longer matched the
+               companion, whose beads sit in a gentle arc.
+
+               mini_sweat is three beads at x 0/6/12 with y offsets 2/0/2 in an
+               18 x 8 box; this is the same figure scaled 1.5x to suit the
+               larger head: x 0/9/18, y 3/0/3, in 26 x 11. Keeping the two
+               blobs' sweat built to one pattern matters more than either
+               arrangement on its own.
+
+               Fitted to the forehead as before. The cluster spans x 0..24,
+               centred on 12, and the box is at x 38, so it centres on
+               group-local x 50 - the head centre. It bottoms out at local 10.5
+               (absolute 50.5), clear of the eye arcs at 53.8, and starts at
+               absolute 40, just under the leaf tuft. -->
+          <PartDraw name="hero_sweat" x="38" y="40" width="26" height="11">
+            <Ellipse x="0" y="3" width="6" height="7.5">
               <Fill color="#9fd4e8" />
             </Ellipse>
-            <Ellipse x="9" y="0" width="6" height="8">
+            <Ellipse x="9" y="0" width="6" height="7.5">
               <Fill color="#9fd4e8" />
             </Ellipse>
-            <Ellipse x="17" y="2" width="5" height="6">
+            <Ellipse x="18" y="3" width="6" height="6">
               <Fill color="#9fd4e8" />
             </Ellipse>
           </PartDraw>
@@ -1374,7 +1491,16 @@
           <Expression name="mini_zapped">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
         </Expressions>
 
-        <!-- Struck: X-ray skeleton, the way comics draw it. -->
+        <!-- Struck: X-ray skeleton, the way comics draw it.
+
+             EVERY FEATURE IS CENTRED ON x 22, the skull's own centre. It was
+             not: the eyes sat at 16..22 and 23..29 (pair centre 22.5) and the
+             nose at 21..24 (centre 22.5), while the skull (12..32) and the
+             mouth bar (17..27) were both centred on 22. Half a pixel of
+             disagreement between the upper face and the mouth is enough to
+             read as a crooked skull once antialiasing spreads it, and it did.
+             Eyes are now 15..21 and 23..29 - symmetric about 22 with a 2px
+             gap - and the nose is 20.5..23.5. -->
         <Compare expression="mini_zapped">
           <PartDraw name="mini_skeleton" x="8" y="20" width="44" height="42">
             <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
@@ -1383,13 +1509,13 @@
             <Ellipse x="12" y="4" width="20" height="19">
               <Fill color="#f4f1ea" />
             </Ellipse>
-            <Ellipse x="16" y="10" width="6" height="7">
+            <Ellipse x="15" y="10" width="6" height="7">
               <Fill color="#14181d" />
             </Ellipse>
             <Ellipse x="23" y="10" width="6" height="7">
               <Fill color="#14181d" />
             </Ellipse>
-            <Ellipse x="21" y="17" width="3" height="3">
+            <Ellipse x="20.5" y="17" width="3" height="3">
               <Fill color="#14181d" />
             </Ellipse>
             <Rectangle x="17" y="20" width="10" height="1.6">
@@ -1500,11 +1626,13 @@
               </Compare>
             </Condition>
 
-            <!-- Below freezing: matching scarf and gloves. Its PartDraw is
-                 taller than the 42px body so the tail can hang below it. -->
+            <!-- Cold: matching scarf and gloves. Its PartDraw is taller than
+                 the 42px body so the tail can hang below it. Threshold and
+                 IS_AVAILABLE guard must stay in step with hero_cold - see the
+                 long note there. -->
             <Condition>
               <Expressions>
-                <Expression name="mini_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; 0 &gt; [WEATHER.TEMPERATURE]</Expression>
+                <Expression name="mini_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 10</Expression>
               </Expressions>
               <Compare expression="mini_cold">
                 <PartDraw name="mini_scarf" x="8" y="20" width="44" height="40">
@@ -1560,7 +1688,8 @@
          These are in absolute canvas coordinates rather than inside the
          blob groups, purely so the blob groups did not have to be resized
          and every internal coordinate rewritten. The umbrella is placed so
-         its shaft ends in the hero's raised hand at (291, 298).
+         its shaft passes through the hero's raised fist, centred (217.5, 297).
+         (This said "(291, 298)" until 2026-08-03 - a pre-mirror leftover.)
          ============================================================ -->
 
     <!-- Umbrella, held up by the hero's waving arm when it is wet. -->
@@ -1600,8 +1729,33 @@
                earlier ones did not. Level with the hand a handle read as a
                lollipop; hooking the other way it crossed the forearm and read
                as a tangle. Hooking away from the arm reads as an umbrella. -->
+          <!-- THE SHAFT IS IN TWO SEGMENTS, WITH A GAP WHERE THE FIST IS.
+               Do not "simplify" this back into one line.
+
+               It was one line, local y 18 to 60, and on the watch it ran
+               straight down the middle of the hand: this group is declared
+               after blob_hero, so the shaft painted over the fist instead of
+               being held by it. Zoomed in it read as a needle through a bead,
+               and at real size the whole assembly read as a stethoscope.
+
+               Occlusion is the only cue available that says "gripped" - there
+               is no z-order within a frame beyond document order, and moving
+               the whole group before blob_hero would put the canopy behind the
+               leaves, which is the problem the draw order above already solves.
+               So the shaft simply stops at the top of the fist and resumes
+               below it, and the fist itself fills the gap.
+
+               The fist is the cream ellipse in hero_arm_left_up: group-local
+               (1,26)-(20,44) against blob_hero at (207,262), so absolute
+               (208,288)-(227,306). This group is at y 250, so the fist covers
+               local y 38..56. The round caps add 1.5px at each end, which is
+               what keeps the segments tucked under the fist rather than
+               leaving a hairline of black. -->
           <PartDraw name="umbrella_shaft" x="0" y="0" width="164" height="70">
-            <Line startX="80" startY="18" endX="80" endY="60">
+            <Line startX="80" startY="18" endX="80" endY="38">
+              <Stroke color="#e8e0d4" thickness="3" cap="ROUND" />
+            </Line>
+            <Line startX="80" startY="56" endX="80" endY="60">
               <Stroke color="#e8e0d4" thickness="3" cap="ROUND" />
             </Line>
             <Arc centerX="74" centerY="60" width="12" height="12" startAngle="90" endAngle="270">
@@ -1627,29 +1781,47 @@
                (companion 151-195, hero 221-293) gets the "over them both"
                reading without the lopsided grip. Four panels rather than
                three, so the scallops stay the same size at this width. -->
+          <!-- DOMED, not flat. The four scallop ellipses used to sit at y
+               2/0/0/2 with heights 20/22/22/20, so all four tops were within
+               2px of each other and the silhouette was a straight horizontal
+               line 160px long. On the watch that read as an awning or a strip
+               of bunting rather than an umbrella.
+
+               They are now stepped - outer pair dropped to y 9, inner pair at
+               y 1 - so the tops trace an arc. Every ellipse still BOTTOMS OUT
+               AT EXACTLY 22, level with the band's lower edge, which is what
+               keeps the underside straight; the heights absorb the difference
+               (13 for the outer pair, 21 for the inner). Do not dome this by
+               raising the inner pair instead: the PartDraw box starts at y 0
+               and content above it is clipped, and the box cannot grow upward
+               without moving the whole group and the shaft with it.
+
+               The seams now start at y 13, inside the band. They used to start
+               at 4-5, which was above the old flat top; against the new arc
+               they would poke out of the silhouette between the scallops. -->
           <PartDraw name="umbrella_canopy" x="0" y="0" width="164" height="30">
             <RoundRectangle x="0" y="12" width="160" height="10" cornerRadiusX="4" cornerRadiusY="4">
               <Fill color="#4fb3c4" />
             </RoundRectangle>
-            <Ellipse x="0" y="2" width="45" height="20">
+            <Ellipse x="0" y="9" width="45" height="13">
               <Fill color="#4fb3c4" />
             </Ellipse>
-            <Ellipse x="38" y="0" width="45" height="22">
+            <Ellipse x="38" y="1" width="45" height="21">
               <Fill color="#4fb3c4" />
             </Ellipse>
-            <Ellipse x="77" y="0" width="45" height="22">
+            <Ellipse x="77" y="1" width="45" height="21">
               <Fill color="#4fb3c4" />
             </Ellipse>
-            <Ellipse x="115" y="2" width="45" height="20">
+            <Ellipse x="115" y="9" width="45" height="13">
               <Fill color="#4fb3c4" />
             </Ellipse>
-            <Line startX="39" startY="5" endX="39" endY="21">
+            <Line startX="39" startY="13" endX="39" endY="21">
               <Stroke color="#2e7c8a" thickness="1.8" cap="BUTT" />
             </Line>
-            <Line startX="80" startY="4" endX="80" endY="21">
+            <Line startX="80" startY="13" endX="80" endY="21">
               <Stroke color="#2e7c8a" thickness="1.8" cap="BUTT" />
             </Line>
-            <Line startX="120" startY="5" endX="120" endY="21">
+            <Line startX="120" startY="13" endX="120" endY="21">
               <Stroke color="#2e7c8a" thickness="1.8" cap="BUTT" />
             </Line>
           </PartDraw>
@@ -1658,17 +1830,35 @@
     </Condition>
 
     <!-- Comic lightning bolt landing on the companion. Mirrored from the
-         first version so it comes in from the upper LEFT like the reference,
-         and shifted so its tip lands inside the burst at (154, 320) rather
-         than beside the companion's head. Drawn after the blobs, so the bolt
-         is in front while the burst behind them shows around the edges. -->
+         first version so it comes in from the upper LEFT like the reference.
+         Drawn after the blobs, so the bolt is in front while the burst behind
+         them shows around the edges.
+
+         IT HAS TO LAND *INSIDE* THE BURST'S TOP SPOKE, and it did not. The
+         group was at (127, 256), which put the bolt's tip at absolute
+         (169, 320) - and the burst's vertical top spoke runs from its centre
+         (175, 358) up to (175, 308) with a thickness of 9, i.e. x 170.5..179.5.
+         So the tip stopped 1.5px clear of the spoke's left edge and hung in
+         mid-air with a visible notch between the two, which is exactly what
+         "doesn't connect" looked like.
+
+         The group is now at (133, 264), moving the tip to (175, 328) - dead
+         centre of the spoke and 20px down inside it, so the two merge into one
+         shape. The SQUARE cap carries it a further ~3px down-right to x 178,
+         still inside the spoke's 179.5 right edge.
+
+         The bolt's own yellow (#ffd34d) is deliberately a shade warmer than the
+         burst's (#ffe24d) to keep the front/back separation; the overlap is
+         large enough now that the boundary reads as shading, not a seam.
+
+         Top of the bolt is at absolute y 264, which is 12px clear of the stat
+         row ending at 252. -->
     <Condition>
       <Expressions>
         <Expression name="prop_storm">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
       </Expressions>
       <Compare expression="prop_storm">
-        <!-- x is 127, was 112: tracks the companion's +15 move to 143. -->
-        <Group name="companion_lightning" x="127" y="256" width="56" height="68" alpha="255">
+        <Group name="companion_lightning" x="133" y="264" width="56" height="68" alpha="255">
           <Variant mode="AMBIENT" target="alpha" value="0" />
           <PartDraw name="bolt" x="0" y="0" width="56" height="68">
             <Line startX="22" startY="0" endX="38" endY="28">
@@ -1679,6 +1869,110 @@
             </Line>
             <Line startX="24" startY="32" endX="42" endY="64">
               <Stroke color="#ffd34d" thickness="6" cap="SQUARE" />
+            </Line>
+          </PartDraw>
+        </Group>
+      </Compare>
+    </Condition>
+
+    <!-- ============================================================
+         FREEZING - the extra step beyond cold.
+
+           cold      TEMPERATURE &lt;= 10   scarf + gloves (on the blobs)
+           freezing  TEMPERATURE &lt;= 0    scarf + gloves + this snowflake
+
+         Freezing is a subset of cold, so the scarves are already on by the
+         time this fires and this only has to add the one extra mark.
+
+         Placed in the empty band between the stat row (which ends at y 252)
+         and the companion's leaf tuft (which starts at y 322), centred over
+         the companion at x 174. 36px across, so it occupies 156..192 x
+         278..314 - 6px clear of the stat row and 8px clear of the leaves.
+
+         Six spokes from three crossing lines at 0/60/120 degrees, each with a
+         pair of short branch ticks, which is the fewest primitives that still
+         reads as a snowflake rather than an asterisk. There is no Path element
+         so this is the only way to build one.
+
+         KNOWN OVERLAP, accepted: the storm bolt occupies x 155..175 y 264..328
+         and would cross this. That needs freezing AND a 90% chance of
+         precipitation at the same moment - thundersnow - which is rare enough
+         not to distort the layout for. The umbrella at y 250..272 clears it.
+         ============================================================ -->
+    <Condition>
+      <Expressions>
+        <Expression name="prop_freezing">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 0</Expression>
+      </Expressions>
+      <Compare expression="prop_freezing">
+        <Group name="freeze_mark" x="156" y="278" width="36" height="36" alpha="255">
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <!-- SIX ARMS, EACH WITH A MATCHING PAIR OF BRANCHES.
+               The first version was genuinely lopsided and it was not an
+               antialiasing artefact: the vertical arm carried TWO branches at
+               each end (a V at the top and another at the bottom) while each of
+               the four diagonal arms carried only ONE. Six arms, six pairs.
+
+               Generated rather than eyeballed, so it is symmetric by
+               construction. Centre (18,18); arms at 90/30/-30/-90/-150/150
+               degrees with radius 15; each branch pair leaves its arm 9 from
+               the centre at +/-50 degrees, 5 long. 50 rather than 60 on
+               purpose - at exactly 60 a branch runs parallel to the
+               neighbouring arm and the flake closes up into a mesh.
+
+               The result is mirror-symmetric about both axes: check any tip
+               against 36 minus its partner. -->
+          <PartDraw name="snowflake" x="0" y="0" width="36" height="36">
+            <!-- Three axes. -->
+            <Line startX="18" startY="3" endX="18" endY="33">
+              <Stroke color="#bfe4f2" thickness="2.6" cap="ROUND" />
+            </Line>
+            <Line startX="5.01" startY="10.5" endX="30.99" endY="25.5">
+              <Stroke color="#bfe4f2" thickness="2.6" cap="ROUND" />
+            </Line>
+            <Line startX="5.01" startY="25.5" endX="30.99" endY="10.5">
+              <Stroke color="#bfe4f2" thickness="2.6" cap="ROUND" />
+            </Line>
+            <!-- Up arm. -->
+            <Line startX="18" startY="9" endX="14.17" endY="5.79">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="18" startY="9" endX="21.83" endY="5.79">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <!-- Down arm. -->
+            <Line startX="18" startY="27" endX="14.17" endY="30.21">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="18" startY="27" endX="21.83" endY="30.21">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <!-- Upper-right arm. -->
+            <Line startX="25.79" startY="13.5" endX="26.66" endY="8.58">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="25.79" startY="13.5" endX="30.49" endY="15.21">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <!-- Lower-right arm. -->
+            <Line startX="25.79" startY="22.5" endX="30.49" endY="20.79">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="25.79" startY="22.5" endX="26.66" endY="27.42">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <!-- Upper-left arm. -->
+            <Line startX="10.21" startY="13.5" endX="9.34" endY="8.58">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="10.21" startY="13.5" endX="5.51" endY="15.21">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <!-- Lower-left arm. -->
+            <Line startX="10.21" startY="22.5" endX="5.51" endY="20.79">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="10.21" startY="22.5" endX="9.34" endY="27.42">
+              <Stroke color="#bfe4f2" thickness="2" cap="ROUND" />
             </Line>
           </PartDraw>
         </Group>
@@ -1698,10 +1992,27 @@
 
          The hero's chain has to thread a real gap. Its mouth is at absolute
          (256.5, 345.5), the body edge at that height is x 293, and its raised
-         screen-right hand occupies 291..309 x 314..331. So the chain runs
-         RIGHT and only gently up, passing under that hand rather than through
-         it: the mid z starts at x 311, two pixels clear of the hand's edge.
-         Rising more steeply would look better and is not available.
+         screen-right hand occupies 291..309 x 314..331.
+
+         SECOND PASS: the chain now STARTS AT MOUTH HEIGHT and climbs steeply.
+         It used to start at y 336, which is 9.5px ABOVE the mouth, on a shallow
+         trajectory - so extended backwards it pointed at the hero's shoulder
+         rather than its face, and the first z sat level with the hand instead
+         of the mouth. The old note here said "rising more steeply would look
+         better and is not available", and that was wrong: it was only true
+         because the chain began level with the hand. Dropping the start to
+         mouth height puts the whole chain BELOW the hand's lower edge at y 331,
+         which is precisely what frees it to climb.
+
+         Now: first z at y 344..362, centred 353 against a mouth at 345.5 and
+         hard against the body edge at x 294; then up-right at roughly 35
+         degrees. Only the mid z comes near the hand, and it starts at x 311,
+         two pixels clear of the hand's right edge at 309.
+
+         The 36px of red body between the mouth and the first z is unavoidable -
+         the mouth is at the body's centre, not its edge, and running the z's
+         across the body would put #93a3b4 on #ee4e43, which has almost no
+         contrast. Pointing the chain back at the mouth is the available cue.
 
          The companion's chain goes the other way, up-LEFT, for two reasons: the
          gap between the two blobs is only 26px wide and the hero fills
@@ -1717,19 +2028,22 @@
         <Expression name="prop_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
       </Expressions>
       <Compare expression="prop_night">
-        <Group name="sleep_zzz" x="294" y="316" width="64" height="38" alpha="255">
+        <!-- Group dropped from y 316 to 312 and grown to 50 tall, so local y 32
+             reaches absolute 344 - mouth height - while the big z still has room
+             to climb to absolute 312. -->
+        <Group name="sleep_zzz" x="294" y="312" width="64" height="50" alpha="255">
           <Variant mode="AMBIENT" target="alpha" value="0" />
-          <PartText name="zzz_small" x="0" y="20" width="16" height="18">
+          <PartText name="zzz_small" x="0" y="32" width="16" height="18">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="13" weight="BOLD" slant="ITALIC" color="#93a3b4"><![CDATA[z]]></Font>
             </Text>
           </PartText>
-          <PartText name="zzz_mid" x="17" y="10" width="20" height="22">
+          <PartText name="zzz_mid" x="17" y="18" width="20" height="22">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="18" weight="BOLD" slant="ITALIC" color="#a8b8c8"><![CDATA[z]]></Font>
             </Text>
           </PartText>
-          <PartText name="zzz_big" x="38" y="0" width="26" height="28">
+          <PartText name="zzz_big" x="33" y="0" width="26" height="28">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="24" weight="BOLD" slant="ITALIC" color="#b9c6d4"><![CDATA[z]]></Font>
             </Text>
@@ -1737,15 +2051,26 @@
         </Group>
 
         <!-- Companion's own set, roughly 60% the size, drifting up-left from
-             its round sleeping mouth at absolute (173, 371.5). -->
-        <Group name="mini_sleep_zzz" x="107" y="345" width="44" height="37" alpha="255">
+             its round sleeping mouth at absolute (173, 371.5).
+
+             Same second pass as the hero's. The first z now centres on
+             absolute (143, 373) - level with the mouth to within 1.5px, and
+             2px off the body's left edge at 151 - where it used to centre on
+             375 and lean slightly downhill before turning up.
+
+             Its top edge sits at exactly 366, which is the bottom of the
+             companion's screen-left hand (141..154 x 354..366). That is the
+             binding constraint on this chain and the reason it cannot start
+             any higher: the hand is directly between the mouth and the sky.
+             The chain then climbs at about 45 degrees, steeper than before. -->
+        <Group name="mini_sleep_zzz" x="105" y="338" width="46" height="44" alpha="255">
           <Variant mode="AMBIENT" target="alpha" value="0" />
-          <PartText name="mini_zzz_small" x="30" y="23" width="12" height="14">
+          <PartText name="mini_zzz_small" x="32" y="28" width="12" height="14">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="9" weight="BOLD" slant="ITALIC" color="#93a3b4"><![CDATA[z]]></Font>
             </Text>
           </PartText>
-          <PartText name="mini_zzz_mid" x="16" y="12" width="15" height="17">
+          <PartText name="mini_zzz_mid" x="17" y="14" width="15" height="17">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="12" weight="BOLD" slant="ITALIC" color="#a8b8c8"><![CDATA[z]]></Font>
             </Text>

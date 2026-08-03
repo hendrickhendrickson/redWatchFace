@@ -63,7 +63,15 @@ const backup = resolve(repo, 'watchface/build/debug-triggers-backup.xml')
  * review. 81 is the baseline - no trigger is mapped to it, so nothing fires.
  */
 const STATES = [
-  { level: 82, name: 'sweating', patterns: [['[HEART_RATE] &gt;= 120', 2]] },
+  {
+    level: 82,
+    name: 'night',
+    patterns: [
+      // Compound first - see trap 2 in the header.
+      ['([HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]) &amp;&amp; 50 &gt; [WEATHER.CHANCE_OF_PRECIPITATION]', 2],
+      ['[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]', 5],
+    ],
+  },
   {
     level: 83,
     name: 'sunny',
@@ -72,8 +80,30 @@ const STATES = [
     ],
   },
   {
+    // COLD MUST ALSO FIRE AT THE FREEZING LEVEL.
+    //
+    // Freezing (<= 0) is a strict SUBSET of cold (<= 10), so on the watch a
+    // freezing day shows scarves and gloves AND the snowflake. A naive forcing
+    // maps the two expressions to two distinct battery levels, which breaks
+    // that relationship: level 85 then showed a snowflake on two blobs wearing
+    // nothing, which is a state the watch can never actually be in.
+    //
+    // So this one gets an explicit replacement covering both levels. The rule:
+    // WHERE THE REAL EXPRESSIONS NEST, THE FORCED ONES HAVE TO NEST TOO, or the
+    // sweep documents states that do not exist.
     level: 84,
-    name: 'rain',
+    name: 'cold',
+    replaceWith: '[BATTERY_PERCENT] == 84 || [BATTERY_PERCENT] == 85',
+    patterns: [['[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 10', 2]],
+  },
+  {
+    level: 85,
+    name: 'freezing',
+    patterns: [['[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 0', 1]],
+  },
+  {
+    level: 86,
+    name: 'rainy',
     patterns: [
       // prop_wet first: it contains the bare icon test below.
       ['[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 50', 1],
@@ -81,21 +111,12 @@ const STATES = [
     ],
   },
   {
-    level: 85,
+    level: 87,
     name: 'thunderstorm',
     // burst, companion skeleton, bolt, and the hero's startled eyes and mouth.
     patterns: [['[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90', 5]],
   },
-  {
-    level: 86,
-    name: 'night',
-    patterns: [
-      // Compound first - see trap 2 in the header.
-      ['([HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]) &amp;&amp; 50 &gt; [WEATHER.CHANCE_OF_PRECIPITATION]', 2],
-      ['[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]', 5],
-    ],
-  },
-  { level: 87, name: 'cold', patterns: [['[WEATHER.IS_AVAILABLE] &amp;&amp; 0 &gt; [WEATHER.TEMPERATURE]', 2]] },
+  { level: 88, name: 'sweating', patterns: [['[HEART_RATE] &gt;= 120', 2]] },
 ]
 
 /** Longest pattern first across the whole set, so no substring is eaten early. */
@@ -119,7 +140,7 @@ if (cmd === 'on') {
     process.exit(1)
   }
   let s = readFileSync(face, 'utf8')
-  for (const { from, count, level, name } of ORDERED) {
+  for (const { from, count, level, name, replaceWith } of ORDERED) {
     const found = s.split(from).length - 1
     if (found !== count) {
       console.error(`ABORT: expected ${count} occurrence(s) of the ${name} trigger, found ${found}.`)
@@ -127,14 +148,18 @@ if (cmd === 'on') {
       console.error(`  ${from}`)
       process.exit(1)
     }
-    s = s.split(from).join(`[BATTERY_PERCENT] == ${level}`)
+    // replaceWith lets a state fire at more than its own level, for triggers
+    // that nest in the real face - see the note on `cold`.
+    s = s.split(from).join(replaceWith ?? `[BATTERY_PERCENT] == ${level}`)
   }
   mkdirSync(dirname(backup), { recursive: true })
   writeFileSync(backup, readFileSync(face))
   writeFileSync(face, s)
   console.log('DEBUG triggers in place. Levels:')
   console.log('   81  baseline, nothing firing')
-  for (const s2 of STATES) console.log(`   ${s2.level}  ${s2.name}`)
+  for (const s2 of STATES) {
+    console.log(`   ${s2.level}  ${s2.name}${s2.replaceWith ? '   (also fires at other levels - see STATES)' : ''}`)
+  }
   console.log('\nNow:  ./gradlew :watchface:installDebug   then   pwsh tools/capture-states.ps1')
   console.log('AFTERWARDS:  node tools/debug-triggers.mjs off   AND REINSTALL.')
   process.exit(0)

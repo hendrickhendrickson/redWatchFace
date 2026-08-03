@@ -1,0 +1,9 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+
+# Verification tools are downloaded, not vendored (see README)
+tools/*.jar

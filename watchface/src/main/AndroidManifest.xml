@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-feature android:name="android.hardware.type.watch" />
+
+    <!--
+        Heart rate and step count are the only two data sources in this face
+        that are permission gated.
+
+        Wear OS 6 (API 36) replaced BODY_SENSORS with the granular
+        android.permission.health.* permissions, so both are declared: the
+        legacy one capped at API 35, the modern ones for API 36+.
+        The system asks the user for these the first time the face is applied.
+    -->
+    <uses-permission
+        android:name="android.permission.BODY_SENSORS"
+        android:maxSdkVersion="35" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
+    <!-- hasCode MUST be false: a Watch Face Format face is resources only. -->
+    <application
+        android:label="@string/watch_face_name"
+        android:hasCode="false">
+
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true" />
+
+        <!--
+            5 = Watch Face Format v5 (Wear OS 7). This was 4, but the [WEATHER.*]
+            data sources this face uses only publish at v5: at v4 the runtime
+            reports WEATHER.IS_AVAILABLE = false forever, so the face sat on its
+            unavailable fallback even with live weather on the watch. The v4 XSD
+            *does* list the WEATHER enumerations, so the validator passes either
+            way. The schema and the runtime disagree, and nothing in the build
+            catches it.
+
+            Cost of v5: this no longer runs on Wear OS 6. `minSdk` is still 36, so
+            a Wear OS 6 watch can still *install* it and then fail to render — see
+            TODO section 7 if this ever ships to anyone else.
+        -->
+        <property
+            android:name="com.google.wear.watchface.format.version"
+            android:value="5" />
+    </application>
+</manifest>

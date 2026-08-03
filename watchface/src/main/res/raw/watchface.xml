@@ -1,0 +1,1763 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    redPlant Blob Watch Face - Watch Face Format v5 (Wear OS 7)
+
+    v5 rather than v4 because the [WEATHER.*] sources below only publish at v5.
+    See the note on format.version in AndroidManifest.xml.
+
+    Design canvas is 450 x 450. The platform scales this to the device, so all
+    coordinates below are in "design pixels", not device pixels. Measured on the
+    actual hardware: the Pixel Watch 4 reports 426 x 426, so the canvas scales
+    *down* by ~0.95. The Wear OS emulator's "Large Round" profile is 454 x 454,
+    so anything checked there renders ~6% larger than it does on the wrist.
+
+    Layout map (y coordinates, design space):
+        42 -  74   weekday + day of month        "Sat 1"
+        68 - 188   time                          "10:08"
+       184 - 216   weather                       icon + "22 deg"
+       216 - 252   stat row                      heart rate | steps | battery
+       262 - 392   blob zone                     hero blob + companion blob
+
+    DARK THEME. The interactive background is OLED black, same as ambient, so
+    the two modes differ only in weight and in what is shown - which is also the
+    cheapest thing to light up. Everything non-essential is still faded out in
+    ambient via <Variant mode="AMBIENT">.
+
+    Because text is now light-on-black, every colour that used to be dark ink
+    had to flip. In particular the blob limbs sit *outside* the bodies against
+    the background, so they are light; the eyes and mouths sit *on* the bodies,
+    so they stay dark.
+
+    Palette
+       bg            #000000    scene + interactive background
+       cream         #fff6e8    primary text: time, stat numbers, temperature
+       ice blue      #b9c6d4    date, both modes. Was peach #ffdcc0 in the
+                                interactive mode only, which made the date the
+                                one element that changed hue rather than just
+                                weight when the screen woke.
+       chip slate    #3a4757    the day-of-month background pill
+       coral         #e8543c    accent: heart icon, low battery only. The
+                                temperature used to be coral too; it is a
+                                reading, not a warning, so it is cream now.
+       teal          #4fb3c4    steps, umbrella canopy (brightened from
+                                #2e7c8a, which read as mud against black)
+       green         #5fb874    battery fill, leaves
+       hero body     #ee4e43    big blob
+       companion     #f7a23a    small blob (yellow-orange)
+       mouth         #5a2a22    open mouth, on-body so still dark
+       eyes          #23384f    on-body so still dark
+       limb          #8fa9c6    arms + legs. The brand navy #16324b raised in
+                                lightness only: dark navy vanishes against
+                                black, and the warm off-white tried first
+                                read as bandages.
+       leaf          #5fb874 / #4fa968 / #86ce97
+       sun           #ffc93c    weather icon
+       moon          #e8eef5    weather icon
+       cloud         #cbd5df    weather icon
+       raindrop      #7fb6d9    weather icon
+       shades        #1b2733    sunglasses lenses
+       sweat         #9fd4e8    sweat beads
+       bolt          #ffd34d    lightning
+-->
+<WatchFace width="450" height="450">
+
+  <Metadata key="CLOCK_TYPE" value="DIGITAL" />
+  <Metadata key="PREVIEW_TIME" value="10:08:32" />
+
+  <Scene backgroundColor="#ff000000">
+
+    <!-- Background is the scene's black, full stop. The cream disc is gone,
+         and so is the dark "hill" that briefly replaced it - at any lightness
+         that was actually visible it read as a stain rather than as ground,
+         and at any lightness that didn't, it was pointless. The blobs read
+         fine standing on nothing; their feet are solid ovals. -->
+
+    <!-- ============================================================
+         Weekday + day of month (no month, as requested)
+         Two copies: one for interactive, one for ambient. This is the
+         standard WFF trick for changing colour/weight between modes.
+
+         The day of month sits on a rounded slate chip, the way the stock
+         Wear OS face draws it. That forced the single "%s %d" PartText to
+         split into two: the chip has to be a fixed box, and WFF has no
+         content-driven layout to hang it off the end of the weekday.
+
+         Which means the assembly is centred by ESTIMATE, not by measurement.
+         There is no text-width data source in WFF - x/y/width/height on
+         Part* elements are authoring-time xs:integer, and the only
+         content-derived value available is textLength(), a CHARACTER count.
+         So the numbers below assume a 3-glyph weekday abbreviation at
+         ~44 design px:
+
+             weekday   centred on x 198   (box 148..248, so it grows
+                                           symmetrically either side)
+             chip      229..273           fixed
+             visual span 176..273, centre 224.5 - i.e. canvas centre
+
+         A locale whose short weekday is much wider or narrower than 3 Latin
+         glyphs will therefore sit slightly off-centre. Accepted: the
+         alternative is no chip.
+
+         Ambient repeats the same geometry with the chip dropped, so the date
+         does not jump sideways when the screen wakes. Only the weight and
+         the fill change.
+         ============================================================ -->
+    <!-- Both date copies get the same staggered cross-fade as the clock, and
+         for the same reason - see the long note above the DigitalClock. -->
+    <Group name="date_interactive" x="0" y="0" width="450" height="80" alpha="255">
+      <Variant mode="AMBIENT" target="alpha" value="0"
+               duration="0.55" startOffset="0" interpolation="EASE_OUT" />
+
+      <PartDraw name="date_chip" x="229" y="41" width="44" height="34">
+        <RoundRectangle x="0" y="0" width="44" height="34" cornerRadiusX="11" cornerRadiusY="11">
+          <Fill color="#3a4757" />
+        </RoundRectangle>
+      </PartDraw>
+
+      <PartText name="date_weekday" x="148" y="42" width="100" height="32">
+        <Text align="CENTER">
+          <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#b9c6d4">
+            <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
+          </Font>
+        </Text>
+      </PartText>
+
+      <PartText name="date_day" x="229" y="42" width="44" height="32">
+        <Text align="CENTER">
+          <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#b9c6d4">
+            <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+          </Font>
+        </Text>
+      </PartText>
+    </Group>
+
+    <Group name="date_ambient" x="0" y="0" width="450" height="80" alpha="0">
+      <Variant mode="AMBIENT" target="alpha" value="255"
+               duration="0.55" startOffset="0.45" interpolation="EASE_IN" />
+
+      <PartText name="date_weekday_ambient" x="148" y="42" width="100" height="32">
+        <Text align="CENTER">
+          <Font family="SYNC_TO_DEVICE" size="26" weight="NORMAL" slant="NORMAL" color="#b9c6d4">
+            <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
+          </Font>
+        </Text>
+      </PartText>
+
+      <PartText name="date_day_ambient" x="229" y="42" width="44" height="32">
+        <Text align="CENTER">
+          <Font family="SYNC_TO_DEVICE" size="26" weight="NORMAL" slant="NORMAL" color="#b9c6d4">
+            <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+          </Font>
+        </Text>
+      </PartText>
+    </Group>
+
+    <!-- ============================================================
+         Digital time. hourFormat SYNC_TO_DEVICE respects the watch's
+         own 12h/24h setting. Digits are tabular, so every HH:MM is the
+         same width - no need to budget for a "widest" time.
+
+         ON THE AMBIENT TRANSITION - why it used to look like ghosting.
+
+         Two copies cross-fading is the only way WFF can change font weight
+         between modes, and Variant DOES animate rather than snap. But every
+         Variant here used to omit its timing attributes, which means the
+         defaults applied: duration="1.0" (the whole vendor transition) and
+         interpolation="LINEAR". So both copies sat at roughly alpha 128 at the
+         midpoint - and because BOLD (700) and THIN (100) are six enum steps
+         apart, the thin white stem sat *inside* a much wider semi-transparent
+         cream stem. That halo is what reads as a smeared double image; it is
+         not a weight morph and never was.
+
+         Two changes, both cheap:
+
+         1. Stagger the fades so the copies barely coexist. duration and
+            startOffset are xs:float in [0,1], NORMALISED to whatever the
+            vendor's ambient transition time is - they are not seconds. Their
+            sum must not exceed 1.0 or startOffset is ignored outright, which
+            is why these are 0.55 + 0.45. The out-going copy eases out over
+            the first 55%, the in-coming one eases in over the last 55%, so the
+            window where both are lit shrinks from 100% to ~10% - and EASE_OUT
+            / EASE_IN mean both curves are near zero across it.
+
+         2. Narrow the weight gap: ambient is LIGHT (300), not THIN (100).
+            Any residual overlap now misaligns by two enum steps instead of
+            six. The OLED cost is negligible - the documented ambient budget is
+            15% of pixels lit and this layer is a couple of per cent either way.
+
+         Interactive stays BOLD deliberately, so the face still looks like
+         itself. Going MEDIUM (500) / LIGHT (300) would close the gap further
+         and is the next step if this is still not smooth enough.
+
+         What CANNOT be done, so nobody tries again:
+           - There is no [IS_AMBIENT] source. sourceType.xsd has 100 entries and
+             ambient is not among them, so no <Transform> can track it.
+           - Font/@weight is a closed 12-value enum with no variable-font axis
+             (no wght, no fontVariationSettings anywhere in the schemas) and it
+             is not transformable. Only Font/@color is.
+           - TimeText's <Font> is its own restricted definition in
+             clock/timeText.xsd and accepts NO child elements at all, so it
+             cannot even hold a Transform. Verified: the validator rejects it.
+         The stock face's smooth weight morph is almost certainly a real
+         variable-font axis animated by native render code, which is outside
+         what WFF can express. There is also a known Wear OS 6 bug where a
+         third-party face whose transition does not finish before the screen
+         suspends gets stuck compositing both layers - staggering shortens that
+         window too, but cannot close it.
+
+         Note Variant/@target is xs:string and unchecked: a misspelled target
+         passes validation and is silently ignored at runtime.
+         ============================================================ -->
+    <DigitalClock x="0" y="0" width="450" height="450">
+      <!-- Interactive: bold cream. Eases out over the first 55%. -->
+      <TimeText format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER"
+                x="0" y="68" width="450" height="120" alpha="255">
+        <Variant mode="AMBIENT" target="alpha" value="0"
+                 duration="0.55" startOffset="0" interpolation="EASE_OUT" />
+        <Font family="SYNC_TO_DEVICE" size="100" weight="BOLD" slant="NORMAL" color="#fff6e8" />
+      </TimeText>
+      <!-- Ambient: light white, cheap to light up on OLED. Eases in over the
+           last 55%, by which point the bold copy is essentially gone. -->
+      <TimeText format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER"
+                x="0" y="68" width="450" height="120" alpha="0">
+        <Variant mode="AMBIENT" target="alpha" value="255"
+                 duration="0.55" startOffset="0.45" interpolation="EASE_IN" />
+        <Font family="SYNC_TO_DEVICE" size="100" weight="LIGHT" slant="NORMAL" color="#ffffff" />
+      </TimeText>
+    </DigitalClock>
+
+    <!-- ============================================================
+         Weather: icon + temperature, replacing the old condition text.
+
+         Icon selection. A single Condition may hold several Compare
+         elements; the first one whose expression is true wins, and
+         Default catches the rest. Note Compare/@expression is a keyref -
+         it must name an Expression declared above, not hold an inline one.
+
+         On WEATHER.CONDITION: it is an integer code and the schema does not
+         document the value set. Two values have been observed on a Pixel
+         Watch 4 so far:
+
+              1 = clear
+             14 = partly cloudy
+
+         To identify more, drop a PartText in temporarily whose Template prints
+         [WEATHER.CONDITION] alongside IS_DAY and CHANCE_OF_PRECIPITATION, and
+         read it off the watch while the sky is doing something new.
+
+         Anything unrecognised falls through to the Default, which is a plain
+         cloud on purpose - see the note there.
+
+         Also note the operator set has no "<", "<=" or "!=": comparisons
+         below are written with the operands reversed for that reason.
+         ============================================================ -->
+    <Group name="chip_weather" x="190" y="184" width="90" height="32" alpha="255">
+      <Variant mode="AMBIENT" target="alpha" value="0" />
+
+      <!-- ONE Condition on IS_AVAILABLE wraps both the icon and the number.
+
+           This used to be two sibling Conditions - one picking the icon and
+           one drawing the temperature - each testing IS_AVAILABLE for itself.
+           Two independent tests can disagree, and they did: the fallback
+           dashes and a live "31 deg" rendered on top of each other, with the
+           dashes struck through the digits. Nesting makes that impossible by
+           construction, because there is now exactly one test and the
+           fallback is its Default.
+
+           The inner branches no longer repeat the IS_AVAILABLE gate; they are
+           already inside it. -->
+      <Condition>
+        <Expressions>
+          <Expression name="wx_have">[WEATHER.IS_AVAILABLE]</Expression>
+        </Expressions>
+
+        <Compare expression="wx_have">
+          <Group name="wx_live" x="0" y="0" width="90" height="32" alpha="255">
+
+            <!-- Icon choice. A single Condition may hold several Compare
+                 elements; the first true one wins, Default catches the rest.
+                 Compare/@expression is a keyref, so it must name an
+                 Expression declared above rather than hold one inline.
+
+                 On WEATHER.CONDITION: an undocumented integer. Only one value
+                 has been seen on real hardware:
+
+                     14 = partly cloudy   (verified on a Pixel Watch 4)
+
+                 so the mapping leans on CHANCE_OF_PRECIPITATION and IS_DAY,
+                 whose meanings are known, and uses the code only for the case
+                 that is confirmed.
+
+                 The operator set has no "<", "<=" or "!=", which is why any
+                 "less than" test is written with the operands reversed. -->
+            <Condition>
+              <Expressions>
+                <Expression name="wx_wet">[WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 50</Expression>
+                <Expression name="wx_sun">[WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY]</Expression>
+                <Expression name="wx_moon">[WEATHER.CONDITION] == 1</Expression>
+                <Expression name="wx_partly">[WEATHER.CONDITION] == 14</Expression>
+              </Expressions>
+
+              <!-- Rain: cloud with drops. -->
+              <Compare expression="wx_wet">
+                <PartDraw name="wx_icon_rain" x="0" y="3" width="26" height="26">
+                  <RoundRectangle x="3" y="9" width="20" height="8" cornerRadiusX="4" cornerRadiusY="4">
+                    <Fill color="#cbd5df" />
+                  </RoundRectangle>
+                  <Ellipse x="5" y="4" width="10" height="10">
+                    <Fill color="#cbd5df" />
+                  </Ellipse>
+                  <Ellipse x="12" y="2" width="11" height="11">
+                    <Fill color="#cbd5df" />
+                  </Ellipse>
+                  <Line startX="8" startY="19" endX="6.5" endY="24">
+                    <Stroke color="#7fb6d9" thickness="2.4" cap="ROUND" />
+                  </Line>
+                  <Line startX="14" startY="19" endX="12.5" endY="24">
+                    <Stroke color="#7fb6d9" thickness="2.4" cap="ROUND" />
+                  </Line>
+                  <Line startX="20" startY="19" endX="18.5" endY="24">
+                    <Stroke color="#7fb6d9" thickness="2.4" cap="ROUND" />
+                  </Line>
+                </PartDraw>
+              </Compare>
+
+              <!-- Partly cloudy: small sun peeking out behind a cloud. -->
+              <Compare expression="wx_partly">
+                <PartDraw name="wx_icon_partly" x="0" y="3" width="26" height="26">
+                  <Ellipse x="3" y="2" width="11" height="11">
+                    <Fill color="#ffc93c" />
+                  </Ellipse>
+                  <RoundRectangle x="4" y="15" width="19" height="8" cornerRadiusX="4" cornerRadiusY="4">
+                    <Fill color="#cbd5df" />
+                  </RoundRectangle>
+                  <Ellipse x="6" y="10" width="10" height="10">
+                    <Fill color="#cbd5df" />
+                  </Ellipse>
+                  <Ellipse x="13" y="8" width="11" height="11">
+                    <Fill color="#cbd5df" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+
+              <!-- Clear day: sun with rays. -->
+              <Compare expression="wx_sun">
+                <PartDraw name="wx_icon_sun" x="0" y="3" width="26" height="26">
+                  <Ellipse x="7" y="7" width="12" height="12">
+                    <Fill color="#ffc93c" />
+                  </Ellipse>
+                  <Line startX="13" startY="1" endX="13" endY="4.5">
+                    <Stroke color="#ffc93c" thickness="2.2" cap="ROUND" />
+                  </Line>
+                  <Line startX="13" startY="21.5" endX="13" endY="25">
+                    <Stroke color="#ffc93c" thickness="2.2" cap="ROUND" />
+                  </Line>
+                  <Line startX="1" startY="13" endX="4.5" endY="13">
+                    <Stroke color="#ffc93c" thickness="2.2" cap="ROUND" />
+                  </Line>
+                  <Line startX="21.5" startY="13" endX="25" endY="13">
+                    <Stroke color="#ffc93c" thickness="2.2" cap="ROUND" />
+                  </Line>
+                  <Line startX="4.6" startY="4.6" endX="7.1" endY="7.1">
+                    <Stroke color="#ffc93c" thickness="2.2" cap="ROUND" />
+                  </Line>
+                  <Line startX="18.9" startY="18.9" endX="21.4" endY="21.4">
+                    <Stroke color="#ffc93c" thickness="2.2" cap="ROUND" />
+                  </Line>
+                  <Line startX="21.4" startY="4.6" endX="18.9" endY="7.1">
+                    <Stroke color="#ffc93c" thickness="2.2" cap="ROUND" />
+                  </Line>
+                  <Line startX="7.1" startY="18.9" endX="4.6" endY="21.4">
+                    <Stroke color="#ffc93c" thickness="2.2" cap="ROUND" />
+                  </Line>
+                </PartDraw>
+              </Compare>
+
+              <!-- Clear night: crescent moon. The second ellipse is filled
+                   with the background colour to bite a crescent out of the
+                   first. Its offset is 11px, not 6: at 6 the cut swallowed
+                   almost the whole disc and left a sliver too thin to see.
+
+                   This is a Compare, NOT the Default. As the Default it was
+                   the catch-all for "available, not wet, not code 14, not
+                   day", so any moment IS_DAY read falsy - including before it
+                   had populated - put a moon on screen in broad daylight. It
+                   now requires an explicitly clear sky (code 1) that is also
+                   not daytime. -->
+              <Compare expression="wx_moon">
+                <PartDraw name="wx_icon_moon" x="0" y="3" width="26" height="26">
+                  <Ellipse x="2" y="4" width="20" height="20">
+                    <Fill color="#e8eef5" />
+                  </Ellipse>
+                  <Ellipse x="13" y="2" width="20" height="20">
+                    <Fill color="#000000" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+
+              <!-- Overcast, and the fallback for any condition code that has
+                   not been identified yet. A plain cloud is the right answer
+                   for real overcast and a harmless answer for an unknown code,
+                   which is exactly what a Default should be - unlike a moon,
+                   which is actively wrong half the time. -->
+              <Default>
+                <PartDraw name="wx_icon_cloud" x="0" y="3" width="26" height="26">
+                  <RoundRectangle x="2" y="13" width="22" height="9" cornerRadiusX="4.5" cornerRadiusY="4.5">
+                    <Fill color="#cbd5df" />
+                  </RoundRectangle>
+                  <Ellipse x="4" y="7" width="12" height="12">
+                    <Fill color="#cbd5df" />
+                  </Ellipse>
+                  <Ellipse x="12" y="5" width="13" height="13">
+                    <Fill color="#cbd5df" />
+                  </Ellipse>
+                </PartDraw>
+              </Default>
+            </Condition>
+
+            <!-- Cream, not coral. The temperature is a reading like the three
+                 stats below it, so it now matches them; coral is left to mean
+                 "something is wrong or urgent" (low battery) plus the heart
+                 icon, where red is iconography rather than emphasis. -->
+            <PartText name="wx_temp" x="32" y="0" width="58" height="32">
+              <Text align="START">
+                <Font family="SYNC_TO_DEVICE" size="25" weight="NORMAL" slant="NORMAL" color="#fff6e8">
+                  <Template><![CDATA[%d°]]><Parameter expression="[WEATHER.TEMPERATURE]" /></Template>
+                </Font>
+              </Text>
+            </PartText>
+          </Group>
+        </Compare>
+
+        <!-- No provider, or it went stale. Dashes stand in for the whole chip. -->
+        <Default>
+          <PartText name="wx_none" x="0" y="0" width="90" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="25" weight="NORMAL" slant="NORMAL" color="#d9a695"><![CDATA[--°]]></Font>
+            </Text>
+          </PartText>
+        </Default>
+      </Condition>
+    </Group>
+
+    <!-- ============================================================
+         Stat row: heart rate, steps, battery.
+         Each chip is a Group so the icon and the number move together.
+
+         All three numbers are align="START", not CENTER. With CENTER the
+         icon-to-number gap depended on how many digits the value happened
+         to have: a 2-digit heart rate floated ~21px away from the heart
+         while "100%" sat ~2px off the battery. START pins each number a
+         fixed distance from its own icon, so the three chips stay
+         consistent whatever the values do. Note the enum is
+         START/CENTER/END - there is no LEFT/RIGHT.
+
+         On the *gaps between* chips: these cannot be made value-independent.
+         x/y/width/height are xs:integer in the schema, not expression types,
+         so there is no content-driven layout in WFF - every slot is reserved
+         at authoring time and short values leave the slack visible. What the
+         numbers below do instead is reserve only what the widest realistic
+         value needs, so the row is balanced across the range that actually
+         occurs rather than balanced for one value and lopsided for the rest:
+
+             heart rate  2 digits -> gap 29,  3 digits -> gap 15
+             steps       4 digits -> gap 27,  5 digits -> gap 13
+
+         Both gaps shrink together as values grow, which reads as "tighter"
+         rather than as one chip drifting. The previous numbers reserved 3
+         digits' worth of heart rate no matter what, which is why a 2-digit
+         pulse left a 58px hole on one side and 27px on the other.
+         ============================================================ -->
+
+    <!-- ==== Heart rate =========================================== -->
+    <Group name="chip_heart_rate" x="92" y="216" width="70" height="36" alpha="255">
+      <Variant mode="AMBIENT" target="alpha" value="0" />
+
+      <!-- Heart: two lobes plus a square rotated 45 degrees for the point.
+
+           The point used to sit at y 14 in a 16px box, putting its centre at
+           y 22 and its tip near y 33 - well below the lobes, and off the
+           bottom of the 36px chip. That is what made the icon look pinched
+           and lopsided. Both parts are now centred on x 11 (the lobes span
+           0 to 22) and the whole heart occupies y 8 to 28, which is centred
+           in the chip. -->
+      <PartDraw name="hr_icon_lobes" x="0" y="8" width="22" height="13">
+        <Ellipse x="0" y="0" width="13" height="13">
+          <Fill color="#e8543c" />
+        </Ellipse>
+        <Ellipse x="9" y="0" width="13" height="13">
+          <Fill color="#e8543c" />
+        </Ellipse>
+      </PartDraw>
+      <PartDraw name="hr_icon_point" x="2" y="10" width="18" height="18"
+                pivotX="0.5" pivotY="0.5" angle="45">
+        <Rectangle x="2.5" y="2.5" width="13" height="13">
+          <Fill color="#e8543c" />
+        </Rectangle>
+      </PartDraw>
+
+      <Condition>
+        <Expressions>
+          <Expression name="hr_valid">[HEART_RATE] &gt; 0</Expression>
+        </Expressions>
+        <Compare expression="hr_valid">
+          <PartText name="hr_value" x="28" y="0" width="42" height="36">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="25" weight="BOLD" slant="NORMAL" color="#fff6e8">
+                <Template><![CDATA[%.0f]]><Parameter expression="[HEART_RATE]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Compare>
+        <Default>
+          <PartText name="hr_placeholder" x="28" y="0" width="42" height="36">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="25" weight="BOLD" slant="NORMAL" color="#c3b1a4"><![CDATA[--]]></Font>
+            </Text>
+          </PartText>
+        </Default>
+      </Condition>
+    </Group>
+
+    <!-- ==== Steps ================================================ -->
+    <Group name="chip_steps" x="172" y="216" width="98" height="36" alpha="255">
+      <Variant mode="AMBIENT" target="alpha" value="0" />
+
+      <!-- TWO footprints, offset diagonally - the conventional "footsteps"
+           mark rather than a single print.
+
+           Third attempt at this icon. It began as two teal tapered ovals meant
+           to read as a pair of prints and read as water droplets; it was then
+           one beige sole plus a detached heel, rotated -24 degrees, which on
+           the watch read as nothing but a big circle and a small circle. Two
+           things were wrong with that: a lone print has no context telling you
+           it is a print, and the rotation was applied to a PartDraw whose box
+           was exactly its content, so the corners clipped and flattened the
+           taper that was doing the work.
+
+           This version drops rotation entirely - at 26px a tilt costs more in
+           clipping than it buys in character - and instead relies on the one
+           cue that is unambiguous at any size: two of them, staggered. Each
+           print is still sole-plus-heel, with the rear print low-left and the
+           lead print high-right.
+
+           Beige rather than teal on purpose: teal against black reads as
+           liquid, which is what made the first version look like droplets. -->
+      <PartDraw name="steps_icon" x="0" y="3" width="26" height="30">
+        <Ellipse x="0" y="13" width="10" height="11">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+        <Ellipse x="2" y="25" width="6" height="4">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+        <Ellipse x="15" y="0" width="10" height="11">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+        <Ellipse x="17" y="12" width="6" height="4">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+      </PartDraw>
+
+      <PartText name="steps_value" x="28" y="0" width="70" height="36">
+        <Text align="START">
+          <Font family="SYNC_TO_DEVICE" size="25" weight="BOLD" slant="NORMAL" color="#fff6e8">
+            <Template><![CDATA[%d]]><Parameter expression="[STEP_COUNT]" /></Template>
+          </Font>
+        </Text>
+      </PartText>
+    </Group>
+
+    <!-- ==== Battery ============================================== -->
+    <Group name="chip_battery" x="280" y="216" width="90" height="36" alpha="255">
+      <Variant mode="AMBIENT" target="alpha" value="0" />
+
+      <!-- Shell: outline plus the terminal nub. Static. -->
+      <PartDraw name="battery_shell" x="0" y="10" width="26" height="16">
+        <RoundRectangle x="1" y="1" width="20" height="13" cornerRadiusX="3.5" cornerRadiusY="3.5">
+          <Stroke color="#fff6e8" thickness="2" cap="ROUND" />
+        </RoundRectangle>
+        <Rectangle x="21.5" y="4.5" width="3" height="6">
+          <Fill color="#fff6e8" />
+        </Rectangle>
+      </PartDraw>
+
+      <!-- The fill now tracks BATTERY_PERCENT. It used to be a fixed 12px bar,
+           so the icon always read as roughly 70% no matter what the number
+           beside it said.
+
+           This works via <Transform>, which binds one attribute of a shape to
+           an arithmetic expression at render time. It is the ONLY way to get
+           value-driven geometry in WFF: the x/y/width/height on Part* elements
+           are authoring-time integers, but a shape inside a PartDraw accepts
+           Transform on x, y, width, height and (for RoundRectangle) the two
+           corner radii.
+
+           Range: the 2px outline spans 0..22 with its stroke centred on
+           1..21, so the usable interior is x 2..20. The bar starts at 3.5 and
+           the expression maxes it at 15.5, ending at 19 - one pixel clear of
+           the inner edge. The constant 1 keeps a visible sliver at 0% rather
+           than collapsing the rounded corners into an artefact.
+
+           The authored width="15.5" is deliberately the 100% case, not 0: any
+           renderer that ignores Transform falls back to the literal attribute,
+           so the icon degrades to a full battery rather than an empty one.
+
+           Colour follows the text: both branches of the existing
+           BATTERY_IS_LOW condition below now carry their own fill, which
+           avoids a green bar sitting under coral digits at 10%. -->
+      <Condition>
+        <Expressions>
+          <Expression name="battery_low">[BATTERY_IS_LOW]</Expression>
+        </Expressions>
+        <Compare expression="battery_low">
+          <PartDraw name="battery_fill_low" x="0" y="10" width="26" height="16">
+            <RoundRectangle x="3.5" y="3.5" width="15.5" height="8" cornerRadiusX="1.5" cornerRadiusY="1.5">
+              <Transform target="width" value="1 + [BATTERY_PERCENT] * 0.145" />
+              <Fill color="#e8543c" />
+            </RoundRectangle>
+          </PartDraw>
+          <PartText name="battery_value_low" x="33" y="0" width="57" height="36">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="25" weight="BOLD" slant="NORMAL" color="#e8543c">
+                <Template><![CDATA[%d%%]]><Parameter expression="[BATTERY_PERCENT]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Compare>
+        <Default>
+          <PartDraw name="battery_fill" x="0" y="10" width="26" height="16">
+            <RoundRectangle x="3.5" y="3.5" width="15.5" height="8" cornerRadiusX="1.5" cornerRadiusY="1.5">
+              <Transform target="width" value="1 + [BATTERY_PERCENT] * 0.145" />
+              <Fill color="#5fb874" />
+            </RoundRectangle>
+          </PartDraw>
+          <PartText name="battery_value" x="33" y="0" width="57" height="36">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="25" weight="BOLD" slant="NORMAL" color="#fff6e8">
+                <Template><![CDATA[%d%%]]><Parameter expression="[BATTERY_PERCENT]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Default>
+      </Condition>
+    </Group>
+
+    <!-- ============================================================
+         BLOB REACTIONS
+
+         Every accessory below is a plain PartDraw behind a <Condition>.
+         Nothing is a bitmap, so the whole set costs essentially nothing
+         against the memory budget.
+
+         Triggers, and why each is written the way it is:
+
+           sweat      [HEART_RATE] >= 120
+                      Exact. Heart rate needs no permission for the face to
+                      read, the runtime brokers it. Was 100, which a brisk
+                      walk or a flight of stairs reaches, so the blobs were
+                      sweating most of the day; 120 is properly "working".
+
+         HOW THESE COMBINE. Every accessory is an independent <Condition>, so
+         they stack freely - shades, sweat and an umbrella can all be on at
+         once, and the only thing deciding what covers what is DOCUMENT ORDER,
+         since later elements draw on top. There is no global priority.
+
+         Precedence exists in exactly three places, all of them cases where one
+         thing cannot be in two states:
+           - hero eyes and hero mouth: startled, then asleep, then default
+           - companion mouth: asleep, then default
+           - companion body: struck by lightning swaps the whole blob for an
+             X-ray skeleton, which is why its eyes, shades and sweat live
+             INSIDE the Default branch rather than beside it
+         Plus the weather icon, where five Compares share one Condition and the
+         first true one wins.
+
+           sunny      CONDITION == 1 && IS_DAY && TEMPERATURE >= 25
+                      Shades plus a cocktail in the hero's raised hand. Exact,
+                      since code 1 (clear) is confirmed on real hardware - this
+                      was once a warm-and-dry proxy that could put shades on
+                      during a warm overcast day. Was called "sunglasses"; the
+                      state is more than eyewear now.
+
+           startled   precipitation >= 90%, same trigger as the storm
+                      Round mouth and wide round eyes on the hero. Lives inside
+                      the eye and mouth Conditions rather than as an accessory
+                      of its own, because a face cannot hold two expressions at
+                      once - so it is ORDERED AHEAD of the sleepy branch there.
+                      That ordering is the only real precedence in the file.
+
+           sleepy     23:00 to 07:00 by the clock
+                      There is NO bedtime or sleep-mode data source in WFF -
+                      the only mode source is IS_24_HOUR_MODE - so the clock
+                      is the only option, as agreed.
+
+           umbrella   precipitation >= 50%
+           storm      precipitation >= 90%
+                      Also a PROXY, for the same reason as shades: the
+                      thunderstorm condition code is unknown. Heavy rain is
+                      the closest usable stand-in, so the bolt fires during a
+                      downpour rather than strictly during thunder. One
+                      equality test replaces it once the code is known.
+
+         Every weather trigger is gated on IS_AVAILABLE, because availability
+         drops out on its own periodically - without the gate the accessories
+         would flicker on and off as it comes and goes.
+         ============================================================ -->
+
+    <!-- ============================================================
+         HERO BLOB - group-local coordinate space is 106 x 132.
+         Drawn from primitives only (no bitmaps), so it costs almost
+         nothing against the 10 MB ambient / 100 MB active budget and
+         stays crisp at any resolution.
+
+         Draw order: leaves -> limbs -> body + face -> accessories.
+         The limbs are deliberately BEHIND the body now: the lines and
+         ovals are anchored inside the body outline, so drawing them
+         first hides the joints and the arms read as attached rather
+         than pasted on top.
+         ============================================================ -->
+    <!-- x is 207, was 196, and the companion moved from 128 to 143. The pair
+         was both off-centre and too far apart; see the note on blob_companion
+         for the arithmetic and for what sets the floor on "closer". -->
+    <Group name="blob_hero" x="207" y="262" width="106" height="132" alpha="255">
+      <Variant mode="AMBIENT" target="alpha" value="0" />
+
+      <!-- Leaves. Each leaf is its own PartDraw rotated about the box
+           centre, which sits exactly at the base of the leaf tuft. -->
+      <PartDraw name="leaf_left" x="10" y="0" width="80" height="80"
+                pivotX="0.5" pivotY="0.5" angle="-36">
+        <Ellipse x="30" y="4" width="20" height="36">
+          <Fill color="#4fa968" />
+        </Ellipse>
+      </PartDraw>
+
+      <PartDraw name="leaf_right" x="10" y="0" width="80" height="80"
+                pivotX="0.5" pivotY="0.5" angle="34">
+        <Ellipse x="30" y="6" width="20" height="34">
+          <Fill color="#4fa968" />
+        </Ellipse>
+      </PartDraw>
+
+      <PartDraw name="leaf_center" x="10" y="0" width="80" height="80"
+                pivotX="0.5" pivotY="0.5" angle="0">
+        <Ellipse x="29" y="0" width="22" height="40">
+          <Fill color="#5fb874" />
+        </Ellipse>
+        <Line startX="40" startY="36" endX="40" endY="8">
+          <Stroke color="#86ce97" thickness="1.6" cap="ROUND" />
+        </Line>
+      </PartDraw>
+
+      <!-- Limbs: thin lines with round caps, plus an oval hand/foot at
+           the end - exactly how the CI blobs are built. Right arm is
+           raised in a wave.
+
+           Colour is a lightened version of the brand navy (#16324b). The
+           dark original disappears against black, and the warm off-white
+           that briefly replaced it read as bandages. Keeping the navy hue
+           and only raising its lightness keeps the limbs recognisably
+           part of the same family as the rest of the palette. -->
+      <!-- Limbs: brand navy core with a light rim, drawn in two passes -
+           every limb once oversized in the rim colour, then again at true
+           size in navy on top. Keeps the limbs the dark navy the CI blobs
+           actually use, and lets the rim do the work of separating them from
+           the black background. A flat light colour was tried first and read
+           as bandages; a flat mid-slate read as grey sticks.
+
+           The ARMS ARE MIRRORED from the original: the long raised arm is now
+           the blob's right (screen left), so the umbrella it holds reaches out
+           over the companion instead of away from it. Everything is the old
+           geometry reflected about the group's vertical centre, x' = 106 - x. -->
+      <!-- The screen-LEFT arm is not in here; it has two poses and lives in
+           its own Condition just below. Everything else - the screen-right
+           arm and both legs - is fixed, so it stays in one PartDraw. -->
+      <PartDraw name="hero_limbs" x="0" y="0" width="106" height="132">
+        <Line startX="84" startY="74" endX="93" endY="62">
+          <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+        </Line>
+        <Ellipse x="84" y="52" width="18" height="17">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+        <Line startX="38" startY="112" endX="34" endY="124">
+          <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+        </Line>
+        <Ellipse x="22" y="117" width="24" height="15">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+        <Line startX="62" startY="112" endX="66" endY="124">
+          <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+        </Line>
+        <Ellipse x="54" y="117" width="24" height="15">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+
+        <!-- Starts at x 84, not 90. The mirror that moved the long arm to the
+             other side reflected about the GROUP centre (53), but the body is
+             only 14 to 86, so its centre is 50. Three pixels of error put this
+             arm's shoulder 4px clear of the body outline, leaving a visible
+             gap between limb and blob. -->
+        <Line startX="84" startY="74" endX="93" endY="62">
+          <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+        </Line>
+        <Ellipse x="86" y="54" width="14" height="13">
+          <Fill color="#23384f" />
+        </Ellipse>
+
+        <Line startX="38" startY="112" endX="34" endY="124">
+          <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+        </Line>
+        <Ellipse x="24" y="119" width="20" height="11">
+          <Fill color="#23384f" />
+        </Ellipse>
+
+        <Line startX="62" startY="112" endX="66" endY="124">
+          <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+        </Line>
+        <Ellipse x="56" y="119" width="20" height="11">
+          <Fill color="#23384f" />
+        </Ellipse>
+      </PartDraw>
+
+      <!-- Screen-LEFT arm, the long one. Two poses.
+
+           Raised is the default wave, and it is also the hand the umbrella
+           shaft terminates in (absolute 206, 297 = group-local 10, 35). At
+           night the arm drops to rest along the body instead - a blob that is
+           asleep with its eyes shut and z's floating beside it should not
+           still be waving.
+
+           Hence the second half of the trigger: the arm stays UP while it is
+           wet, because a wet night is an ordinary combination and dropping the
+           arm then would leave the umbrella hanging in mid-air. "Dry" is
+           written as 50 &gt; CHANCE_OF_PRECIPITATION, mirroring the >= 50
+           threshold the umbrella itself uses, so the two can never disagree.
+
+           On the reversed operands: the v5 XSD's _operatorType enumeration
+           omits "&lt;", "&lt;=" and "!=" (it is byte-identical across v1-v5 and
+           has clearly never been updated), while the published reference does
+           list all of them plus "!". The enumeration is not enforced either
+           way - arithmeticExpressionType unions in xs:string, so the validator
+           accepts anything. Since neither claim has been checked on this watch,
+           new expressions keep using the reversed form that is known to work.
+
+           Geometry of the lowered pose, in group-local space. The body is a
+           RoundRectangle (14,36,72,80) with radii 36 x 34, so its sides are
+           straight only between y 70 and 82 and it narrows below that: the
+           left edge is x 15 at y 90, 19.5 at y 100, 29.6 at y 110. The arm
+           runs (24,78) to (12,96) so it is inside the outline down to about
+           y 91 and emerges below - the limb pass draws before the body, so
+           that hidden upper half is what makes the shoulder read as a joint
+           rather than a stuck-on stick.
+
+           The hand centres on (10,102). Both of its bounds are tight and were
+           arrived at by measurement:
+             - x 0.5 at the left. The PartDraw box is the group's own 106 x 132
+               and content is clipped to it, so a hand centred any further out
+               loses its edge.
+             - y 111 at the bottom, six pixels above the left foot at y 117.
+               The first attempt centred the hand at (11,106), which left two
+               pixels and made the hand read as a third foot on the watch.
+           Its right edge at 19.5 also just clears the body outline (20.9 at
+           that height), so the whole hand is visible rather than half-swallowed
+           the way the shoulder deliberately is. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_arm_rest">([HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]) &amp;&amp; 50 &gt; [WEATHER.CHANCE_OF_PRECIPITATION]</Expression>
+        </Expressions>
+
+        <Compare expression="hero_arm_rest">
+          <PartDraw name="hero_arm_left_down" x="0" y="0" width="106" height="132">
+            <Line startX="24" startY="78" endX="12" endY="96">
+              <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+            </Line>
+            <Ellipse x="0.5" y="93" width="19" height="18">
+              <Fill color="#e9dccb" />
+            </Ellipse>
+            <Line startX="24" startY="78" endX="12" endY="96">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
+            <Ellipse x="2.5" y="95" width="15" height="14">
+              <Fill color="#23384f" />
+            </Ellipse>
+          </PartDraw>
+        </Compare>
+
+        <Default>
+          <PartDraw name="hero_arm_left_up" x="0" y="0" width="106" height="132">
+            <Line startX="22" startY="70" endX="11" endY="40">
+              <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+            </Line>
+            <Ellipse x="1" y="26" width="19" height="18">
+              <Fill color="#e9dccb" />
+            </Ellipse>
+            <Line startX="22" startY="70" endX="11" endY="40">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
+            <Ellipse x="3" y="28" width="15" height="14">
+              <Fill color="#23384f" />
+            </Ellipse>
+          </PartDraw>
+        </Default>
+      </Condition>
+
+      <!-- Body and face. The body is one solid colour; the speckles that
+           used to sit on it are gone. -->
+      <PartDraw name="hero_body" x="14" y="36" width="72" height="80">
+        <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
+          <Fill color="#ee4e43" />
+        </RoundRectangle>
+
+      </PartDraw>
+
+      <!-- Eyes, split out of hero_body so they can flatten at night. The
+           happy arcs still curve upward, which read as cheerful even with a
+           snoring mouth underneath; flat lines read as actually asleep. -->
+      <!-- ORDER OF THE COMPARE BRANCHES IS THE PRIORITY ORDER. Within one
+           Condition the first true Compare wins, so startled has to come
+           before asleep: a thunderstorm at 2am should open the eyes, not leave
+           them shut. Everything else about the blob states combines freely,
+           because each accessory is its own independent Condition - this
+           Condition is one of the few places where an actual precedence
+           exists, and it only exists because eyes cannot be in two states. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_eyes_startled">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
+          <Expression name="hero_eyes_shut">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+        </Expressions>
+        <!-- Struck by lightning: wide round eyes. Same trick the companion's
+             open eyes use - a plain filled ellipse - but scaled to the hero and
+             centred on the same points the happy arcs use (body-local 23,26 and
+             47,26) so the face does not shift between states. -->
+        <Compare expression="hero_eyes_startled">
+          <PartDraw name="hero_eyes_startled" x="14" y="36" width="72" height="80">
+            <Ellipse x="17" y="20" width="12" height="13">
+              <Fill color="#23384f" />
+            </Ellipse>
+            <Ellipse x="41" y="20" width="12" height="13">
+              <Fill color="#23384f" />
+            </Ellipse>
+          </PartDraw>
+        </Compare>
+        <Compare expression="hero_eyes_shut">
+          <PartDraw name="hero_eyes_sleep" x="14" y="36" width="72" height="80">
+            <Line startX="15" startY="26" endX="31" endY="26">
+              <Stroke color="#23384f" thickness="3.4" cap="ROUND" />
+            </Line>
+            <Line startX="41" startY="26" endX="57" endY="26">
+              <Stroke color="#23384f" thickness="3.4" cap="ROUND" />
+            </Line>
+          </PartDraw>
+        </Compare>
+        <Default>
+          <!-- Happy closed eyes: top half of an ellipse, stroked.
+               In WFF, angle 0 is 12 o'clock and sweeps clockwise. Arc takes
+               startAngle/endAngle (there is no sweepAngle), so the upper arc
+               is 270 to 450 - kept past 360 rather than wrapped to 90 so the
+               sweep stays unambiguously positive and clockwise.
+
+               There used to be a second, smaller pair of arcs above these as
+               brows. At this size they read as a second pair of eyes rather
+               than eyebrows, so they are gone. -->
+          <PartDraw name="hero_eyes_awake" x="14" y="36" width="72" height="80">
+            <Arc centerX="23" centerY="26" width="17" height="13" startAngle="270" endAngle="450">
+              <Stroke color="#23384f" thickness="3.4" cap="ROUND" />
+            </Arc>
+            <Arc centerX="47" centerY="26" width="17" height="13" startAngle="270" endAngle="450">
+              <Stroke color="#23384f" thickness="3.4" cap="ROUND" />
+            </Arc>
+          </PartDraw>
+        </Default>
+      </Condition>
+
+      <!-- Mouth, split out of hero_body so it can change at night. The eyes
+           are already closed arcs, so the wide grin was the only thing left
+           saying "awake" - with it in place the hero looked mid-wave while
+           z's floated beside it and the companion slept.
+
+           Both variants use the body's own box (14,36,72,80) so the numbers
+           stay in body-local coordinates, same as before the split. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_mouth_shocked">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
+          <Expression name="hero_asleep">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+        </Expressions>
+        <!-- Startled by the lightning: the round mouth, identical geometry to
+             the sleeping one. A small "o" reads as snoring under closed eyes and
+             as a gasp under wide ones, so the eyes above carry the whole
+             difference and this branch is a deliberate duplicate rather than a
+             new shape. Ordered before asleep for the same reason as the eyes. -->
+        <Compare expression="hero_mouth_shocked">
+          <PartDraw name="hero_mouth_shocked" x="14" y="36" width="72" height="80">
+            <Ellipse x="30" y="42" width="11" height="11">
+              <Fill color="#5a2a22" />
+            </Ellipse>
+          </PartDraw>
+        </Compare>
+        <Compare expression="hero_asleep">
+          <PartDraw name="hero_mouth_sleep" x="14" y="36" width="72" height="80">
+            <Ellipse x="30" y="42" width="11" height="11">
+              <Fill color="#5a2a22" />
+            </Ellipse>
+          </PartDraw>
+        </Compare>
+        <Default>
+          <!-- Open mouth: a dark ellipse with its top half painted back
+               over in the body colour, leaving a half-moon smile.
+
+               THE MASK STARTS 3px ABOVE THE ELLIPSE (y 35 against y 38), and
+               that is a fix, not slack. When both started at the same y their
+               antialiased top edges did not cancel: the mask only partially
+               covered the ellipse's topmost row, so a 1px sliver of #5a2a22
+               bled through as a faint horizontal dash a third of the way up the
+               face. It read convincingly as a little nose - convincingly enough
+               that it had to be measured to establish it was never drawn on
+               purpose. The companion's mouth had exactly the same artefact.
+
+               Any mask built this way must overshoot the shape it is cutting. -->
+          <PartDraw name="hero_mouth_awake" x="14" y="36" width="72" height="80">
+            <Ellipse x="24" y="38" width="22" height="20">
+              <Fill color="#5a2a22" />
+            </Ellipse>
+            <Rectangle x="22" y="35" width="26" height="13">
+              <Fill color="#ee4e43" />
+            </Rectangle>
+          </PartDraw>
+        </Default>
+      </Condition>
+
+      <!-- Below freezing: scarf and gloves.
+
+           "Below 0" has to be written with the operands reversed, as
+           0 &gt; TEMPERATURE, because the operator set has no "<".
+
+           Drawn after the body and the face so the scarf sits in front, and
+           the glove ovals land on top of the hands the limb pass already drew.
+           The scarf's own PartDraw is taller than the body (96 vs 80) so the
+           hanging tail can fall past the body outline without being clipped. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; 0 &gt; [WEATHER.TEMPERATURE]</Expression>
+        </Expressions>
+        <Compare expression="hero_cold">
+          <PartDraw name="hero_scarf" x="14" y="36" width="72" height="96">
+            <RoundRectangle x="3" y="62" width="66" height="13" cornerRadiusX="6" cornerRadiusY="6">
+              <Fill color="#3f78c4" />
+            </RoundRectangle>
+            <RoundRectangle x="7" y="70" width="10" height="16" cornerRadiusX="5" cornerRadiusY="5">
+              <Fill color="#3f78c4" />
+            </RoundRectangle>
+            <Line startX="6" startY="68" endX="66" endY="68">
+              <Stroke color="#2f5d9e" thickness="1.6" cap="BUTT" />
+            </Line>
+          </PartDraw>
+          <!-- Right glove is fixed; the left one has to land on whichever pose
+               the arm above chose, or a winter night puts a mitten where the
+               raised hand used to be and leaves the resting hand bare. Same
+               expression, repeated rather than shared - WFF Expressions are
+               scoped to their own Condition and cannot be referenced from
+               another one. -->
+          <PartDraw name="hero_glove_right" x="0" y="0" width="106" height="132">
+            <Ellipse x="84" y="52" width="18" height="17">
+              <Fill color="#3f78c4" />
+            </Ellipse>
+          </PartDraw>
+          <Condition>
+            <Expressions>
+              <Expression name="hero_glove_rest">([HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]) &amp;&amp; 50 &gt; [WEATHER.CHANCE_OF_PRECIPITATION]</Expression>
+            </Expressions>
+            <Compare expression="hero_glove_rest">
+              <PartDraw name="hero_glove_left_down" x="0" y="0" width="106" height="132">
+                <Ellipse x="0.5" y="93" width="19" height="18">
+                  <Fill color="#3f78c4" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Default>
+              <PartDraw name="hero_glove_left_up" x="0" y="0" width="106" height="132">
+                <Ellipse x="1" y="26" width="19" height="18">
+                  <Fill color="#3f78c4" />
+                </Ellipse>
+              </PartDraw>
+            </Default>
+          </Condition>
+        </Compare>
+      </Condition>
+
+      <!-- SUNNY state (was called "sunglasses" / hero_hot): shades plus a
+           cocktail. Renamed because the state is no longer just eyewear - it is
+           the blob's whole reaction to a clear warm day.
+
+           Drawn after the body so the shades sit over the eye arcs, and after
+           the limb pass so the glass sits over the raised hand. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_sunny">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY]</Expression>
+        </Expressions>
+        <Compare expression="hero_sunny">
+          <PartDraw name="hero_shades" x="24" y="54" width="50" height="18">
+            <RoundRectangle x="3" y="2" width="20" height="13" cornerRadiusX="6" cornerRadiusY="6">
+              <Fill color="#1b2733" />
+            </RoundRectangle>
+            <RoundRectangle x="28" y="2" width="20" height="13" cornerRadiusX="6" cornerRadiusY="6">
+              <Fill color="#1b2733" />
+            </RoundRectangle>
+            <Rectangle x="23" y="7" width="5" height="3">
+              <Fill color="#1b2733" />
+            </Rectangle>
+            <Line startX="6" startY="5" endX="10" endY="5">
+              <Stroke color="#5c7288" thickness="1.6" cap="ROUND" />
+            </Line>
+            <Line startX="31" startY="5" endX="35" endY="5">
+              <Stroke color="#5c7288" thickness="1.6" cap="ROUND" />
+            </Line>
+          </PartDraw>
+          <!-- Cocktail, in the blob's RIGHT hand - which is the raised one on
+               the screen LEFT, the same hand that holds the umbrella. The two
+               never coexist: sunny needs condition code 1 and daylight, wet
+               needs 50% precipitation.
+
+               A martini glass has to be faked, because WFF has no path or
+               polygon element - only Rectangle, RoundRectangle, Ellipse, Line
+               and Arc, so a filled triangle is not expressible. What works is
+               to build the bowl from two thick Lines meeting in a V and then
+               cap them with a flat Ellipse for the drink surface, drawn LAST so
+               it hides the two line ends where they splay apart. Stem and base
+               are two more lines; the teal diagonal is a straw, which is what
+               actually makes the object read as a cocktail rather than a
+               wineglass at 20px.
+
+               Placement: the box is group-local (0,6) 20 x 30, so the base
+               lands at group y 33.5 and the hand centre is at (10.5,35) - the
+               glass sits in the fist. x stops at 20 because leaf_left swings
+               down to about x 19; any wider and the bowl clips the leaf. -->
+          <PartDraw name="hero_cocktail" x="0" y="6" width="20" height="30">
+            <Line startX="11" startY="9" endX="16" endY="0">
+              <Stroke color="#4fb3c4" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="2.5" startY="9" endX="9" endY="19">
+              <Stroke color="#e8e0d4" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="15.5" startY="9" endX="9" endY="19">
+              <Stroke color="#e8e0d4" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="9" startY="19" endX="9" endY="27">
+              <Stroke color="#e8e0d4" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="5" startY="27.5" endX="13" endY="27.5">
+              <Stroke color="#e8e0d4" thickness="2" cap="ROUND" />
+            </Line>
+            <Ellipse x="1" y="6" width="16" height="6">
+              <Fill color="#ffab4a" />
+            </Ellipse>
+          </PartDraw>
+        </Compare>
+      </Condition>
+
+      <!-- Sweat beads on the forehead, above the eye line. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_puffed">[HEART_RATE] &gt;= 120</Expression>
+        </Expressions>
+        <Compare expression="hero_puffed">
+          <!-- Centred on the head (body centre is group-local x 50, the bead
+               cluster is 22 wide, so x = 39). It used to sit at x 22, which
+               put it up against the left edge of the head and tucked the
+               first bead under the leaf tuft.
+
+               The forehead is a 13px band and the beads have to fit inside it.
+               Measured in group-local space:
+
+                   leaf tuft   all three leaves pivot about (50, 40), and the
+                               centre leaf's ellipse bottoms out at y 40, so
+                               nothing green exists below 40
+                   eye arcs    centred y 62, box height 13, so the arc tops out
+                               at 55.5 - minus half of the 3.4 stroke = 53.8
+
+               The cluster was at y 42 spanning 16px, i.e. down to y 58, which
+               put the outer two beads straight through the eye arcs. It now
+               starts at 40 and is 12 tall, bottoming out at 49 - about 5px
+               clear of the arcs, with the stagger kept so it still reads as
+               three separate beads rather than a row. -->
+          <PartDraw name="hero_sweat" x="39" y="40" width="26" height="12">
+            <Ellipse x="0" y="2" width="6" height="7">
+              <Fill color="#9fd4e8" />
+            </Ellipse>
+            <Ellipse x="9" y="0" width="6" height="8">
+              <Fill color="#9fd4e8" />
+            </Ellipse>
+            <Ellipse x="17" y="2" width="5" height="6">
+              <Fill color="#9fd4e8" />
+            </Ellipse>
+          </PartDraw>
+        </Compare>
+      </Condition>
+    </Group>
+
+    <!-- ============================================================
+         ELECTROCUTION BURST - behind the companion, so it has to be
+         declared before it. Twelve thick radiating Lines plus a small filled
+         core: there is no Path or polygon element in WFF (the only shapes are
+         Rectangle, RoundRectangle, Ellipse, Line and Arc), so a jagged comic
+         starburst has to be faked from spokes. Alternating 50 / 36 long, at
+         30 degree steps around the local centre (52, 52).
+         ============================================================ -->
+    <Condition>
+      <Expressions>
+        <Expression name="zap_burst">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
+      </Expressions>
+      <Compare expression="zap_burst">
+        <!-- x is 123, was 108: tracks the companion's +15 move to 143. -->
+        <Group name="companion_burst" x="123" y="306" width="104" height="104" alpha="255">
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <PartDraw name="burst" x="0" y="0" width="104" height="104">
+            <Ellipse x="37" y="37" width="30" height="30">
+              <Fill color="#ffe24d" />
+            </Ellipse>
+            <Line startX="52" startY="52" endX="52" endY="2">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="70" endY="21">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="95" endY="27">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="88" endY="52">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="95" endY="77">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="70" endY="83">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="52" endY="102">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="34" endY="83">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="9" endY="77">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="16" endY="52">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="9" endY="27">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+            <Line startX="52" startY="52" endX="34" endY="21">
+              <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
+            </Line>
+          </PartDraw>
+        </Group>
+      </Compare>
+    </Condition>
+
+    <!-- ============================================================
+         COMPANION BLOB - smaller, open eyes, both arms out.
+         Yellow-orange rather than red, so the pair reads as two
+         characters instead of one blob at two sizes.
+         Group-local space is 62 x 72.
+
+         The body is a Condition rather than a single part: when it gets
+         struck, the whole thing swaps to an X-ray skeleton. That swap also
+         has to take the eyes, shades and sweat with it, which is why they
+         live inside the Default branch instead of being siblings - otherwise
+         they would draw on top of the skull.
+         ============================================================ -->
+    <!-- x is 143, was 128; the hero moved 196 -> 207 at the same time.
+
+         The pair used to span 126..298 in canvas x, so its centre was 212
+         against a canvas centre of 225 - visibly left of everything above it -
+         and the bodies sat 30px apart, which read as two separate characters
+         rather than a pair. Solving both at once:
+
+             companion_x + hero_x = 350      centres the visible span
+             hero_x - companion_x >= 64.5    keeps the hands from colliding
+
+         giving 143 and 207: the visible span is 141..309, centred on 225
+         exactly, and the gap between bodies drops from 30 to 26.
+
+         THE SECOND CONSTRAINT IS WHY THEY ARE NOT CLOSER STILL, and it is worth
+         writing down because it is invisible in any daytime screenshot. The
+         companion's screen-right hand reaches to group-local x 63, i.e. 11px
+         past its own body; in the SLEEPING state the hero's screen-left hand
+         reaches to group-local x 0.5, 13px past its body the other way. Those
+         two hands also overlap in y - absolute 352..364 against 355..373 - so
+         the clearance is real, not just a bounding-box artefact. At 143/207 they
+         miss by 1.5px. Anything tighter and two mitts intersect at night only.
+
+         Both hands are hard against their group's own edge as well (the groups
+         are 62 and 106 wide against 44 and 72 wide bodies), and PartDraw content
+         is clipped to its box, so "just move the hand in a bit" is not
+         available either.
+
+         To go properly tighter, lower the COMPANION's screen-right arm at night
+         too. That frees the whole overlap and is arguably more correct anyway -
+         it is currently the only limb still held out while its owner is asleep,
+         and its own foot is the only thing it would then have to dodge. -->
+    <Group name="blob_companion" x="143" y="322" width="62" height="72" alpha="255">
+      <Variant mode="AMBIENT" target="alpha" value="0" />
+
+      <PartDraw name="mini_leaf_left" x="6" y="0" width="48" height="48"
+                pivotX="0.5" pivotY="0.5" angle="-26">
+        <Ellipse x="19" y="6" width="11" height="18">
+          <Fill color="#4fa968" />
+        </Ellipse>
+      </PartDraw>
+      <PartDraw name="mini_leaf_right" x="6" y="0" width="48" height="48"
+                pivotX="0.5" pivotY="0.5" angle="20">
+        <Ellipse x="18" y="4" width="12" height="20">
+          <Fill color="#5fb874" />
+        </Ellipse>
+      </PartDraw>
+
+      <!-- Same two-pass rim treatment as the hero. -->
+      <PartDraw name="mini_limbs" x="0" y="0" width="62" height="72">
+        <Line startX="12" startY="44" endX="5" endY="38">
+          <Stroke color="#e9dccb" thickness="6.2" cap="ROUND" />
+        </Line>
+        <Ellipse x="-2" y="32" width="13" height="12">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+        <Line startX="48" startY="44" endX="56" endY="37">
+          <Stroke color="#e9dccb" thickness="6.2" cap="ROUND" />
+        </Line>
+        <Ellipse x="50" y="30" width="13" height="12">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+        <Line startX="24" startY="60" endX="22" endY="66">
+          <Stroke color="#e9dccb" thickness="6.2" cap="ROUND" />
+        </Line>
+        <Ellipse x="12" y="61" width="19" height="12">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+        <Line startX="38" startY="60" endX="40" endY="66">
+          <Stroke color="#e9dccb" thickness="6.2" cap="ROUND" />
+        </Line>
+        <Ellipse x="31" y="61" width="19" height="12">
+          <Fill color="#e9dccb" />
+        </Ellipse>
+
+        <Line startX="12" startY="44" endX="5" endY="38">
+          <Stroke color="#23384f" thickness="3.2" cap="ROUND" />
+        </Line>
+        <Ellipse x="0" y="34" width="9" height="8">
+          <Fill color="#23384f" />
+        </Ellipse>
+
+        <Line startX="48" startY="44" endX="56" endY="37">
+          <Stroke color="#23384f" thickness="3.2" cap="ROUND" />
+        </Line>
+        <Ellipse x="52" y="32" width="9" height="8">
+          <Fill color="#23384f" />
+        </Ellipse>
+
+        <Line startX="24" startY="60" endX="22" endY="66">
+          <Stroke color="#23384f" thickness="3.2" cap="ROUND" />
+        </Line>
+        <Ellipse x="14" y="63" width="15" height="8">
+          <Fill color="#23384f" />
+        </Ellipse>
+
+        <Line startX="38" startY="60" endX="40" endY="66">
+          <Stroke color="#23384f" thickness="3.2" cap="ROUND" />
+        </Line>
+        <Ellipse x="33" y="63" width="15" height="8">
+          <Fill color="#23384f" />
+        </Ellipse>
+      </PartDraw>
+
+      <Condition>
+        <Expressions>
+          <Expression name="mini_zapped">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
+        </Expressions>
+
+        <!-- Struck: X-ray skeleton, the way comics draw it. -->
+        <Compare expression="mini_zapped">
+          <PartDraw name="mini_skeleton" x="8" y="20" width="44" height="42">
+            <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+              <Fill color="#14181d" />
+            </RoundRectangle>
+            <Ellipse x="12" y="4" width="20" height="19">
+              <Fill color="#f4f1ea" />
+            </Ellipse>
+            <Ellipse x="16" y="10" width="6" height="7">
+              <Fill color="#14181d" />
+            </Ellipse>
+            <Ellipse x="23" y="10" width="6" height="7">
+              <Fill color="#14181d" />
+            </Ellipse>
+            <Ellipse x="21" y="17" width="3" height="3">
+              <Fill color="#14181d" />
+            </Ellipse>
+            <Rectangle x="17" y="20" width="10" height="1.6">
+              <Fill color="#14181d" />
+            </Rectangle>
+            <Line startX="22" startY="25" endX="22" endY="38">
+              <Stroke color="#f4f1ea" thickness="2.2" cap="ROUND" />
+            </Line>
+            <Line startX="15" startY="28" endX="29" endY="28">
+              <Stroke color="#f4f1ea" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="16" startY="32" endX="28" endY="32">
+              <Stroke color="#f4f1ea" thickness="2" cap="ROUND" />
+            </Line>
+            <Line startX="18" startY="36" endX="26" endY="36">
+              <Stroke color="#f4f1ea" thickness="2" cap="ROUND" />
+            </Line>
+          </PartDraw>
+        </Compare>
+
+        <!-- Normal: body, then whichever face state applies. -->
+        <Default>
+          <Group name="mini_alive" x="0" y="0" width="62" height="72" alpha="255">
+            <PartDraw name="mini_body" x="8" y="20" width="44" height="42">
+              <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+                <Fill color="#f7a23a" />
+              </RoundRectangle>
+            </PartDraw>
+
+            <!-- Mouth, split out of mini_body so it can go round at night, the
+                 way the hero's already does. Both variants keep the body's own
+                 box (8,20,44,42) so every number below stays in the same
+                 body-local space it was written in.
+
+                 The round mouth is centred on (22,29.5), exactly where the grin
+                 was centred, so the face does not shift between states. -->
+            <Condition>
+              <Expressions>
+                <Expression name="mini_mouth_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+              </Expressions>
+              <Compare expression="mini_mouth_night">
+                <PartDraw name="mini_mouth_sleep" x="8" y="20" width="44" height="42">
+                  <Ellipse x="18.5" y="26" width="7" height="7">
+                    <Fill color="#5a2a22" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+              <Default>
+                <!-- Grin: dark ellipse, top half masked back out in the body
+                     colour. The mask starts at y 21, three pixels ABOVE the
+                     ellipse at y 24 - see the long note on the hero's mouth.
+                     When they started level, a 1px sliver of the dark ellipse
+                     survived the mask and read as a nose. -->
+                <PartDraw name="mini_mouth_awake" x="8" y="20" width="44" height="42">
+                  <Ellipse x="16" y="24" width="12" height="11">
+                    <Fill color="#5a2a22" />
+                  </Ellipse>
+                  <Rectangle x="15" y="21" width="14" height="8">
+                    <Fill color="#f7a23a" />
+                  </Rectangle>
+                </PartDraw>
+              </Default>
+            </Condition>
+
+            <!-- Eyes: closed to a pair of dashes late at night, open otherwise. -->
+            <Condition>
+              <Expressions>
+                <Expression name="mini_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+              </Expressions>
+              <Compare expression="mini_night">
+                <PartDraw name="mini_eyes_closed" x="16" y="32" width="28" height="12">
+                  <Line startX="2" startY="6" endX="11" endY="6">
+                    <Stroke color="#23384f" thickness="2.5" cap="ROUND" />
+                  </Line>
+                  <Line startX="17" startY="6" endX="26" endY="6">
+                    <Stroke color="#23384f" thickness="2.5" cap="ROUND" />
+                  </Line>
+                </PartDraw>
+              </Compare>
+              <Default>
+                <PartDraw name="mini_eyes_open" x="8" y="20" width="44" height="42">
+                  <Ellipse x="12" y="14" width="5" height="6">
+                    <Fill color="#23384f" />
+                  </Ellipse>
+                  <Ellipse x="27" y="14" width="5" height="6">
+                    <Fill color="#23384f" />
+                  </Ellipse>
+                </PartDraw>
+              </Default>
+            </Condition>
+
+            <Condition>
+              <Expressions>
+                <Expression name="mini_sunny">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY]</Expression>
+              </Expressions>
+              <Compare expression="mini_sunny">
+                <PartDraw name="mini_shades" x="16" y="31" width="28" height="12">
+                  <RoundRectangle x="2" y="2" width="10" height="8" cornerRadiusX="4" cornerRadiusY="4">
+                    <Fill color="#1b2733" />
+                  </RoundRectangle>
+                  <RoundRectangle x="15" y="2" width="10" height="8" cornerRadiusX="4" cornerRadiusY="4">
+                    <Fill color="#1b2733" />
+                  </RoundRectangle>
+                  <Rectangle x="12" y="5" width="3" height="2">
+                    <Fill color="#1b2733" />
+                  </Rectangle>
+                </PartDraw>
+              </Compare>
+            </Condition>
+
+            <!-- Below freezing: matching scarf and gloves. Its PartDraw is
+                 taller than the 42px body so the tail can hang below it. -->
+            <Condition>
+              <Expressions>
+                <Expression name="mini_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; 0 &gt; [WEATHER.TEMPERATURE]</Expression>
+              </Expressions>
+              <Compare expression="mini_cold">
+                <PartDraw name="mini_scarf" x="8" y="20" width="44" height="40">
+                  <RoundRectangle x="2" y="33" width="40" height="9" cornerRadiusX="4.5" cornerRadiusY="4.5">
+                    <Fill color="#3f78c4" />
+                  </RoundRectangle>
+                  <RoundRectangle x="30" y="39" width="7" height="12" cornerRadiusX="3.5" cornerRadiusY="3.5">
+                    <Fill color="#3f78c4" />
+                  </RoundRectangle>
+                </PartDraw>
+                <PartDraw name="mini_gloves" x="0" y="0" width="62" height="72">
+                  <Ellipse x="-2" y="32" width="13" height="12">
+                    <Fill color="#3f78c4" />
+                  </Ellipse>
+                  <Ellipse x="50" y="30" width="13" height="12">
+                    <Fill color="#3f78c4" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+            </Condition>
+
+            <Condition>
+              <Expressions>
+                <Expression name="mini_puffed">[HEART_RATE] &gt;= 120</Expression>
+              </Expressions>
+              <Compare expression="mini_puffed">
+                <!-- Same squeeze as the hero, on a 10px band: the mini leaves
+                     pivot about (30, 24) so nothing green sits below y 24, and
+                     the open eyes start at y 34. The cluster was at y 23 x 12
+                     tall, so it clipped the leaf base by 1px and touched the
+                     eyes; 25 x 8 leaves ~1px and ~2px. -->
+                <PartDraw name="mini_sweat" x="21" y="25" width="18" height="8">
+                  <Ellipse x="0" y="2" width="4" height="5">
+                    <Fill color="#9fd4e8" />
+                  </Ellipse>
+                  <Ellipse x="6" y="0" width="4" height="5">
+                    <Fill color="#9fd4e8" />
+                  </Ellipse>
+                  <Ellipse x="12" y="2" width="4" height="4">
+                    <Fill color="#9fd4e8" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+            </Condition>
+          </Group>
+        </Default>
+      </Condition>
+    </Group>
+
+    <!-- ============================================================
+         Props that live outside the blob groups.
+
+         These are in absolute canvas coordinates rather than inside the
+         blob groups, purely so the blob groups did not have to be resized
+         and every internal coordinate rewritten. The umbrella is placed so
+         its shaft ends in the hero's raised hand at (291, 298).
+         ============================================================ -->
+
+    <!-- Umbrella, held up by the hero's waving arm when it is wet. -->
+    <Condition>
+      <Expressions>
+        <Expression name="prop_wet">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 50</Expression>
+      </Expressions>
+      <Compare expression="prop_wet">
+        <!-- x is 137, was 126: the hero moved right by 11, and the shaft has to
+             stay in its hand. height is 70, was 64, to make room for the handle
+             hook that now hangs below the grip.
+
+             DRAW ORDER MATTERS HERE and it is the opposite of what it was: the
+             shaft is declared FIRST and the canopy second, so the canopy covers
+             the top of the shaft. Previously the shaft drew last and a pale line
+             ran up over the middle of the canopy, which made the canopy look
+             like it was behind the pole rather than fixed to the top of it. -->
+        <Group name="hero_umbrella" x="137" y="250" width="164" height="70" alpha="255">
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <!-- SHAFT FIRST, canopy second - see the group comment. Runs from
+               local y 18 (under the canopy band) down to y 60, which is
+               absolute 310: past the grip at 297 so the handle can hang below
+               the fist.
+
+               THE HANDLE IS A HALF CIRCLE and it hooks to the LEFT, which is
+               the detail that makes it work. Arc angles in WFF start at 12
+               o'clock and sweep clockwise, so 90 -> 270 is the bottom half:
+               it leaves the shaft's bottom end at local (80,60), curves down
+               and round, and comes back up at (68,60). Since the arc is 12
+               wide and the shaft is at 80, the whole hook sits in local x
+               68..80 - i.e. entirely on the far side of the shaft from the
+               forearm, which runs from absolute (218,302) down to (229,332)
+               and is at x 221 by the time it reaches the hook's depth.
+               Roughly 4px of clearance.
+
+               That direction is the whole reason this attempt works where two
+               earlier ones did not. Level with the hand a handle read as a
+               lollipop; hooking the other way it crossed the forearm and read
+               as a tangle. Hooking away from the arm reads as an umbrella. -->
+          <PartDraw name="umbrella_shaft" x="0" y="0" width="164" height="70">
+            <Line startX="80" startY="18" endX="80" endY="60">
+              <Stroke color="#e8e0d4" thickness="3" cap="ROUND" />
+            </Line>
+            <Arc centerX="74" centerY="60" width="12" height="12" startAngle="90" endAngle="270">
+              <Stroke color="#e8e0d4" thickness="3" cap="ROUND" />
+            </Arc>
+          </PartDraw>
+          <!-- Canopy: a flat band with three scallops on top, the same
+               fill-only trick the cloud icon uses. Built this way because
+               a dome would otherwise need a background-coloured shape to
+               bite the bottom off, and that would erase the leaves behind.
+
+               Teal, not coral: coral is within a few percent of the hero's
+               body red, so a coral canopy read as a second floating blob
+               head rather than as an object. The two seam lines matter for
+               the same reason - without them the silhouette is just a
+               cloud. -->
+          <!-- 160 wide, absolute x 137 to 297, and CENTRED on the shaft.
+
+               An earlier version hung the canopy 12px left of the grip so it
+               would lean over the companion. On screen that just looked like
+               the umbrella was being held by its right-hand edge. Centring the
+               shaft and making the canopy wide enough to span both blobs
+               (companion 151-195, hero 221-293) gets the "over them both"
+               reading without the lopsided grip. Four panels rather than
+               three, so the scallops stay the same size at this width. -->
+          <PartDraw name="umbrella_canopy" x="0" y="0" width="164" height="30">
+            <RoundRectangle x="0" y="12" width="160" height="10" cornerRadiusX="4" cornerRadiusY="4">
+              <Fill color="#4fb3c4" />
+            </RoundRectangle>
+            <Ellipse x="0" y="2" width="45" height="20">
+              <Fill color="#4fb3c4" />
+            </Ellipse>
+            <Ellipse x="38" y="0" width="45" height="22">
+              <Fill color="#4fb3c4" />
+            </Ellipse>
+            <Ellipse x="77" y="0" width="45" height="22">
+              <Fill color="#4fb3c4" />
+            </Ellipse>
+            <Ellipse x="115" y="2" width="45" height="20">
+              <Fill color="#4fb3c4" />
+            </Ellipse>
+            <Line startX="39" startY="5" endX="39" endY="21">
+              <Stroke color="#2e7c8a" thickness="1.8" cap="BUTT" />
+            </Line>
+            <Line startX="80" startY="4" endX="80" endY="21">
+              <Stroke color="#2e7c8a" thickness="1.8" cap="BUTT" />
+            </Line>
+            <Line startX="120" startY="5" endX="120" endY="21">
+              <Stroke color="#2e7c8a" thickness="1.8" cap="BUTT" />
+            </Line>
+          </PartDraw>
+        </Group>
+      </Compare>
+    </Condition>
+
+    <!-- Comic lightning bolt landing on the companion. Mirrored from the
+         first version so it comes in from the upper LEFT like the reference,
+         and shifted so its tip lands inside the burst at (154, 320) rather
+         than beside the companion's head. Drawn after the blobs, so the bolt
+         is in front while the burst behind them shows around the edges. -->
+    <Condition>
+      <Expressions>
+        <Expression name="prop_storm">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
+      </Expressions>
+      <Compare expression="prop_storm">
+        <!-- x is 127, was 112: tracks the companion's +15 move to 143. -->
+        <Group name="companion_lightning" x="127" y="256" width="56" height="68" alpha="255">
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <PartDraw name="bolt" x="0" y="0" width="56" height="68">
+            <Line startX="22" startY="0" endX="38" endY="28">
+              <Stroke color="#ffd34d" thickness="6" cap="SQUARE" />
+            </Line>
+            <Line startX="38" startY="28" endX="24" endY="32">
+              <Stroke color="#ffd34d" thickness="6" cap="SQUARE" />
+            </Line>
+            <Line startX="24" startY="32" endX="42" endY="64">
+              <Stroke color="#ffd34d" thickness="6" cap="SQUARE" />
+            </Line>
+          </PartDraw>
+        </Group>
+      </Compare>
+    </Condition>
+
+    <!-- Zzz for both blobs when it is late.
+
+         REBUILT so they read as coming out of the mouths. They used to sit as
+         one group at (300,282) - up beside the hero's head and shoulder, which
+         put them nearer its raised hand than its face and made them look like
+         free-floating decoration.
+
+         Now each chain STARTS at mouth height, immediately against the body
+         outline, and grows as it drifts away. Smallest nearest the mouth is
+         what sells the direction; the previous set ran biggest-first.
+
+         The hero's chain has to thread a real gap. Its mouth is at absolute
+         (256.5, 345.5), the body edge at that height is x 293, and its raised
+         screen-right hand occupies 291..309 x 314..331. So the chain runs
+         RIGHT and only gently up, passing under that hand rather than through
+         it: the mid z starts at x 311, two pixels clear of the hand's edge.
+         Rising more steeply would look better and is not available.
+
+         The companion's chain goes the other way, up-LEFT, for two reasons: the
+         gap between the two blobs is only 26px wide and the hero fills
+         everything to its right, and having the two chains splay outwards reads
+         as deliberate rather than as one blob copying the other. It clears its
+         own screen-left hand (141..154 x 354..366) by staying below y 366 at
+         first, then moving left of x 139.
+
+         Both chains are checked against the round bezel: the outermost corners
+         are at radius 178 and 183 from the centre, against the 225 limit. -->
+    <Condition>
+      <Expressions>
+        <Expression name="prop_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+      </Expressions>
+      <Compare expression="prop_night">
+        <Group name="sleep_zzz" x="294" y="316" width="64" height="38" alpha="255">
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <PartText name="zzz_small" x="0" y="20" width="16" height="18">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="13" weight="BOLD" slant="ITALIC" color="#93a3b4"><![CDATA[z]]></Font>
+            </Text>
+          </PartText>
+          <PartText name="zzz_mid" x="17" y="10" width="20" height="22">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="18" weight="BOLD" slant="ITALIC" color="#a8b8c8"><![CDATA[z]]></Font>
+            </Text>
+          </PartText>
+          <PartText name="zzz_big" x="38" y="0" width="26" height="28">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="24" weight="BOLD" slant="ITALIC" color="#b9c6d4"><![CDATA[z]]></Font>
+            </Text>
+          </PartText>
+        </Group>
+
+        <!-- Companion's own set, roughly 60% the size, drifting up-left from
+             its round sleeping mouth at absolute (173, 371.5). -->
+        <Group name="mini_sleep_zzz" x="107" y="345" width="44" height="37" alpha="255">
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <PartText name="mini_zzz_small" x="30" y="23" width="12" height="14">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="9" weight="BOLD" slant="ITALIC" color="#93a3b4"><![CDATA[z]]></Font>
+            </Text>
+          </PartText>
+          <PartText name="mini_zzz_mid" x="16" y="12" width="15" height="17">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="12" weight="BOLD" slant="ITALIC" color="#a8b8c8"><![CDATA[z]]></Font>
+            </Text>
+          </PartText>
+          <PartText name="mini_zzz_big" x="0" y="0" width="18" height="20">
+            <Text align="START">
+              <Font family="SYNC_TO_DEVICE" size="15" weight="BOLD" slant="ITALIC" color="#b9c6d4"><![CDATA[z]]></Font>
+            </Text>
+          </PartText>
+        </Group>
+      </Compare>
+    </Condition>
+
+  </Scene>
+</WatchFace>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Metadata the watch face picker reads. The filename and location
+    (res/xml/watch_face_info.xml) are fixed by convention.
+-->
+<WatchFaceInfo>
+    <Preview value="@drawable/preview" />
+    <Category value="CATEGORY_EMPTY" />
+    <AvailableInRetail value="false" />
+    <MultipleInstancesAllowed value="false" />
+    <Editable value="false" />
+</WatchFaceInfo>

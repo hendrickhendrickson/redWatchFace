@@ -1,94 +1,138 @@
 <#
-    Captures one screenshot per blob reaction state into docs/states/.
+    Captures one screenshot per state into docs/states/, with fixed values.
 
-        powershell -File tools/capture-states.ps1                 # all states
+        powershell -File tools/capture-states.ps1
         powershell -Command "& tools/capture-states.ps1 -Only 4-cold,5-freezing"
 
     USE -Command, NOT -File, WHEN PASSING -Only MORE THAN ONE STATE. Under
     -File every argument arrives as a separate string, so "-Only a,b" becomes
-    the single literal "a,b" and matches nothing, while "-Only a b" binds only
-    "a" and throws the rest at the next parameter.
+    the single literal "a,b" and matches nothing.
 
-    Runs on Windows PowerShell 5.1. (The header used to claim pwsh 7+ was
-    required; it is not, and a full sweep was run on 5.1 on 2026-08-03.)
+    Runs on Windows PowerShell 5.1.
 
-    Filenames are stable, so re-running overwrites the previous set rather
-    than piling up - the directory is always "how the face looks right now".
-    It also writes docs/states/all-states.png, a contact sheet of the lot.
+    HOW THE STATES ARE FORCED - and why this changed on 2026-08-04
 
-    -Only re-captures a subset. It deliberately skips the orphan prune, the
-    ambient shot and the contact sheet, because all three are whole-set
-    operations that a partial run would corrupt.
+    Previously each reaction was forced by rewriting its trigger expression to
+    `[BATTERY_PERCENT] == N` and setting the battery from the host. One build,
+    nine adb calls, fast - but wrong in two ways. The numbers on screen were
+    whatever the watch happened to report, so the "sunny" frame showed 24
+    degrees and 0 steps; and forcing triggers individually broke the
+    relationships between them, most visibly producing a freezing frame with a
+    snowflake above two blobs wearing no scarves, which the watch can never do.
 
-    HOW THE STATE FORCING WORKS
-    The reactions are normally driven by heart rate, weather and the clock,
-    none of which can be set from the host: the watch is a production build so
-    there is no root and the clock is untouchable, and weather cannot be faked
-    at all. BATTERY_PERCENT is the one exception - `dumpsys battery set level`
-    works without root - so for design review the triggers are temporarily
-    repointed at battery levels.
+    Now tools/mock-state.mjs patches the DATA instead - temperature, heart rate,
+    hour, and so on - and the real Conditions evaluate normally, so nesting
+    takes care of itself. The cost is one BUILD PER STATE, about three minutes
+    for the set. Correctness is worth more than the two minutes saved.
 
-    THIS SCRIPT ONLY PRODUCES DISTINCT STATES WHILE THOSE DEBUG TRIGGERS ARE
-    IN PLACE. Against the real triggers every shot is whatever the weather and
-    your pulse happen to be, which is still useful, just not a state sweep.
+    There is no battery override any more, so none of the old warnings about
+    leaving the watch reporting a fake level apply.
 
-    Repointing the triggers is `tools/debug-triggers.mjs`, not a hand edit -
-    two of the triggers are compound expressions that contain a shorter trigger
-    as a substring, so the order of substitution matters and a hand edit can
-    silently half-substitute one. Full sequence:
-
-        node tools/debug-triggers.mjs on
-        ./gradlew :watchface:installDebug
-        pwsh tools/capture-states.ps1
-        node tools/debug-triggers.mjs off
-        ./gradlew :watchface:installDebug     # <- do not skip
-
-    The levels below must match the STATES table in that script.
-
-    WHY THE LEVELS ARE 81-87 AND NOT 10-15
-    The first version used 10 to 15, which put the watch inside its own
-    low-battery range: Wear OS switched on battery saver and painted a system
-    indicator over the face, and BATTERY_IS_LOW flipped the face's own battery
-    text to coral. None of that is the state being reviewed. Anything well
-    clear of the low-battery threshold avoids it.
-
-    ON THE BATTERY OVERRIDE
-    `dumpsys battery set` sticks until it is reset or the watch reboots, and
-    wireless debugging drops on its own every few minutes - so a naive sweep
-    can leave the watch reporting a fake percentage indefinitely. This script
-    therefore resets after every single capture rather than once at the end,
-    and reconnects before each state. If a percentage ever looks wrong anyway:
-
-        adb shell dumpsys battery reset
+    -Only re-captures a subset. It skips the orphan prune, the ambient shot and
+    the contact sheet, since all three are whole-set operations.
 #>
 
-# PositionalBinding=$false: every parameter must be named.
-#
-# Without it, `-Only 1-baseline 8-sweating` binds "1-baseline" to -Only and then
-# quietly hands "8-sweating" to $OutDir as the first positional argument - so
-# instead of capturing two states the script captured one, into a newly created
-# directory called "8-sweating" in the repo root. It reported success.
-#
-# Note that with `powershell.exe -File`, a comma-separated list arrives as ONE
-# string and matches nothing. Use -Command for multiple states:
-#   powershell -Command "& tools/capture-states.ps1 -Only 1-baseline,8-sweating"
+# PositionalBinding=$false: every parameter must be named. Without it,
+# `-Only 1-baseline 8-sweating` binds the first to -Only and hands the second to
+# $OutDir, which once created a directory called "8-sweating" in the repo root
+# and reported success.
 [CmdletBinding(PositionalBinding = $false)]
 param(
     [string]$OutDir = "docs/states",
-
-    # Capture only these state names, e.g. -Only 5-night,7-cold. Skips the
-    # ambient shot and the contact sheet unless the set is complete, so a
-    # partial re-run cannot quietly overwrite all-states.png with two tiles.
-    [string[]]$Only
+    [string[]]$Only,
+    # Rebuild all-states.png from the PNGs already on disk, touching no device
+    # and building nothing. -Only deliberately leaves the sheet alone, so after
+    # re-shooting a single state the sheet is stale; without this the only way
+    # to refresh it was a full nine-build sweep to recapture eight images that
+    # had not changed.
+    [switch]$SheetOnly
 )
 
-# Deliberately NOT 'Stop': adb writes its transfer progress to stderr, and
-# under Stop every pull would surface as a terminating error. Each step is
-# checked explicitly instead.
 $ErrorActionPreference = 'Continue'
 
 $adb = Join-Path $env:LOCALAPPDATA 'Android\Sdk\platform-tools\adb.exe'
 if (-not (Test-Path $adb)) { throw "adb not found at $adb" }
+$repo = Split-Path -Parent $PSScriptRoot
+$dir = Join-Path $repo $OutDir
+New-Item -ItemType Directory -Force $dir | Out-Null
+
+# file name -> mock-state.mjs state name
+$states = @(
+    @{ file = '1-baseline';     mock = 'baseline';     label = 'baseline' },
+    @{ file = '2-night';        mock = 'night';        label = '23:00 to 07:00' },
+    @{ file = '3-sunny';        mock = 'sunny';        label = 'sunny 25 deg: shades + cocktail' },
+    @{ file = '4-cold';         mock = 'cold';         label = 'cold 10 deg: scarf + gloves' },
+    @{ file = '5-freezing';     mock = 'freezing';     label = 'freezing 0 deg: + snowflake' },
+    @{ file = '6-rainy';        mock = 'rainy';        label = 'rain 50%: umbrella up' },
+    @{ file = '7-thunderstorm'; mock = 'thunderstorm'; label = 'storm 90%: bolt + startled' },
+    @{ file = '8-sweating';     mock = 'sweating';     label = 'heart rate 120' },
+    # Strictly a mark rather than a state, like the snowflake and the moon - but
+    # unlike those two it appears in NO other snapshot, so leaving it out of the
+    # sweep meant the only record that it exists was the XML. If a reaction
+    # cannot be seen in docs/states, assume it will be believed missing.
+    @{ file = '9-step-goal';    mock = 'goal';         label = 'step goal met: flag' }
+)
+$expected = @($states | ForEach-Object { "$($_.file).png" }) + @('0-ambient.png', 'all-states.png')
+
+function Write-ContactSheet($written) {
+    Add-Type -AssemblyName System.Drawing
+    # Sort by filename, not capture order: ambient is captured last but numbered
+    # 0, so without this the sheet ends with the state it should start with.
+    $written = @($written | Sort-Object { [System.IO.Path]::GetFileName($_.path) })
+    $cols = [Math]::Min(3, $written.Count)
+    $cell = 220
+    $labelH = 24
+    $rows = [Math]::Ceiling($written.Count / $cols)
+    $sheet = New-Object System.Drawing.Bitmap ($cols * $cell), ($rows * ($cell + $labelH))
+    $g = [System.Drawing.Graphics]::FromImage($sheet)
+    $g.Clear([System.Drawing.Color]::FromArgb(18, 18, 18))
+    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $font = New-Object System.Drawing.Font 'Segoe UI', 9
+    $brush = [System.Drawing.Brushes]::Gainsboro
+    for ($i = 0; $i -lt $written.Count; $i++) {
+        $img = [System.Drawing.Bitmap]::FromFile($written[$i].path)
+        $cx = ($i % $cols) * $cell
+        $cy = [Math]::Floor($i / $cols) * ($cell + $labelH)
+        $g.DrawImage($img, (New-Object System.Drawing.Rectangle ($cx + 6), ($cy + 6), ($cell - 12), ($cell - 12)))
+        $g.DrawString($written[$i].label, $font, $brush, ($cx + 8), ($cy + $cell - 2))
+        $img.Dispose()
+    }
+    $g.Dispose()
+    $sheet.Save((Join-Path $dir 'all-states.png'), [System.Drawing.Imaging.ImageFormat]::Png)
+    $sheet.Dispose()
+    "  wrote $OutDir/all-states.png"
+}
+
+# Sheet-only: no device, no build, no mock. Reads what is already on disk.
+if ($SheetOnly) {
+    if ($Only) { throw "-SheetOnly rebuilds the sheet from every state on disk; -Only makes no sense with it." }
+    $onDisk = @(@{ file = '0-ambient'; label = 'ambient' }) + $states
+    $written = @()
+    foreach ($s in $onDisk) {
+        $p = Join-Path $dir "$($s.file).png"
+        if (Test-Path $p) { $written += @{ path = $p; label = $s.label } }
+        else { Write-Warning "missing $($s.file).png - it will be absent from the sheet" }
+    }
+    if (-not $written) { throw "no state PNGs in $dir - run a full sweep first." }
+    Write-ContactSheet $written
+    exit 0
+}
+
+$partial = $false
+# 0-ambient is not in $states - it is a display mode, not a data state - so it
+# has to be pulled out of -Only by hand before the filter drops it on the floor.
+$wantAmbient = $false
+if ($Only -and ($Only -contains '0-ambient')) {
+    $wantAmbient = $true
+    $Only = @($Only | Where-Object { $_ -ne '0-ambient' })
+}
+if ($Only -or $wantAmbient) {
+    $states = @($states | Where-Object { $_.file -in $Only })
+    if (-not $states -and -not $wantAmbient) { throw "-Only matched no states. Valid: $(($expected | Where-Object { $_ -ne 'all-states.png' }) -join ', ')" }
+    $partial = $true
+    $names = @($states | ForEach-Object { $_.file }) + @(if ($wantAmbient) { '0-ambient' })
+    Write-Host "  partial run: $($names -join ', ')"
+}
 
 # The watch's wireless-debugging port rotates every time it sleeps, so a
 # hard-coded ip:port goes stale. Re-resolve through mDNS each time.
@@ -97,7 +141,6 @@ function Get-Watch {
          ForEach-Object { ($_.Line -split '\s+')[0] } |
          Where-Object { $_ -notmatch '^emulator' } | Select-Object -First 1
     if ($d) { return $d }
-
     $svc = & $adb mdns services 2>$null | Select-String '_adb-tls-connect\._tcp' |
            ForEach-Object { ($_.Line -split '\s+')[-1] } | Select-Object -First 1
     if ($svc) {
@@ -110,61 +153,22 @@ function Get-Watch {
     return $null
 }
 
-$repo = Split-Path -Parent $PSScriptRoot
-$dir = Join-Path $repo $OutDir
-New-Item -ItemType Directory -Force $dir | Out-Null
-
-# Order is the reading order of the face's states, not the order they were
-# built in: quietest first (ambient, baseline), then time of day, then weather
-# by increasing severity, then the body-driven one. Ambient is 0 because it is
-# the state the watch spends most of its time in.
-#
-# Levels must match the STATES table in tools/debug-triggers.mjs. 81 is the
-# baseline - no trigger is mapped to it, so nothing fires.
-$states = @(
-    @{ level = 81; name = '1-baseline';     label = 'baseline' },
-    @{ level = 82; name = '2-night';        label = '23:00 to 07:00' },
-    @{ level = 83; name = '3-sunny';        label = 'sunny: shades + cocktail' },
-    @{ level = 84; name = '4-cold';         label = 'cold (<=10): scarf + gloves' },
-    @{ level = 85; name = '5-freezing';     label = 'freezing (<=0): + snowflake' },
-    @{ level = 86; name = '6-rainy';        label = 'rain, umbrella up' },
-    @{ level = 87; name = '7-thunderstorm'; label = 'storm: bolt + startled' },
-    @{ level = 88; name = '8-sweating';     label = 'heart rate 120+' }
-)
-
-# Filenames this sweep is allowed to leave behind. Anything else in the
-# directory is from an older revision - "2-sunglasses.png" outlived the state
-# being renamed to "sunny" - and a stale frame under a plausible name is worse
-# than a missing one, because nothing about the file says it is out of date.
-# The 2026-08-03 renumbering orphaned the whole previous set; the prune below
-# clears them on the next full run.
-$expected = @($states | ForEach-Object { "$($_.name).png" }) + @('0-ambient.png', 'all-states.png')
-
-$written = @()
-
-# Is this frame actually the watch face?
-#
-# Two distinct failures had to be told apart from a real capture, and neither
-# is obvious from the file:
+# Three distinct bad captures had to be told apart from a real one, and none is
+# obvious from the file:
 #   - a black frame, when the screen was off or mid transition
-#   - the app launcher or a system notification, when something was on top
-#     (the "Wireless debugging connected" toast reappears constantly)
+#   - the app launcher or a notification, when something was on top
+#   - the AMBIENT face, when the screen dimmed. This one defeated brightness
+#     checks entirely: ambient is thin white text on black, so it is bright and
+#     sparse, which is exactly the signature of a good capture.
+#   - a frame caught MID ambient crossfade, which is neither.
 #
-# Brightness alone cannot separate the second case, because a launcher full of
-# white icons is brighter than the face. What does separate them is coverage:
-# the face is almost entirely black with a little cream text, while launchers
-# and notifications fill the screen. So require both "something is lit" and
-# "most of it is not".
-#   - the AMBIENT face, when the screen dimmed mid-sweep. This one defeated
-#     both checks above and silently ruined a whole run: ambient is thin white
-#     text on black, so it is bright (max > 60) and sparse (litFraction well
-#     under 0.14), which is exactly the signature of a good capture. Two of
-#     seven states came back as ambient frames that looked plausible on disk.
-#
-# What separates ambient from the interactive face is COLOUR, not brightness.
-# Ambient is strictly greyscale; the interactive face has a coral heart, a green
-# battery gauge and two saturated blobs. So count chroma - max(R,G,B) minus
-# min(R,G,B) - and require some of it.
+# Thresholds are measured, not guessed. Across a full sweep:
+#     good states      max 247   lit 10-12%   sat 4.3-6.0%
+#     mid-transition   max 217   lit 3.7%     sat 1.5%
+#     dimmed           max 255   lit 7.3%     sat 3.0%
+#     true ambient     max 217   lit 2.4%     sat 0.00%
+# max is the sharp one: undimmed cream #fff6e8 is luminance 247 exactly.
+# sat separates the face from ambient, which is strictly greyscale.
 function Get-FrameStats($path) {
     Add-Type -AssemblyName System.Drawing
     try {
@@ -188,49 +192,34 @@ function Get-FrameStats($path) {
     catch { return $null }
 }
 
-# A THIRD failure, found after the first two were fixed: the AMBIENT
-# TRANSITION. Wear OS drives AOD from wrist-down detection, NOT from
-# screen_off_timeout, so holding that setting open does not stop the watch
-# dimming - it only stops it blanking. A capture can therefore land mid
-# crossfade, with the blobs already faded and the umbrella canopy not yet.
-# Such a frame is neither the face nor ambient, and it is the worst kind of
-# bad capture because it looks like a deliberate design.
-#
-# Thresholds below are measured, not guessed. Across a full sweep:
-#
-#   frame                max    lit%    sat%
-#   good states          247   10-11   4.3-5.3
-#   mid-transition       217    3.72     1.49
-#   dimmed-but-not-out   255    7.31     2.99
-#
-# max is the sharp one: an undimmed frame renders cream #fff6e8 at luminance
-# 247 exactly, and any dimming drags it down. sat separates the face from
-# ambient, which is strictly greyscale.
 function Test-IsFace($path) {
     $s = Get-FrameStats $path
     if (-not $s) { return $false }
     return ($s.max -ge 240 -and $s.litFraction -lt 0.14 -and $s.satFraction -gt 0.035)
 }
 
-# True ambient is greyscale and sparse. The 2.99% frame above was the
-# interactive face caught part-way through dimming, and the old litFraction
-# test passed it.
 function Test-IsAmbient($path) {
     $s = Get-FrameStats $path
     if (-not $s) { return $false }
     return ($s.litFraction -lt 0.035 -and $s.satFraction -lt 0.005)
 }
 
-# KEYCODE_WAKEUP ALONE DOES NOT LIFT THE WATCH OUT OF AOD.
-#
-# With always-on display the screen is already on - `dumpsys power` reports
-# mWakefulness=Dozing - so the keyevent is a no-op and every capture comes back
-# as an ambient frame. A TAP is what actually wakes it to interactive.
-#
-# The tap is sent AFTER the set-watchface broadcast, so the face is guaranteed
-# to be the foreground surface when it lands. That ordering matters: this face
-# declares no ComplicationSlot, so a tap on it does nothing, but a tap on the
-# app launcher would open whatever icon is under (213,213).
+function Get-Timeout($serial) {
+    $v = (& $adb -s $serial shell settings get system screen_off_timeout 2>$null | Select-Object -First 1)
+    if ($v) { $v = $v.Trim() }
+    if ($v -match '^\d+$') { return [int]$v }
+    return $null
+}
+function Set-Timeout($serial, $ms) {
+    & $adb -s $serial shell settings put system screen_off_timeout $ms 2>$null | Out-Null
+}
+
+# KEYCODE_WAKEUP ALONE DOES NOT LIFT THE WATCH OUT OF AOD. With always-on
+# display the screen is already on - dumpsys power reports mWakefulness=Dozing -
+# so the keyevent is a no-op and every capture comes back ambient. A TAP wakes
+# it. The tap is sent AFTER the set-watchface broadcast so the face is the
+# foreground surface when it lands: this face declares no ComplicationSlot so a
+# tap on it does nothing, but a tap on the launcher would open an app.
 function Wake($serial) {
     & $adb -s $serial shell input keyevent KEYCODE_WAKEUP 2>$null | Out-Null
     & $adb -s $serial shell am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE `
@@ -240,59 +229,54 @@ function Wake($serial) {
     Start-Sleep -Milliseconds 900
 }
 
-# KEYCODE_HOME TOGGLES on Wear OS. From the watch face it opens the app
-# launcher; from the launcher it returns to the watch face. Neither KEYCODE_BACK
-# nor an edge swipe gets out of the launcher - BACK was tried five times in a
-# row and the litFraction never budged off 0.32.
-#
-# So HOME is the corrective action, not part of the normal path: capture first,
-# and only press HOME if the frame turns out not to be the face. Because it
-# toggles, alternating converges within a couple of attempts.
+# KEYCODE_HOME TOGGLES on Wear OS: from the face it opens the launcher, from the
+# launcher it returns. So it is the corrective action, not part of the normal
+# path - sending it pre-emptively produced a whole run of app-icon grids.
 function Nudge($serial) {
     & $adb -s $serial shell input keyevent KEYCODE_WAKEUP 2>$null | Out-Null
     & $adb -s $serial shell input keyevent KEYCODE_HOME 2>$null | Out-Null
     Start-Sleep -Milliseconds 1300
 }
 
-function Grab($serial, $name, $label) {
-    $remote = "/sdcard/wf_$name.png"
-    $local = Join-Path $script:dir "$name.png"
+function Invoke-Mock($mockName) {
+    Push-Location $repo
+    try {
+        & node tools/mock-state.mjs on $mockName 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            & node tools/mock-state.mjs on $mockName
+            throw "mock-state.mjs failed for '$mockName'"
+        }
+        & cmd /c ".\gradlew.bat :watchface:installDebug --console=plain" 2>&1 | Out-Null
+        $ok = ($LASTEXITCODE -eq 0)
+        & node tools/mock-state.mjs off 2>&1 | Out-Null
+        if (-not $ok) { throw "install failed for '$mockName'" }
+    }
+    finally { Pop-Location }
+}
+
+function Grab($serial, $file, $label) {
+    $remote = "/data/local/tmp/wf_$file.png"
+    $local = Join-Path $script:dir "$file.png"
     $ok = $false
     foreach ($attempt in 1..4) {
         & $adb -s $serial shell screencap -p $remote 2>$null | Out-Null
         & $adb -s $serial pull $remote $local 2>$null | Out-Null
         & $adb -s $serial shell rm $remote 2>$null | Out-Null
         if ((Test-Path $local) -and (Test-IsFace $local)) { $ok = $true; break }
-        Write-Host "  retry $name (not the watch face)"
+        Write-Host "  retry $file (not the watch face)"
         Nudge $serial
+        Wake $serial
     }
-    if (-not $ok) { Write-Warning "  $name may show the launcher or a notification, not the face" }
+    if (-not $ok) { Write-Warning "  $file may show the launcher, a notification or ambient - not the face" }
     if (Test-Path $local) {
         $script:written += @{ path = $local; label = $label }
-        # Write-Host, not bare output: callers discard the return value with
-        # Out-Null, which would swallow a plain string too.
-        Write-Host "  wrote $script:OutDir/$name.png  ($label)"
-        return $true
+        Write-Host "  wrote $script:OutDir/$file.png  ($label)"
     }
-    Write-Warning "  failed: $name"
-    return $false
+    else { Write-Warning "  failed: $file" }
 }
 
-# Keep the unfiltered table: -Only narrows $states, but the battery-reset check
-# at the bottom needs the FULL range of forcing levels or a partial run would
-# compute a range of one level and mis-report everything outside it.
-$allStates = $states
+$written = @()
 
-$partial = $false
-if ($Only) {
-    $states = $states | Where-Object { $_.name -in $Only }
-    if (-not $states) { throw "-Only matched no states. Valid: $(($expected | Where-Object { $_ -ne 'all-states.png' }) -join ', ')" }
-    $partial = $true
-    Write-Host "  partial run: $(($states | ForEach-Object { $_.name }) -join ', ')"
-}
-
-# Only prune on a full run - a partial run would delete every state it is not
-# capturing.
 if (-not $partial) {
     Get-ChildItem -Path $dir -Filter '*.png' -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -notin $expected } |
@@ -302,108 +286,71 @@ if (-not $partial) {
         }
 }
 
-# SCREEN TIMEOUT: read ONCE here, restore ONCE at the very end.
-#
-# Two separate bugs came out of this setting, and the structure below is what
-# fixes both:
-#
-#  1. The screen dimming mid-sweep. Wake() only fires KEYCODE_WAKEUP, which does
-#     nothing to the display timeout, so with the stock ~15 s timeout the watch
-#     dimmed partway through and the last two states came back as ambient
-#     frames. They passed validation and looked plausible in the contact sheet.
-#     Fix: hold the timeout open across the whole state loop.
-#
-#  2. Restoring it wrong. The first attempt read the "previous" value in two
-#     places and restored in two places. Wireless debugging drops constantly, so
-#     one restore hit a moment when Get-Watch returned nothing and silently did
-#     nothing - and the next section then read the ELEVATED value as its
-#     original and faithfully put *that* back. The watch was left at 600000,
-#     i.e. never sleeping. Fix: exactly one read, exactly one restore, verified.
-function Get-Timeout($serial) {
-    $v = (& $adb -s $serial shell settings get system screen_off_timeout 2>$null | Select-Object -First 1)
-    if ($v) { $v = $v.Trim() }
-    if ($v -match '^\d+$') { return [int]$v }
-    return $null
-}
-
-function Set-Timeout($serial, $ms) {
-    & $adb -s $serial shell settings put system screen_off_timeout $ms 2>$null | Out-Null
-}
-
+# SCREEN TIMEOUT: read ONCE, restore ONCE, verified at the end.
+# Wear OS drives AOD from wrist-down detection, not from this setting, so
+# holding it open stops the screen BLANKING but not dimming - hence the frame
+# checks above as well. An earlier version read and restored it in two places,
+# and one restore hit a moment when Get-Watch returned nothing, so the next
+# section adopted the elevated 600000 as its "original" and put that back,
+# leaving the watch never sleeping.
 $origTimeout = $null
-$wake = Get-Watch
-if ($wake) { $origTimeout = Get-Timeout $wake }
-# Never adopt the hold-open value as the thing to restore, however we got here.
+$w = Get-Watch
+if ($w) { $origTimeout = Get-Timeout $w }
 if ($null -eq $origTimeout -or $origTimeout -ge 300000) { $origTimeout = 15000 }
 Write-Host "  screen timeout was ${origTimeout}ms; holding it open for the sweep"
 
 try {
-    if ($wake) { Set-Timeout $wake 600000 }
+    if ($w) { Set-Timeout $w 600000 }
 
     foreach ($s in $states) {
+        Write-Host "  building $($s.mock)..."
+        Invoke-Mock $s.mock
         $w = Get-Watch
-        if (-not $w) { Write-Warning "  no device for $($s.name), skipping"; continue }
-        try {
-            & $adb -s $w shell dumpsys battery set level $s.level 2>$null | Out-Null
-            Wake $w
-            Grab $w $s.name $s.label | Out-Null
-        }
-        finally {
-            # Immediately, not at the end of the sweep - see header.
-            & $adb -s $w shell dumpsys battery reset 2>$null | Out-Null
-        }
-    }
-}
-catch {
-    Write-Warning "  sweep aborted: $_"
-}
-
-# Ambient is a display mode rather than a data state, so no battery involved.
-$w = Get-Watch
-if ($w -and -not $partial) {
-    $remote = '/sdcard/wf_ambient.png'
-    $local = Join-Path $dir '0-ambient.png'
-
-    # ENTER_AMBIENT does not work here. The broadcast is accepted but the
-    # display stays interactive - it will not dim a screen that was just woken,
-    # and every capture needs a wake first. So let the screen time out on its
-    # own instead: shorten the timeout, stop touching the watch, wait it out.
-    #
-    # This section deliberately does NOT read or restore the timeout. It only
-    # sets a short one; the single restore at the bottom of the script puts
-    # $origTimeout back. See the note above the state loop for why.
-    $got = $false
-    try {
-        Set-Timeout $w 3000
-        # Retry: the first wait often catches the crossfade rather than settled
-        # ambient, and waiting longer on a single attempt just risks the screen
-        # blanking entirely. Wake once, then sample repeatedly.
+        if (-not $w) { Write-Warning "  no device for $($s.file), skipping"; continue }
         Wake $w
-        foreach ($attempt in 1..5) {
-            # Longer than the timeout, and no input in between or it resets.
-            Start-Sleep -Seconds 7
-            & $adb -s $w shell screencap -p $remote 2>$null | Out-Null
-            & $adb -s $w pull $remote $local 2>$null | Out-Null
-            & $adb -s $w shell rm $remote 2>$null | Out-Null
-            if ((Test-Path $local) -and (Test-IsAmbient $local)) { $got = $true; break }
-            Write-Host "  retry ambient (caught the crossfade, not settled AOD)"
-            Wake $w
-        }
-    }
-    catch {
-        Write-Warning "  ambient capture failed: $_"
-    }
-
-    if (Test-Path $local) {
-        $written += @{ path = $local; label = 'ambient' }
-        Write-Host "  wrote $OutDir/0-ambient.png  (ambient)"
-        if (-not $got) { Write-Warning "  ambient shot may be the interactive face" }
+        Grab $w $s.file $s.label
     }
 }
+catch { Write-Warning "  sweep aborted: $_" }
 
-# THE single restore. Retried and verified, because a silent miss here leaves
-# the watch either never sleeping (600000) or sleeping in 3 s (the ambient
-# value), and neither is obvious until the watch behaves strangely hours later.
+# Ambient. A display mode rather than a data state, so it uses the base values
+# and its own timeout dance. Reachable on its own with -Only 0-ambient, which
+# matters because it is the one snapshot that can regress from a change to the
+# clock mock without any of the other eight moving.
+if ((-not $partial) -or $wantAmbient) {
+    try {
+        Write-Host "  building ambient..."
+        Invoke-Mock 'ambient'
+        $w = Get-Watch
+        if ($w) {
+            $local = Join-Path $dir '0-ambient.png'
+            $remote = '/data/local/tmp/wf_ambient.png'
+            # ENTER_AMBIENT does not work: the broadcast is accepted but the
+            # display will not dim a screen that was just woken, and capturing
+            # requires waking it. Shorten the timeout and wait it out instead.
+            Set-Timeout $w 3000
+            $got = $false
+            Wake $w
+            foreach ($attempt in 1..5) {
+                Start-Sleep -Seconds 7
+                & $adb -s $w shell screencap -p $remote 2>$null | Out-Null
+                & $adb -s $w pull $remote $local 2>$null | Out-Null
+                & $adb -s $w shell rm $remote 2>$null | Out-Null
+                if ((Test-Path $local) -and (Test-IsAmbient $local)) { $got = $true; break }
+                Write-Host "  retry ambient (caught the crossfade, not settled AOD)"
+                Wake $w
+            }
+            if (Test-Path $local) {
+                $written += @{ path = $local; label = 'ambient' }
+                Write-Host "  wrote $OutDir/0-ambient.png  (ambient)"
+                if (-not $got) { Write-Warning "  ambient shot may not be settled AOD" }
+            }
+        }
+    }
+    catch { Write-Warning "  ambient capture failed: $_" }
+}
+
+# THE single timeout restore, retried and verified.
 $w = Get-Watch
 if ($w) {
     $ok = $false
@@ -417,83 +364,56 @@ if ($w) {
     Wake $w
 }
 else {
-    Write-Warning "no device at the end of the run - screen_off_timeout may still be held open. Run: adb shell settings put system screen_off_timeout $origTimeout"
+    Write-Warning "no device at the end of the run - run: adb shell settings put system screen_off_timeout $origTimeout"
 }
 
-# Verify rather than assume, and do it on EVERY run including a partial one -
-# this block used to sit inside the ambient section, so `-Only` would have
-# skipped the one check that stops a fake battery level being left on the watch.
+# ---------------------------------------------------------------------------
+# PUT THE REAL BUILD BACK ON THE WATCH.
 #
-# `dumpsys battery reset` takes a moment to propagate, so reading straight after
-# it reports the stale override and gives a false all-clear - which is exactly
-# how a fake level got left on the watch the first time round. Retry until it
-# settles.
-$w = Get-Watch
+# Invoke-Mock restores watchface.xml after each state but does NOT reinstall,
+# so without this the watch is left running whichever state was captured last.
+# It looks fine - it is the same face - and `mock-state.mjs status` reports
+# "real values (clean)", because that inspects the working tree and knows
+# nothing about the device. The gap between those two facts cost a full round
+# of "the animation is frozen / the parallax is gone / the ambient font is
+# wrong" bug reports, all three of which were the mock: it pins the clock
+# sources, zeroes the accelerometer, and swaps the clock element out.
+#
+# This runs even on a partial run and even if captures failed. It is the last
+# thing the script does to the device.
+# ---------------------------------------------------------------------------
 if ($w) {
-    # Range derived from $allStates, never hardcoded. It was written as a
-    # literal 81..87 and then a level 88 was added, at which point a real
-    # battery reading of 82% - the watch does drain during a sweep - was
-    # reported as a stuck override. Note the inverse is unavoidable: while the
-    # real level is inside the forcing range this check cannot prove anything,
-    # so it says so rather than claiming success.
-    $lo = ($allStates | ForEach-Object { $_.level } | Measure-Object -Minimum).Minimum
-    $hi = ($allStates | ForEach-Object { $_.level } | Measure-Object -Maximum).Maximum
-    $lvl = $null
-    foreach ($attempt in 1..5) {
-        & $adb -s $w shell dumpsys battery reset 2>$null | Out-Null
-        Start-Sleep -Milliseconds 1200
-        $lvl = (& $adb -s $w shell dumpsys battery 2>$null | Select-String '^\s*level:' |
-                ForEach-Object { ($_.Line -split ':')[1].Trim() } | Select-Object -First 1)
-        if ($lvl -and ([int]$lvl -lt $lo -or [int]$lvl -gt $hi)) { break }
+    Write-Host "restoring the real build to the watch..."
+    Push-Location $repo
+    try {
+        & node tools/mock-state.mjs off 2>&1 | Out-Null   # no-op when already clean
+        # `cmd /c`, NOT `cmd \c`. With a backslash, cmd does not recognise the
+        # switch, opens an INTERACTIVE shell, reads EOF, exits 0, and never runs
+        # the command - so the install silently does not happen and the exit
+        # code still says it did. Cost an hour of chasing three phantom bugs.
+        $before = (& $adb -s $w shell dumpsys package de.redplant.watchface.blob 2>$null |
+            Select-String 'lastUpdateTime' | Select-Object -First 1).ToString()
+        & cmd /c ".\gradlew.bat :watchface:installDebug --console=plain" 2>&1 | Out-Null
+        $gradleOk = ($LASTEXITCODE -eq 0)
+        $after = (& $adb -s $w shell dumpsys package de.redplant.watchface.blob 2>$null |
+            Select-String 'lastUpdateTime' | Select-Object -First 1).ToString()
+        # Trust the DEVICE, not the exit code: the package's install timestamp
+        # has to have actually moved.
+        if ($gradleOk -and $after -ne $before) { "  real build reinstalled - the watch is showing live data again" }
+        else { Write-Warning "  REINSTALL FAILED - the watch is STILL RUNNING A MOCK BUILD. Run: .\gradlew :watchface:installDebug" }
     }
-    if (-not $lvl) {
-        Write-Warning "could not read the battery level - run: adb shell dumpsys battery reset"
-    }
-    elseif ([int]$lvl -lt $lo -or [int]$lvl -gt $hi) {
-        "battery reporting reset (real level $lvl%)"
-    }
-    else {
-        # `reset` has been issued five times and the level is still inside
-        # $lo..$hi. Almost certainly the real charge; say so accurately.
-        Write-Host "battery reads $lvl%, inside the forcing range $lo-$hi - reset was issued 5x, so this is very likely the real level. To be certain: adb shell dumpsys battery reset; adb shell dumpsys battery"
-    }
+    finally { Pop-Location }
+}
+else {
+    Write-Warning "no device - the watch may still be running a MOCK build. Run: .\gradlew :watchface:installDebug"
 }
 
 # ---------------------------------------------------------------------------
 # Contact sheet
 # ---------------------------------------------------------------------------
-# Skipped on a partial run: it is built from $written, so a two-state re-run
-# would replace the eight-tile sheet with a two-tile one.
 if ($partial) {
-    Write-Host "  partial run - all-states.png left alone; re-run without -Only to rebuild it"
+    Write-Host "  partial run - all-states.png is now stale; refresh it with -SheetOnly"
 }
 elseif ($written.Count -gt 0) {
-    Add-Type -AssemblyName System.Drawing
-    # Sort by filename, not capture order. Ambient is captured last (it needs
-    # its own timeout dance after the state loop) but is numbered 0, so without
-    # this the contact sheet ends with the state it should start with.
-    $written = @($written | Sort-Object { [System.IO.Path]::GetFileName($_.path) })
-    $cols = [Math]::Min(3, $written.Count)
-    $cell = 220
-    $labelH = 24
-    $rows = [Math]::Ceiling($written.Count / $cols)
-    $sheet = New-Object System.Drawing.Bitmap ($cols * $cell), ($rows * ($cell + $labelH))
-    $g = [System.Drawing.Graphics]::FromImage($sheet)
-    $g.Clear([System.Drawing.Color]::FromArgb(18, 18, 18))
-    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-    $font = New-Object System.Drawing.Font 'Segoe UI', 10
-    $brush = [System.Drawing.Brushes]::Gainsboro
-
-    for ($i = 0; $i -lt $written.Count; $i++) {
-        $img = [System.Drawing.Bitmap]::FromFile($written[$i].path)
-        $cx = ($i % $cols) * $cell
-        $cy = [Math]::Floor($i / $cols) * ($cell + $labelH)
-        $g.DrawImage($img, (New-Object System.Drawing.Rectangle ($cx + 6), ($cy + 6), ($cell - 12), ($cell - 12)))
-        $g.DrawString($written[$i].label, $font, $brush, ($cx + 8), ($cy + $cell - 2))
-        $img.Dispose()
-    }
-    $g.Dispose()
-    $sheet.Save((Join-Path $dir 'all-states.png'), [System.Drawing.Imaging.ImageFormat]::Png)
-    $sheet.Dispose()
-    "  wrote $OutDir/all-states.png"
+    Write-ContactSheet $written
 }

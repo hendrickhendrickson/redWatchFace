@@ -135,18 +135,24 @@
       <Variant mode="AMBIENT" target="alpha" value="255"
                duration="0.55" startOffset="0.45" interpolation="EASE_IN" />
 
-      <PartText name="date_weekday_ambient" x="148" y="42" width="100" height="32">
-        <Text align="CENTER">
-          <Font family="SYNC_TO_DEVICE" size="26" weight="NORMAL" slant="NORMAL" color="#b9c6d4">
-            <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
-          </Font>
-        </Text>
-      </PartText>
+      <!-- ONE PartText, not two. The interactive version needs two, because the
+           day number sits inside a chip and has to be positioned to match it -
+           the weekday is centred in a 100-wide box ending at 248 and the chip
+           starts at 229, so the visible gap between "Tue" and "4" is about 23px
+           and the chip fills it.
 
-      <PartText name="date_day_ambient" x="229" y="42" width="44" height="32">
+           Ambient draws no chip, so that 23px gap was just a hole: the two
+           halves read as unrelated. Rendering them as a single centred string
+           with a normal space hands the spacing to the font, which is the one
+           thing that always gets it right - and it also lands the pair exactly
+           on the canvas centre, where the interactive row measures 2.5px off.
+
+           A Template takes several Parameters in order, so "%s %d" needs no
+           extra machinery. -->
+      <PartText name="date_ambient_text" x="0" y="42" width="450" height="32">
         <Text align="CENTER">
           <Font family="SYNC_TO_DEVICE" size="26" weight="NORMAL" slant="NORMAL" color="#b9c6d4">
-            <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+            <Template><![CDATA[%s %d]]><Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template>
           </Font>
         </Text>
       </PartText>
@@ -804,6 +810,36 @@
          was both off-centre and too far apart; see the note on blob_companion
          for the arithmetic and for what sets the floor on "closer". -->
     <Group name="blob_hero" x="207" y="262" width="106" height="132" alpha="255">
+      <!-- PARALLAX. The blobs shift slightly as the wrist tilts, so the pair
+           sits in a shallow space instead of being painted flat on the glass.
+
+           <Gyro> is the mechanism: it offsets x/y/scaleX/scaleY/angle/alpha on
+           its parent Group or Part from an expression over the ACCELEROMETER_*
+           sources. Max one per element, and it must come before Transform and
+           Variant in the child order.
+
+           +/-8px horizontally, +/-5 vertically, off tilt angles clamped to
+           +/-35 degrees. The clamp is doing real work: past about 40 degrees the
+           reading is dominated by which way the arm is hanging rather than a
+           deliberate tilt, and without it the blobs lurch whenever you drop your
+           hand.
+
+           THESE NUMBERS WERE 0.072/0.046 AND THAT WAS A MISTAKE. It gave +/-2.5px
+           of travel, which is a quarter of a percent of a 426px screen: correct in
+           principle, invisible in practice, and reported as "no parallax at all".
+           The reasoning behind the small values - the group is only 106 wide and
+           the feet sit near the bezel - was sound but answered the wrong question,
+           because nothing was ever at risk of cropping. Worst case now is the
+           bottom-right corner at (321, 399), radius 198 from centre against the
+           225 bezel, so there is 27px of margin even at full tilt.
+
+           The companion gets a weaker version of the same expression: nearer
+           things move more, and the hero is the nearer of the two. The RATIO is
+           what sells the depth, so it is kept at roughly 0.7 as before.
+
+           Costs nothing in ambient, where both groups are alpha 0 anyway. -->
+      <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.229"
+            y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.143" />
       <Variant mode="AMBIENT" target="alpha" value="0" />
 
       <!-- Leaves. Each leaf is its own PartDraw rotated about the box
@@ -852,16 +888,14 @@
            the blob's right (screen left), so the umbrella it holds reaches out
            over the companion instead of away from it. Everything is the old
            geometry reflected about the group's vertical centre, x' = 106 - x. -->
-      <!-- The screen-LEFT arm is not in here; it has two poses and lives in
-           its own Condition just below. Everything else - the screen-right
-           arm and both legs - is fixed, so it stays in one PartDraw. -->
+      <!-- NEITHER arm is in here any more - both have two poses and live in
+           their own Conditions below. Only the legs are fixed.
+
+           The screen-right arm was moved out on 2026-08-04: it was the last
+           limb still held out while its owner was asleep, which is what the
+           note at the top of the file used to flag as the remaining oddity of
+           the night state. -->
       <PartDraw name="hero_limbs" x="0" y="0" width="106" height="132">
-        <Line startX="84" startY="74" endX="93" endY="62">
-          <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
-        </Line>
-        <Ellipse x="84" y="52" width="18" height="17">
-          <Fill color="#e9dccb" />
-        </Ellipse>
         <Line startX="38" startY="112" endX="34" endY="124">
           <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
         </Line>
@@ -873,18 +907,6 @@
         </Line>
         <Ellipse x="54" y="117" width="24" height="15">
           <Fill color="#e9dccb" />
-        </Ellipse>
-
-        <!-- Starts at x 84, not 90. The mirror that moved the long arm to the
-             other side reflected about the GROUP centre (53), but the body is
-             only 14 to 86, so its centre is 50. Three pixels of error put this
-             arm's shoulder 4px clear of the body outline, leaving a visible
-             gap between limb and blob. -->
-        <Line startX="84" startY="74" endX="93" endY="62">
-          <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
-        </Line>
-        <Ellipse x="86" y="54" width="14" height="13">
-          <Fill color="#23384f" />
         </Ellipse>
 
         <Line startX="38" startY="112" endX="34" endY="124">
@@ -901,6 +923,102 @@
           <Fill color="#23384f" />
         </Ellipse>
       </PartDraw>
+
+      <!-- Screen-RIGHT arm - the blob's LEFT. Two poses, added 2026-08-04.
+           Out to the side normally; down along the body when asleep.
+
+           Unlike the screen-left arm this one has no umbrella or cocktail to
+           hold, so its rest condition is the plain night test with no "and dry"
+           clause - it can drop even in the rain.
+
+           The lowered pose is the screen-left one MIRRORED ABOUT THE BODY
+           CENTRE, x' = 100 - x, not about the group centre 53. The body is
+           14..86 so its centre is 50, and mirroring about 53 is exactly the
+           3px error the note above this describes. That puts the hand's inner
+           edge at 80.5 against a body outline of 80.5 at that height - flush,
+           the same way the left hand is.
+
+           Bottom of the hand is y 111, six pixels above the right foot at 117,
+           which is the clearance the left arm needed to stop reading as a third
+           leg. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_arm_r_rest">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+        </Expressions>
+
+        <Compare expression="hero_arm_r_rest">
+          <PartDraw name="hero_arm_right_down" x="0" y="0" width="106" height="132">
+            <Line startX="76" startY="78" endX="88" endY="96">
+              <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+            </Line>
+            <Ellipse x="80.5" y="93" width="19" height="18">
+              <Fill color="#e9dccb" />
+            </Ellipse>
+            <Line startX="76" startY="78" endX="88" endY="96">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
+            <Ellipse x="82.5" y="95" width="15" height="14">
+              <Fill color="#23384f" />
+            </Ellipse>
+          </PartDraw>
+        </Compare>
+
+        <Default>
+          <!-- Starts at x 84, not 90 - see the 3px note above. -->
+          <PartDraw name="hero_arm_right_out" x="0" y="0" width="106" height="132">
+            <Line startX="84" startY="74" endX="93" endY="62">
+              <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+            </Line>
+            <Ellipse x="84" y="52" width="18" height="17">
+              <Fill color="#e9dccb" />
+            </Ellipse>
+            <Line startX="84" startY="74" endX="93" endY="62">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
+            <Ellipse x="86" y="54" width="14" height="13">
+              <Fill color="#23384f" />
+            </Ellipse>
+          </PartDraw>
+        </Default>
+      </Condition>
+
+      <!-- STEP GOAL REACHED: a small flag in the blob's LEFT hand, i.e. the
+           screen-RIGHT one. Deliberately the opposite hand from the cocktail and
+           the umbrella, which both occupy the screen-left fist, so a hot day or
+           a wet one can coexist with hitting your step goal.
+
+           Uses STEP_PERCENT, not STEP_COUNT >= 10000. STEP_PERCENT and STEP_GOAL
+           are both real data sources, so this tracks whatever goal the wearer has
+           actually set instead of hardcoding someone else's.
+           NOTE: >= 100 assumes STEP_PERCENT is a 0..100 percentage rather than a
+           0..1 fraction. Unverified on hardware - if the flag never appears, that
+           is the first thing to check.
+
+           Also gated on NOT night, because the arm it hangs from drops when the
+           blob is asleep and a flag flying from a lowered hand would trail on the
+           floor. "Not night" is written out as 23 > HOUR && HOUR >= 7 rather than
+           negating, so it needs no "!" operator.
+
+           Geometry: the out-pose hand is (84,52)-(102,69), centre (93,60.5). The
+           pole runs up x 93 to y 22 and the flag flies LEFT from it, 79..93 at y
+           22..32 - inward, because the group is only 106 wide and a flag flying
+           right would clip. That spot is clear of both the leaf tuft (which ends
+           about x 70) and the body (which starts at y 36). -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_goal">[STEP_PERCENT] &gt;= 100 &amp;&amp; 23 &gt; [HOUR_0_23] &amp;&amp; [HOUR_0_23] &gt;= 7</Expression>
+        </Expressions>
+        <Compare expression="hero_goal">
+          <PartDraw name="hero_flag" x="0" y="0" width="106" height="132">
+            <Line startX="93" startY="56" endX="93" endY="22">
+              <Stroke color="#e8e0d4" thickness="2.5" cap="ROUND" />
+            </Line>
+            <RoundRectangle x="79" y="22" width="14" height="10" cornerRadiusX="2" cornerRadiusY="2">
+              <Fill color="#5fb874" />
+            </RoundRectangle>
+          </PartDraw>
+        </Compare>
+      </Condition>
 
       <!-- Screen-LEFT arm, the long one. Two poses.
 
@@ -1153,17 +1271,35 @@
               <Stroke color="#2f5d9e" thickness="1.6" cap="BUTT" />
             </Line>
           </PartDraw>
-          <!-- Right glove is fixed; the left one has to land on whichever pose
-               the arm above chose, or a winter night puts a mitten where the
-               raised hand used to be and leaves the resting hand bare. Same
-               expression, repeated rather than shared - WFF Expressions are
-               scoped to their own Condition and cannot be referenced from
-               another one. -->
-          <PartDraw name="hero_glove_right" x="0" y="0" width="106" height="132">
-            <Ellipse x="84" y="52" width="18" height="17">
-              <Fill color="#3f78c4" />
-            </Ellipse>
-          </PartDraw>
+          <!-- BOTH gloves have to land on whichever pose their arm chose, or a
+               winter night puts a mitten where a raised hand used to be and
+               leaves the resting hand bare. The right glove was fixed until
+               2026-08-04, which was correct only while the right arm itself was
+               fixed.
+
+               Each expression is repeated rather than shared - WFF Expressions
+               are scoped to their own Condition and cannot be referenced from
+               another one - so these two must be kept in step with
+               hero_arm_r_rest and hero_arm_rest by hand. -->
+          <Condition>
+            <Expressions>
+              <Expression name="hero_glove_r_rest">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+            </Expressions>
+            <Compare expression="hero_glove_r_rest">
+              <PartDraw name="hero_glove_right_down" x="0" y="0" width="106" height="132">
+                <Ellipse x="80.5" y="93" width="19" height="18">
+                  <Fill color="#3f78c4" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Default>
+              <PartDraw name="hero_glove_right_out" x="0" y="0" width="106" height="132">
+                <Ellipse x="84" y="52" width="18" height="17">
+                  <Fill color="#3f78c4" />
+                </Ellipse>
+              </PartDraw>
+            </Default>
+          </Condition>
           <Condition>
             <Expressions>
               <Expression name="hero_glove_rest">([HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]) &amp;&amp; 50 &gt; [WEATHER.CHANCE_OF_PRECIPITATION]</Expression>
@@ -1229,27 +1365,38 @@
                actually makes the object read as a cocktail rather than a
                wineglass at 20px.
 
-               Placement: the box is group-local (0,6) 20 x 30, so the base
-               lands at group y 33.5 and the hand centre is at (10.5,35) - the
-               glass sits in the fist. x stops at 20 because leaf_left swings
-               down to about x 19; any wider and the bowl clips the leaf. -->
+               Placement: the box stays group-local (0,6) 20 x 30 and every shape
+               inside it moved right by 1.5, putting the stem on x 10.5 - the
+               fist's centre, since the raised hand is the cream ellipse
+               (1,26)-(20,44) centred (10.5,35). The stem used to run down x 9,
+               which left the glass on the left edge of the fist rather than in
+               it; 1.5px is small but the hand is only 19 wide.
+
+               THE SHIFT HAD TO GO ON THE SHAPES, NOT THE BOX. Part* x/y are
+               xs:integer - `x="1.5"` on the PartDraw fails validation with
+               "'1.5' is not a valid value for 'integer'". Only the primitives
+               inside take floats. Same applies to every Part* in this file.
+
+               The straw now reaches x 17.5 and the drink surface 18.5, against
+               leaf_left swinging down to about 19, so there is no room to move
+               it further right. -->
           <PartDraw name="hero_cocktail" x="0" y="6" width="20" height="30">
-            <Line startX="11" startY="9" endX="16" endY="0">
+            <Line startX="12.5" startY="9" endX="17.5" endY="0">
               <Stroke color="#4fb3c4" thickness="2" cap="ROUND" />
             </Line>
-            <Line startX="2.5" startY="9" endX="9" endY="19">
+            <Line startX="4" startY="9" endX="10.5" endY="19">
               <Stroke color="#e8e0d4" thickness="2" cap="ROUND" />
             </Line>
-            <Line startX="15.5" startY="9" endX="9" endY="19">
+            <Line startX="17" startY="9" endX="10.5" endY="19">
               <Stroke color="#e8e0d4" thickness="2" cap="ROUND" />
             </Line>
-            <Line startX="9" startY="19" endX="9" endY="27">
+            <Line startX="10.5" startY="19" endX="10.5" endY="27">
               <Stroke color="#e8e0d4" thickness="2" cap="ROUND" />
             </Line>
-            <Line startX="5" startY="27.5" endX="13" endY="27.5">
+            <Line startX="6.5" startY="27.5" endX="14.5" endY="27.5">
               <Stroke color="#e8e0d4" thickness="2" cap="ROUND" />
             </Line>
-            <Ellipse x="1" y="6" width="16" height="6">
+            <Ellipse x="2.5" y="6" width="16" height="6">
               <Fill color="#ffab4a" />
             </Ellipse>
           </PartDraw>
@@ -1325,6 +1472,11 @@
       <Compare expression="zap_burst">
         <!-- x is 123, was 108: tracks the companion's +15 move to 143. -->
         <Group name="companion_burst" x="123" y="306" width="104" height="104" alpha="255">
+          <!-- Companion's gain, matching blob_companion - the burst is centred on
+               it and its spokes are cut to clear the body edge by 3px, a clearance
+               that only survives if the two move together. See hero_umbrella. -->
+          <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.157"
+                y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.1" />
           <Variant mode="AMBIENT" target="alpha" value="0" />
           <PartDraw name="burst" x="0" y="0" width="104" height="104">
             <Ellipse x="37" y="37" width="30" height="30">
@@ -1336,7 +1488,15 @@
             <Line startX="52" startY="52" endX="70" endY="21">
               <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
             </Line>
-            <Line startX="52" startY="52" endX="95" endY="27">
+            <!-- SHORTENED from (95,27) to (88,31), breaking the otherwise
+                 regular 50/36 alternation on purpose. At full length this spoke
+                 ended at absolute (218,333), and with a SQUARE cap adding 4.5
+                 along its direction plus 4.5 of half-thickness perpendicular,
+                 its far corner reached x 222 - past the hero's body edge at 221,
+                 so a yellow bar appeared to cross the blob. At (88,31) the
+                 corner lands at 217.5, about 3.5px clear. Every other spoke
+                 already clears: the plain horizontal one reaches only 211. -->
+            <Line startX="52" startY="52" endX="88" endY="31">
               <Stroke color="#ffe24d" thickness="9" cap="SQUARE" />
             </Line>
             <Line startX="52" startY="52" endX="88" endY="52">
@@ -1415,6 +1575,11 @@
          it is currently the only limb still held out while its owner is asleep,
          and its own foot is the only thing it would then have to dodge. -->
     <Group name="blob_companion" x="143" y="322" width="62" height="72" alpha="255">
+      <!-- Parallax. Deliberately WEAKER than the hero's, which is what makes it
+           read as depth rather than as the whole scene sliding: the nearer,
+           larger blob moves more. See the long note on blob_hero's Gyro. -->
+      <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.157"
+            y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.1" />
       <Variant mode="AMBIENT" target="alpha" value="0" />
 
       <PartDraw name="mini_leaf_left" x="6" y="0" width="48" height="48"
@@ -1708,6 +1873,20 @@
              ran up over the middle of the canopy, which made the canopy look
              like it was behind the pole rather than fixed to the top of it. -->
         <Group name="hero_umbrella" x="137" y="250" width="164" height="70" alpha="255">
+          <!-- PARALLAX MUST MATCH blob_hero's EXACTLY, because this thing is held
+               in the hero's fist. The accessories are top-level siblings of the
+               blob groups, not children of them - they are gated by their own
+               Conditions, which is why they live out here - so they inherit
+               nothing, and the fist would slide out from under the shaft by up to
+               16px across a full tilt sweep.
+
+               These numbers are duplicated from blob_hero rather than shared.
+               There is no variable mechanism in WFF, so if the hero's gain ever
+               changes, every group carrying this comment has to change with it:
+               hero_umbrella and sleep_zzz at the hero's gain, companion_burst,
+               companion_lightning and mini_sleep_zzz at the companion's. -->
+          <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.229"
+                y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.143" />
           <Variant mode="AMBIENT" target="alpha" value="0" />
           <!-- SHAFT FIRST, canopy second - see the group comment. Runs from
                local y 18 (under the canopy band) down to y 60, which is
@@ -1859,6 +2038,11 @@
       </Expressions>
       <Compare expression="prop_storm">
         <Group name="companion_lightning" x="133" y="264" width="56" height="68" alpha="255">
+          <!-- Companion's gain. The bolt's whole point is that its tip lands
+               inside the burst spoke; both are on the companion's gain so the
+               join holds at any tilt. See hero_umbrella. -->
+          <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.157"
+                y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.1" />
           <Variant mode="AMBIENT" target="alpha" value="0" />
           <PartDraw name="bolt" x="0" y="0" width="56" height="68">
             <Line startX="22" startY="0" endX="38" endY="28">
@@ -1905,6 +2089,13 @@
       </Expressions>
       <Compare expression="prop_freezing">
         <Group name="freeze_mark" x="156" y="278" width="36" height="36" alpha="255">
+          <!-- NO <Gyro> HERE, ON PURPOSE, unlike every other accessory group.
+               The snowflake is not attached to either blob - it floats in the gap
+               between them and the heart-rate row - so there is no join that can
+               come apart. Holding it still puts it in the same plane as the clock
+               and the chips, which is what makes it read as weather in the air
+               rather than as something either blob is carrying. Distant things
+               moving least IS the parallax. Same for moon_mark below. -->
           <Variant mode="AMBIENT" target="alpha" value="0" />
           <!-- SIX ARMS, EACH WITH A MATCHING PAIR OF BRANCHES.
                The first version was genuinely lopsided and it was not an
@@ -1979,6 +2170,76 @@
       </Compare>
     </Condition>
 
+    <!-- ============================================================
+         MOON PHASE - same slot as the snowflake, night only.
+
+         THE SNOWFLAKE WINS. Both want the gap above the companion, and rather
+         than rely on Compare ordering inside one Condition these are two
+         separate Conditions with mutually exclusive expressions: the moon
+         requires "not freezing", spelled out as temperature above zero OR
+         weather unavailable. Spelling it that way avoids needing a "!"
+         operator and, importantly, still shows the moon when there is no
+         weather data at all - the moon is driven by the clock, not the sky, so
+         a weather dropout must not take it away. (With no data TEMPERATURE
+         reads 0, which would otherwise look like freezing.)
+
+         Built as a lit disc with a second disc in the BACKGROUND colour biting
+         a crescent out of it - the same masking trick as the blob mouths, and
+         the same caveat: it depends on the face sitting on black. That is safe
+         here because nothing else is drawn in this gap, and it is the only way
+         to get a crescent without a Path element.
+         ============================================================ -->
+    <Condition>
+      <Expressions>
+        <Expression name="prop_moon">([HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]) &amp;&amp; ([WEATHER.TEMPERATURE] &gt; 0 || [WEATHER.IS_AVAILABLE] == 0)</Expression>
+      </Expressions>
+      <Compare expression="prop_moon">
+        <Group name="moon_mark" x="156" y="278" width="36" height="36" alpha="255">
+          <!-- No <Gyro>, for the reason spelled out on freeze_mark: it floats,
+               nothing joins to it, and of everything on the face the moon has the
+               best claim to being infinitely far away. -->
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+          <PartDraw name="moon_disc" x="0" y="0" width="36" height="36">
+            <Ellipse x="6" y="6" width="24" height="24">
+              <Fill color="#e8e6dc" />
+            </Ellipse>
+            <!-- The bite, positioned from the actual phase.
+                 The authored 18 is the mid value, so any renderer that ignores
+                 Transform still shows a sane half moon rather than a blank disc.
+
+                 MOON_PHASE_POSITION IS IN DAYS, NOT A 0..1 FRACTION. Measured on
+                 the watch 2026-08-04: position 19.79 with MOON_PHASE_TYPE 5.
+                 19.79 / 29.53 = 0.67 of the cycle, and type 5 of 0..7 is waning
+                 gibbous - the two agree, which is what pins the unit down. An
+                 assumed 0..1 range put the mask 246px away and left a permanent
+                 full moon.
+
+                 The disc is x 6..30, and the mask is the same size, so an offset
+                 d from 6 gives: d=0 fully covered (new moon), d=24 clear of the
+                 disc (full), d=12 half lit. So d has to RISE THEN FALL over the
+                 month - a triangle wave, which the expression language does not
+                 have. It does have clamp, and two clamps make one:
+
+                     d = clamp(k*p, 0, 24) + clamp(24 - k*p, -24, 0)
+
+                 with k = 48/29.53 = 1.6255. Below half the month the first term
+                 ramps 0..24 and the second is clamped to 0; past half the first
+                 is pinned at 24 and the second subtracts. At p=19.79 that gives
+                 d=15.8, about 66% lit - which is what the sky was doing.
+
+                 SIMPLIFICATION, on purpose: the lit limb is always on the left,
+                 so a waxing moon is mirrored. Getting that right needs a second
+                 mirrored copy behind a Condition on p > 14.765, which is a lot
+                 of geometry for a 24px mark. -->
+            <Ellipse x="18" y="6" width="24" height="24">
+              <Transform target="x" value="6 + clamp(1.6255 * [MOON_PHASE_POSITION], 0, 24) + clamp(24 - 1.6255 * [MOON_PHASE_POSITION], -24, 0)" />
+              <Fill color="#000000" />
+            </Ellipse>
+          </PartDraw>
+        </Group>
+      </Compare>
+    </Condition>
+
     <!-- Zzz for both blobs when it is late.
 
          REBUILT so they read as coming out of the mouths. They used to sit as
@@ -2028,11 +2289,79 @@
         <Expression name="prop_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
       </Expressions>
       <Compare expression="prop_night">
-        <!-- Group dropped from y 316 to 312 and grown to 50 tall, so local y 32
-             reaches absolute 344 - mouth height - while the big z still has room
-             to climb to absolute 312. -->
-        <Group name="sleep_zzz" x="294" y="312" width="64" height="50" alpha="255">
+        <!-- THIRD PASS, 2026-08-04, because the obstacle moved. The screen-right
+             arm now drops when asleep, so its hand sits at absolute
+             287.5..306.5 x 355..373 - which is where this chain's first z used
+             to be. The chain therefore moves UP rather than out.
+
+             First z now centres on (302, 345): within half a pixel of the mouth
+             at (256.5, 345.5), hard against the body edge at x 293, and its box
+             bottom is 354 - one pixel above the lowered hand at 355. That pixel
+             is the whole budget, since the mouth height and the sleeping hand
+             are only 10px apart and the z box is 18 tall.
+
+             Part* x/y are xs:integer, so none of this can be tuned in halves -
+             the group sits at y 304 to buy that pixel back rather than the z
+             using a .5 offset, which fails validation.
+
+             Centres then climb up-right at about 30 degrees: (302,345) ->
+             (321,333) -> (342,320). Outermost corner (355,306) is radius 155
+             from the centre, well inside the 225 bezel. -->
+        <Group name="sleep_zzz" x="294" y="304" width="64" height="55" alpha="255">
+          <!-- Hero's gain, matching blob_hero - these come out of its mouth, and
+               the first z is placed to within half a pixel of it. See the note on
+               hero_umbrella. Safe alongside the drift on the inner group: Gyro and
+               Transform are on different elements and compose. -->
+          <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.229"
+                y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.143" />
           <Variant mode="AMBIENT" target="alpha" value="0" />
+          <!-- THE ANIMATION LIVES ON AN INNER GROUP ON PURPOSE. The outer group
+               owns the AMBIENT alpha Variant; this one owns the animated alpha.
+               Putting both on the same element means a Variant and a Transform
+               competing for one attribute, and which wins in ambient is not
+               something the schema settles. Splitting them makes the question
+               moot: the outer group is alpha 0 in ambient regardless of whatever
+               the inner one is doing.
+
+               THERE IS NO [ANIMATION_VALUE] DATA SOURCE. This block used to be
+               built on one, and it did nothing at all on the wrist. <Animation>
+               is NOT a clock that drives a free-running 0..1 ramp - it is a TWEEN
+               that smooths a value the Transform has ALREADY changed for some
+               other reason, the way `[SECOND] % 2 == 0 ? 0 : 200` with a 1s
+               Animation slides between two positions instead of snapping. With a
+               constant expression there is no change to tween, so nothing moved.
+               The validator passed it because source names inside a Transform
+               `value` are not keyref-checked the way Compare/@expression is - so
+               an invented source is a SILENT failure here. Verify motion on the
+               watch, never in the validator.
+
+               The ramp therefore has to come from a real source, and
+               [SECOND_MILLISECOND] is the only one with sub-second precision
+               (float, 0.0..59.999).
+
+               Phase, 0..1 over 3 seconds:
+                 p = (([SECOND] % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3
+               The fraction is taken as SECOND_MILLISECOND - SECOND rather than
+               with a float modulo, because integer % is the documented case and
+               float % is not; this needs only operations that are known-good.
+               60 % 3 == 0, so p runs continuously across the minute boundary
+               instead of jumping.
+
+               y is a plain sawtooth: the z's rise 14px and snap back. alpha is a
+               TRIANGLE, so they fade in from nothing and back out to nothing, and
+               the snap happens while they are fully transparent. A triangle is not
+               directly expressible, but it falls out of a clamp - the same trick
+               the moon mask uses:
+                 tri = 2p - clamp(4p - 2, 0, 2)
+               which is 0 at p=0, 1 at p=0.5 and 0 again at p=1.
+
+               No <Animation> child: the value is already continuous, so a tween
+               on top would only add lag. None of this runs in ambient. -->
+          <Group name="sleep_zzz_drift" x="0" y="0" width="64" height="55" alpha="255">
+            <Transform target="y"
+                       value="0 - 14 * ((([SECOND] % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3)" />
+            <Transform target="alpha"
+                       value="255 * (2 * ((([SECOND] % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3) - clamp(4 * ((([SECOND] % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3) - 2, 0, 2))" />
           <PartText name="zzz_small" x="0" y="32" width="16" height="18">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="13" weight="BOLD" slant="ITALIC" color="#93a3b4"><![CDATA[z]]></Font>
@@ -2043,11 +2372,12 @@
               <Font family="SYNC_TO_DEVICE" size="18" weight="BOLD" slant="ITALIC" color="#a8b8c8"><![CDATA[z]]></Font>
             </Text>
           </PartText>
-          <PartText name="zzz_big" x="33" y="0" width="26" height="28">
+          <PartText name="zzz_big" x="35" y="2" width="26" height="28">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="24" weight="BOLD" slant="ITALIC" color="#b9c6d4"><![CDATA[z]]></Font>
             </Text>
           </PartText>
+          </Group>
         </Group>
 
         <!-- Companion's own set, roughly 60% the size, drifting up-left from
@@ -2064,7 +2394,28 @@
              any higher: the hand is directly between the mouth and the sky.
              The chain then climbs at about 45 degrees, steeper than before. -->
         <Group name="mini_sleep_zzz" x="105" y="338" width="46" height="44" alpha="255">
+          <!-- Companion's gain - these come out of ITS mouth, so they must not
+               track the hero. This is the pair that would have given the mismatch
+               away fastest: the two z chains sit 150px apart and drifting them at
+               different rates would visibly shear the scene. See hero_umbrella. -->
+          <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.157"
+                y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.1" />
           <Variant mode="AMBIENT" target="alpha" value="0" />
+          <!-- Same drift as the hero's - see the long note there for why it is
+               built on [SECOND_MILLISECOND] and not on an <Animation> tween -
+               but ONE SECOND OUT OF PHASE, via ([SECOND] + 1) % 3. Two sets
+               breathing in lockstep read as one mechanism blinking; offset, they
+               read as two sleepers. The offset survives the minute boundary for
+               the same reason the hero's does: 60 % 3 == 0 means the shifted
+               sequence is just the same cycle started a second later.
+
+               Rise is 9px against the hero's 14, in proportion to this set being
+               about 60% the size. -->
+          <Group name="mini_sleep_zzz_drift" x="0" y="0" width="46" height="44" alpha="255">
+            <Transform target="y"
+                       value="0 - 9 * (((([SECOND] + 1) % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3)" />
+            <Transform target="alpha"
+                       value="255 * (2 * (((([SECOND] + 1) % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3) - clamp(4 * (((([SECOND] + 1) % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3) - 2, 0, 2))" />
           <PartText name="mini_zzz_small" x="32" y="28" width="12" height="14">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="9" weight="BOLD" slant="ITALIC" color="#93a3b4"><![CDATA[z]]></Font>
@@ -2080,6 +2431,7 @@
               <Font family="SYNC_TO_DEVICE" size="15" weight="BOLD" slant="ITALIC" color="#b9c6d4"><![CDATA[z]]></Font>
             </Text>
           </PartText>
+          </Group>
         </Group>
       </Compare>
     </Condition>

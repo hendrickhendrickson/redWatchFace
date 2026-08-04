@@ -165,20 +165,91 @@ thing deciding what covers what is document order.
 | 7 | thunderstorm | `CHANCE_OF_PRECIPITATION >= 90` |
 | 8 | sweating | `HEART_RATE >= 120` |
 
+Plus two marks that are not full states: a **step-goal flag** in the blob's left hand at
+`STEP_PERCENT >= 100` (against the wearer's real `STEP_GOAL`), and a **moon phase** in
+the gap above the companion at night, which the snowflake displaces when it is freezing.
+
+Two bits of motion, neither visible in a still: the blobs shift with wrist tilt via
+`<Gyro>` over the accelerometer (±8px on the hero, ±5.5 on the companion — the ratio is
+what reads as depth), and the Zzz drift upward while fading in and out, the two sets a
+second out of phase.
+
+The accessories that *attach* to a blob — umbrella, lightning bolt, burst, both sets of
+z's — each repeat their blob's Gyro gain by hand, because they are siblings of the blob
+groups rather than children and inherit nothing. The snowflake and the moon deliberately
+have none: they float, so holding them still is what puts them in the sky. **Changing a
+blob's gain means changing every accessory that tracks it** — WFF has no variables. The drift runs off `[SECOND_MILLISECOND]`; there is **no
+`[ANIMATION_VALUE]` source**, and `<Animation>` is a tween rather than a clock — see the
+motion section in [TODO.md](TODO.md), since the wrong version of this passed the
+validator and shipped.
+
+To look at either one on the wrist, mock with `--live` (below). A plain mock pins the
+accelerometer and the clock to constants, so both features are switched off in it.
+
 Freezing is a strict subset of cold, so a real freezing day shows scarves *and* the
-snowflake. Current screenshots of all nine are in [docs/states/](docs/states/), with
-`all-states.png` as a contact sheet.
+snowflake. Current screenshots of all ten frames are in [docs/states/](docs/states/),
+with `all-states.png` as a contact sheet. The step-goal flag gets its own frame
+(`9-step-goal`) even though it is a mark rather than a state, because unlike the
+snowflake and the moon it shows up in no other frame — and a reaction with no
+screenshot gets taken for a reaction that was never built.
 
 **Every weather-driven trigger must be gated on `IS_AVAILABLE`** — not for tidiness but
 because the no-data values are not neutral. `TEMPERATURE` reads 0, which satisfies
 `<= 10`, so an ungated cold trigger puts scarves on the blobs every time weather drops
 out, which it does routinely.
 
-To review the states without waiting for the weather, `tools/debug-triggers.mjs`
-temporarily repoints each trigger at a battery level (the one host-settable value with a
-data source behind it) and `tools/capture-states.ps1` drives the sweep. Do not hand-edit
-the triggers — some contain others as substrings, so substitution order matters. Full
-loop and all the traps are in [TODO.md](TODO.md).
+To review the states without waiting for the weather, `tools/mock-state.mjs` patches the
+**data** — temperature, hour, heart rate — into `watchface.xml`, so the real Conditions
+evaluate against known values, and `tools/capture-states.ps1` drives a build per state:
+
+```powershell
+powershell -File tools/capture-states.ps1                          # all ten
+powershell -Command "& tools/capture-states.ps1 -Only 4-cold"      # one
+powershell -Command "& tools/capture-states.ps1 -SheetOnly"        # redraw the contact
+                                                                   #   sheet from disk
+node tools/mock-state.mjs list                                     # what each state sets
+```
+
+`-Only` deliberately leaves `all-states.png` alone, so follow it with `-SheetOnly` —
+which touches no device and builds nothing — rather than re-shooting eight unchanged
+states to refresh one tile. `-Only 0-ambient` re-shoots just the ambient frame.
+
+**A capture run installs a mock APK on the watch, and the script now reinstalls the real
+build afterwards** — it verifies the package timestamp actually moved rather than
+trusting an exit code. If you ever kill a run part-way, reinstall by hand. Note that
+`mock-state.mjs status` reads the *working tree only* and will happily say
+`real values (clean)` while the watch is still showing a mock: a mock build looks
+completely normal apart from frozen motion, a dead accelerometer and a bold ambient
+clock, which is exactly the set of symptoms that reads as "the watch face is broken".
+
+To settle it definitively — better than squinting at a screenshot, since a mock differs
+only in its data:
+
+```powershell
+adb shell md5sum $(adb shell pm path de.redplant.watchface.blob | % { $_ -replace 'package:' })
+(Get-FileHash watchface/build/outputs/apk/debug/watchface-debug.apk -Algorithm MD5).Hash.ToLower()
+```
+
+Equal means the watch is running exactly what a clean tree builds.
+
+To put one state on a wrist and *watch* it rather than photograph it:
+
+```powershell
+node tools/mock-state.mjs on night --live   # keeps accelerometer + clock live
+./gradlew :watchface:installDebug
+node tools/mock-state.mjs off               # ...and reinstall afterwards
+```
+
+`--live` exists because the defaults are tuned for stills: a plain mock freezes
+`ACCELEROMETER_ANGLE_*` and `SECOND_MILLISECOND` so snapshots are byte-comparable, which
+also means the parallax and the Zzz drift are both dead in it.
+
+Every snapshot shows the same 19:12 / Mon 19 / 88 bpm / 1912 steps / 88% except for the
+one value that state is about. Because the conditions are real, states that nest do so
+in the snapshots too — freezing shows scarves *and* the snowflake, and a thunderstorm
+shows the umbrella, since 90% precipitation also clears the 50% rain threshold.
+
+Traps, all hit in practice, are in [TODO.md](TODO.md).
 
 ### How the blobs are built
 
@@ -218,24 +289,56 @@ baseline.
 
 Almost none of that is settable from the host — the watch is a production build so the
 clock cannot be set, weather cannot be faked at all, and heart rate and step count have
-no synthetic providers. So `tools/preview-mock.mjs` hardcodes the values into the XML
+no synthetic providers. So `tools/mock-state.mjs` hardcodes the values into the XML
 instead, and you build, shoot, and restore:
 
 ```powershell
-node tools/preview-mock.mjs on
+node tools/mock-state.mjs on baseline
 ./gradlew :watchface:installDebug
 adb shell input tap 213 213          # wake it - see below
 adb shell screencap -p /data/local/tmp/preview.png
 adb pull /data/local/tmp/preview.png watchface/src/main/res/drawable/preview.png
-node tools/preview-mock.mjs off
+node tools/mock-state.mjs off
 ./gradlew :watchface:installDebug    # <- do not skip
 ```
 
-Edit the `MOCK` object at the top of that script to change the readings. It asserts a
-hit count on every substitution and **refuses to run if the scene declares an expression
-it does not know about**, since an unhandled trigger would still read live data and
-could fire in the preview. `node tools/preview-mock.mjs status` says which way round the
-working tree is.
+The preview is just the `baseline` state, so it uses the same `BASE` values as every
+snapshot and there is nothing separate to keep in sync. Edit `BASE` to change the
+readings. Every substitution asserts, and the script **refuses to run if any source
+token is left unmocked**, since an unhandled one would still read live data and could
+fire in the preview.
+
+### Judging motion
+
+`capture-states.ps1` photographs states; [tools/cycle-states.ps1](tools/cycle-states.ps1)
+*shows* them. Parallax, the Zzz drift and the ambient crossfade cannot be seen in a
+still, so the only way to judge them is on a wrist:
+
+```powershell
+powershell -File tools/cycle-states.ps1                          # loop until stopped
+powershell -Command "& tools/cycle-states.ps1 -Laps 1"
+powershell -Command "& tools/cycle-states.ps1 -Only rainy,thunderstorm,night"
+```
+
+Every state is mocked with `--live`, holds for `-HoldSeconds` (default 20), and ambient
+is skipped since both blob groups are alpha 0 there.
+
+Ctrl-C is safe — the screen timeout and the real build come back in a `finally`. **A hard
+kill is not**, and that is observed rather than theoretical: killing the owning job skips
+`finally` and leaves the watch on a 45 s timeout running a mock. The original timeout is
+written to `tools/cycle-states.state` first, so recovery is one command:
+
+```powershell
+powershell -Command "& tools/cycle-states.ps1 -Restore"
+```
+
+It puts the timeout back, reinstalls, and **verifies by comparing the installed APK's md5
+against the clean build** rather than trusting an exit code.
+
+For accessory parallax specifically, the states that matter are **rainy** (umbrella in
+the fist), **thunderstorm** (bolt tip inside the burst spoke) and **night** (two Zzz
+chains 150px apart). The rest are a control — their accessories live inside the blob
+groups and were never at risk.
 
 For an unstaged shot of the live face, just the two middle lines are enough.
 
@@ -300,7 +403,9 @@ Relevant if you want to extend this:
   The operator set **does** include `<`, `<=` and `!=`, verified on the watch — the
   XSD enumeration that omits them is not authoritative and is not enforced.
 - Animation is limited to declarative `<Animation>`/`<Sweep>`/`<Gyro>` and image
-  sequences; long PNG sequences hit the memory ceiling fast.
+  sequences; long PNG sequences hit the memory ceiling fast. `<Animation>` only
+  *tweens* a value something else changed — for a free-running loop you drive a
+  `Transform` off `[SECOND_MILLISECOND]` yourself.
 - Ambient mode updates roughly once a minute, so no sweeping second hand there.
 - Targeting v5 means Wear OS 7 in practice (see the note at the top). Lower
   `format.version` in the manifest **and** `minSdk` together if you ever need older

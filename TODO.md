@@ -2,13 +2,65 @@
 
 Ordered so that nothing blocks on the watch until the face already works in an emulator.
 
-## Start here (as of 2026-08-04)
+## Start here (as of 2026-08-04, design pass 3 — motion)
+
+**The design backlog is empty and the motion is signed off on the wrist.**
+Parallax, the Zzz drift and every accessory that tracks a blob were checked by
+cycling the nine live states on hardware and tilting. `docs/states/` holds ten
+current frames — those nine plus ambient, which the cycler skips because both
+blob groups are alpha 0 there — and a contact sheet.
+
+Three things that change how you work on this:
+
+- **`tools/mock-state.mjs` replaces `debug-triggers.mjs` and
+  `preview-mock.mjs`, both deleted.** Snapshots patch the DATA (temperature,
+  hour, heart rate…) and let the real Conditions evaluate, instead of forcing
+  trigger expressions at battery levels. One build per state, ~3 min for the
+  set, no battery override.
+- **`tools/cycle-states.ps1` is how you judge anything that moves.**
+  `capture-states.ps1` photographs states; this one shows them, mocked
+  `--live` so the accelerometer and clock stay real. Nothing about motion can
+  be judged from a screenshot or from the validator.
+- **There is no wind data source in WFF.** See the finding below before
+  planning anything else weather-driven.
+
+Still open:
+
+1. **Judge the ambient transition by eye.** The crossfade windows are disjoint
+   so the halo is structurally impossible, but that is reasoning rather than
+   observation, and `screencap` is too slow to check it. The one motion-adjacent
+   thing still unconfirmed.
+2. **The thunderstorm condition code** still needs an actual thunderstorm.
+3. **The moon's lit limb is always on the left**, so a waxing moon is mirrored.
+   Fixing it needs a second mirrored copy behind a Condition on the phase.
+4. Smaller: the ~15 `Variant` elements still on default timing.
+
+### If you read one thing in this file
+
+Three separate bugs this session were **invisible to the validator and to
+`screencap`**, and one was invisible to both while also being reported as three
+different bugs in the watch face. The pattern behind all of them:
+
+| what was trusted | what it actually proves |
+|---|---|
+| validator PASSED | the XML parses. Source names inside a `Transform value` are **not** checked, so `[ANIMATION_VALUE]` — a source that does not exist — passed and did nothing. |
+| a screenshot | one frame. Not motion, and not which APK produced it. |
+| `mock-state status` says clean | the **working tree**. Says nothing about the watch, and after a capture run the watch is normally still on a mock. |
+| a gradle exit code | that gradle ran. `& cmd \c` (backslash) never runs the command and still exits 0. |
+
+The check that actually settles it: **compare the installed APK's md5 against
+the clean build** (`cycle-states.ps1 -Restore` does this), and **look at the
+watch** for anything that moves.
+
+## Superseded — start here (as of 2026-08-04, design pass 1)
+
+> Kept for history; the current list is at the top of this file. Details below
+> describe the state of things after pass 1 and were true then.
 
 The design backlog is empty. Eight requested changes went in on 2026-08-04 and
 are all verified on the watch — see the session log at the top of Findings. The
 states are renumbered into reading order (`0-ambient` … `8-sweating`) and
-`docs/states/` is current. `preview.png` is a deterministic mock shot through
-the new `tools/preview-mock.mjs`.
+`docs/states/` is current. `preview.png` is a deterministic mock.
 
 Genuinely left:
 
@@ -243,6 +295,11 @@ Remember: the PW4 charger has **no USB data path**, so this is wireless-only.
       the interactive background go dark?~~ **Confirmed good, 2026-08-03.** The question
       was already half-answered by the dark redesign — the face is cream-on-black now,
       not navy-on-cream — and outdoors it holds up. No background change needed.
+- [x] **Motion, verified 2026-08-04.** Gyro parallax, the Zzz drift, and every
+      accessory tracking its blob — checked by cycling all nine states with
+      `tools/cycle-states.ps1` and tilting. Reported back as "looking great".
+      This is the only way to check any of it: see the motion findings for why
+      the validator and `screencap` both wave broken motion through.
       This closes section 5 entirely.
 
 ## 6. Finish the preview — DONE
@@ -351,7 +408,174 @@ Version drift worth noting against the first machine: cmdline-tools is **rev 19*
 here (was 22), and `adb` is **37.0.1**. Neither mattered. The validator is 1.7.0,
 which is the one that supports format version 5.
 
-### Session log — 2026-08-04, design pass
+### Session log — 2026-08-04, design pass 2
+
+**Snapshots are now value-mocked.** `tools/mock-state.mjs` replaces both
+`debug-triggers.mjs` and `preview-mock.mjs`, which are deleted. Instead of
+forcing each trigger expression to a battery level, it substitutes the source
+tokens with literals for the state being captured and lets the real Conditions
+evaluate. Every frame now shows the same 19:12 / Mon 19 / 88 bpm / 1912 steps /
+88% except for the one value that state is about — 25° for sunny, 0° for
+freezing, 120 bpm for sweating, 23:12 for night.
+
+Two things fall out of that beyond the readability:
+
+- **Nesting is free.** Setting the temperature to 0 fires cold *and* freezing,
+  because they are real expressions over real data. The `replaceWith` hack that
+  the old script needed for exactly this is gone.
+- **It exposes real interactions the old sweep hid.** The thunderstorm frame now
+  correctly shows the umbrella up, because 90% precipitation also satisfies the
+  50% rain trigger. That was always the watch's behaviour; the old forcing just
+  could not show it.
+
+Cost: one build per state instead of one for the set, so about three minutes.
+The safety net is a scan for any `[SOURCE]` token left unmocked, which would
+mean a snapshot silently drifting with the weather. It strips comments first —
+`watchface.xml` discusses `[IS_AMBIENT]`, which does not exist, and the raw
+scan reported it.
+
+**The nine changes**, in order asked:
+
+1. Value-mocked snapshots, above.
+2. **Both hero arms drop when asleep.** The screen-right arm was the last limb
+   still held out; it moved out of `hero_limbs` into its own two-pose Condition,
+   mirrored about the BODY centre (x' = 100 - x) rather than the group centre —
+   that 3px distinction is already documented for the shoulder. Its glove had to
+   follow, or a cold night put a mitten where the raised hand used to be. The
+   Zzz then had to move a third time: the lowered hand now occupies where the
+   first z was, so the chain shifted up to sit level with the mouth.
+3. **Ambient date is one `PartText`, not two.** Interactive needs two because
+   the day sits in a chip; ambient draws no chip, so the 23px the chip fills was
+   just a hole. Rendering "%s %d" as a single centred string hands the spacing
+   to the font and lands the pair exactly on centre, where the interactive row
+   measures 2.5px off.
+4. **Shortened the burst spoke that crossed the hero.** At full length its far
+   corner reached x 222 against a body edge of 221 — SQUARE caps add 4.5 along
+   the direction *and* 4.5 perpendicular, which is what put it over.
+5. **Cocktail centred on the fist**, moved right 1.5px — via the shapes, since
+   `Part*` x/y are integers.
+6. **Step-goal flag**, in the blob's left (screen-right) hand, opposite the
+   cocktail and umbrella so they can coexist. Uses `STEP_PERCENT >= 100` against
+   the real `STEP_GOAL`, measured at 10000. Suppressed at night, since the arm
+   it flies from drops.
+7. **Wind: not possible.** No wind source exists — see the source list finding.
+   Nothing was implemented.
+8. **Moon phase**, night only, in the snowflake's slot with the snowflake
+   winning. The two are separate Conditions with mutually exclusive expressions
+   rather than ordered Compares. `MOON_PHASE_POSITION` turned out to be **in
+   days**, not a 0..1 fraction; the probe read 19.79 with `MOON_PHASE_TYPE` 5,
+   and 19.79/29.53 = 0.67 which is waning gibbous, so the two agree. An assumed
+   0..1 range would have pinned the mask 246px away and shown a permanent full
+   moon.
+9. **Motion**: `<Gyro>` parallax on both blobs, weaker on the companion so it
+   reads as depth; and the Zzz drift upward while fading, on an inner group so
+   the animated alpha does not fight the ambient `Variant`.
+
+   **Both shipped broken and were fixed in design pass 3** — see the session log
+   below. Neither had been looked at on a wrist, only reasoned about and then
+   screenshotted through tooling that had pinned their inputs to constants.
+
+### Session log — 2026-08-04, design pass 3 (motion)
+
+**Outcome: signed off on the wrist.** Parallax, the Zzz drift and every
+accessory that tracks a blob were verified by cycling all nine states on
+hardware and tilting. Getting there took four rounds, because the three motion
+features from pass 2 had been called done on the strength of schema-valid XML
+and a still image, and **neither of those can see motion**.
+
+**Round 1 — "the Z's don't move and I can't see any parallax".** Both true, for
+two unrelated reasons, with a third hiding one of them.
+
+- **The Zzz were driven by `[ANIMATION_VALUE]`, which does not exist.** I had
+  taken `<Animation>` for a clock feeding a 0..1 ramp; it is a *tween* that
+  smooths an already-changing value, so with a constant expression there was
+  nothing to tween. Rebuilt on `[SECOND_MILLISECOND]` — the only sub-second
+  source — with a clamp-built triangle for alpha so the sawtooth reset in `y`
+  happens at zero opacity. Verified by burst `screencap`, and later by sampling
+  the region's luminance over time: a clean 3.06s rise-and-fall.
+- **The parallax was not broken, just far too subtle**: ±2.5px on a 426px
+  screen. Gain raised 3.2×. Accelerometer confirmed present via
+  `dumpsys sensorservice`.
+- **`mock-state` was masking the parallax entirely** — it pins
+  `ACCELEROMETER_ANGLE_*` to 0 for snapshot determinism, which is right for a
+  still and wrong for a build going on a wrist. Hence `--live`.
+
+**Round 2 — "do the accessories line up with the parallax?" They did not.**
+`hero_umbrella`, `sleep_zzz`, `companion_burst`, `companion_lightning` and
+`mini_sleep_zzz` are top-level *siblings* of the blob groups, not children —
+they have to be, each is gated by its own `Condition` — so none inherited the
+`<Gyro>`. The hero's fist would have slid off the umbrella shaft by up to 16px
+at full tilt, and the bolt tip out of the burst spoke. Each now repeats its
+blob's gain verbatim; WFF has no variables, so that duplication is load-bearing
+and commented at every site. `freeze_mark` and `moon_mark` stay static on
+purpose — nothing joins to them, and holding them in the clock's plane is what
+makes them read as sky. **Found by walking the element tree, not by reading it**;
+a `<Gyro>` behind a 12-line comment is easy to miss and easy to regex wrong.
+
+**Round 3 — three reported regressions, all of them one self-inflicted cause,
+and the most expensive mistake of the session.** Reported: the z's had gone
+slow, the parallax had vanished, and the ambient clock was rendering in the
+interactive font weight. All three were real, and all three were **the mock
+build still sitting on the watch**.
+
+`capture-states.ps1` installs a mocked APK per state and calls
+`mock-state.mjs off` afterwards — which restores `watchface.xml` but **does not
+reinstall**. Re-shooting one snapshot therefore left the watch on that state's
+mock, which pins the clock sources (drift frozen), zeroes the accelerometer (no
+parallax) and swaps `<DigitalClock>` for a static bold `PartText` (ambient in
+the wrong weight). Three symptoms, one cause, none of them in the watch face.
+
+What made it stick: `mock-state.mjs status` said **"real values (clean)"** and
+that was read as "the watch is fine". It only ever inspected the working tree.
+A clean tree and a mocked device are not merely compatible — after a capture run
+they are the *normal* combination.
+
+Nearly compounded it, too: the first attempt to measure the frozen drift
+returned a dead-flat line that looked like proof the animation was broken. It
+was sampling the **ambient** screen — `KEYCODE_WAKEUP` alone does not lift a
+Pixel Watch out of AOD, a trap `capture-states.ps1` already documents and the
+throwaway probe had skipped.
+
+Fixed at the mechanism, not the symptom:
+
+- `capture-states.ps1` reinstalls the real build as the last thing it does to
+  the device — on partial runs and after failures — and verifies the package's
+  `lastUpdateTime` actually moved instead of trusting an exit code.
+- `mock-state.mjs status` now states outright that it cannot see the watch.
+- The clock mock emits **both** `TimeText` copies with their real Variant
+  timings. The single-copy version had been quietly wrong in *every* ambient
+  snapshot since it was written.
+
+**Round 4 — "where's the step-goal screenshot?"** The flag was built in pass 2
+and works, but `mock-state.mjs` labelled its state "not a snapshot", so it was
+never shot and `docs/states/` held no record of it. Reasonably read as never
+having been built. Now `9-step-goal`. **If a reaction appears in no snapshot, it
+will be believed missing** — the snowflake and the moon get away with being
+marks rather than states only because other frames happen to contain them. Its
+mock step count was also 10240 (10×1024, a habit rather than a reason); it is
+10,000 at exactly 100%, which also puts the `>= 100` trigger on its boundary.
+
+**`tools/cycle-states.ps1` came out of this.** `capture-states.ps1` photographs
+states; this one shows them, every one mocked `--live`, holding each long enough
+to tilt at. It is the only way to judge motion, and its absence is why three
+features shipped broken.
+
+Two smaller findings, both about trusting the wrong signal:
+
+- **`& cmd \c "..."` (backslash) does not run the command.** cmd fails to parse
+  the switch, opens an interactive shell, reads EOF, and **exits 0** — so an
+  install silently never happens and the exit code still says success.
+- **A hard kill skips `finally`.** Observed: killing the job that owned
+  `cycle-states.ps1` left the watch on a 45s timeout running a mock, despite the
+  cleanup block. Hence `-Restore`, which recovers from the state file and
+  **verifies by comparing the installed APK's md5 against the clean build** —
+  the only check here that cannot be fooled.
+
+Also cleared out documentation rot this exposed: the README still told you to
+run `preview-mock.mjs` and TODO.md still had a live how-to for
+`debug-triggers.mjs`, both deleted earlier the same day.
+
+### Session log — 2026-08-04, design pass 1
 
 Eight requested changes, a state renumbering, and a deterministic preview. All
 verified on the watch; the full sweep in `docs/states/` is current.
@@ -425,20 +649,19 @@ verified on the watch; the full sweep in `docs/states/` is current.
   No masking, so no dependency on the background colour and none of the
   overshoot caveats every masked shape in this file carries.
 
-**`tools/preview-mock.mjs` is new.** `preview.png` is what the picker shows, so
-it should look like a good day rather than like whatever the sky and your pulse
-were doing. Almost none of that is settable from the host, so the script
-hardcodes the values into the XML, and you build, shoot, and restore. It keys
-off the `<Expression name="...">` attribute rather than the expression body —
-unlike `debug-triggers.mjs`, which has to match bodies and therefore has to
-worry about substring ordering — and it **refuses to run if the scene declares
-an expression the table does not know about**, since a new trigger would still
-read live data and could fire in the preview.
+**A staged `preview.png`.** It is what the picker shows, so it should look like
+a good day rather than like whatever the sky and your pulse were doing. Almost
+none of that is settable from the host, so the values are hardcoded into the XML
+and you build, shoot, and restore. (This was `tools/preview-mock.mjs`; it is now
+just `mock-state.mjs on baseline`, since the preview and the snapshots want the
+same values and there is no reason to keep two tables in sync.)
 
 The clock is the one value that cannot be substituted: `TimeText` renders the
 system clock, has no literal mode, and its `<Font>` is the restricted
 definition that accepts no children at all. The whole `<DigitalClock>` block is
-swapped for a `PartText` instead.
+swapped for `PartText` instead — **both copies of it**, interactive and ambient,
+with their Variant timings. Emitting only the interactive one is what made every
+ambient snapshot render the clock in the wrong font weight.
 
 Current preview: **19:12, Mon 19, 19° sunny, 88 bpm, 1912 steps, 88%**, blobs at
 baseline.
@@ -598,6 +821,132 @@ adb pull /data/local/tmp/preview.png watchface/src/main/res/drawable/preview.png
 
 Verify the header rather than the file size — a BOM-mangled PNG is still roughly
 the right size.
+
+### The complete data source list — and what is NOT in it
+
+`sourceType.xsd` in the v5 tree enumerates **116** sources. Worth reading the
+list before designing a feature, because two obvious ones are missing and
+several useful ones are easy to overlook.
+
+**THERE IS NO WIND.** Not speed, not direction, not gust. The whole weather
+bundle is:
+
+```
+IS_AVAILABLE  IS_ERROR  CONDITION  CONDITION_NAME  IS_DAY  TEMPERATURE
+TEMPERATURE_UNIT  TEMPERATURE_LOW  TEMPERATURE_HIGH  CHANCE_OF_PRECIPITATION
+UV_INDEX  LAST_UPDATED
+```
+plus hourly (`WEATHER.HOURS.n.*`) and daily (`WEATHER.DAYS.n.*`) forecasts of
+the same. There is also no humidity, no pressure, no air quality, no sunrise or
+sunset time.
+
+Sources that ARE there and were not being used:
+
+| source | note |
+|---|---|
+| `STEP_GOAL`, `STEP_PERCENT` | the wearer's real goal — measured 10000 and a 0..100 percentage, so no need to hardcode 10k |
+| `MOON_PHASE_POSITION` | **in days, 0..29.53** — not a fraction, see the moon note |
+| `MOON_PHASE_TYPE` | integer, 0..7 |
+| `ACCELEROMETER_*` | X/Y/Z plus `ANGLE_X/Y/Z/XY`, in degrees — this is what `<Gyro>` reads |
+| `UNREAD_NOTIFICATION_COUNT` | untouched so far |
+| `WEATHER.UV_INDEX` | untouched so far |
+| `BATTERY_TEMPERATURE_CELSIUS` | untouched so far |
+| `HOURS_SINCE_EPOCH`, `MINUTES_SINCE_EPOCH` | monotonic counters, useful for slow cycles |
+
+Extract the list yourself with:
+
+```powershell
+tar -xf tools/memory-footprint.jar -C $tmp docs.zip; tar -xf $tmp/docs.zip -C $tmp
+# then read $tmp/5/common/simpleTypes/sourceType.xsd
+```
+
+### Motion: `<Gyro>` and `<Animation>`
+
+Both exist, both are cheap, and neither costs anything against the memory
+budget. The details that are not obvious from the names:
+
+- **`<Gyro>`** is a child of a Group or Part (max one) and OFFSETS its parent's
+  `x`, `y`, `scaleX`, `scaleY`, `angle` or `alpha` from an expression over the
+  `ACCELEROMETER_*` sources. Child order matters: it comes before `Transform`,
+  which comes before `Variant`. `clamp` is available and the schema's own
+  example uses it.
+- **The gain has to be big enough to see.** The first version used ±2.5px of
+  travel, on the reasoning that the hero group is only 106 wide and its feet sit
+  near the bezel. Nothing was ever close to cropping, and ±2.5px on a 426px
+  screen reads as no parallax at all. It is now ±8px / ±5px for the hero and
+  ±5.5 / ±3.5 for the companion — the worst-case corner is radius 198 against
+  the 225 bezel. **What sells the depth is the RATIO between the two**, about
+  0.7, not the absolute size.
+- **`<Animation>` is a child of `<Transform>`, and it is a TWEEN — not a clock.**
+  It smooths a value that the Transform has *already changed for some other
+  reason*, the way the docs' own example slides between two positions:
+  ```xml
+  <Transform target="x" value="[SECOND] % 2 == 0 ? 0 : 200">
+    <Animation duration="1" interpolation="EASE_IN_OUT" />
+  </Transform>
+  ```
+  `repeat="-1"` loops forever, `repeat="0"` (the default) plays once, `fps`
+  defaults to 15.
+- **THERE IS NO `[ANIMATION_VALUE]` DATA SOURCE.** This file used to claim there
+  was one and that `<Animation>` ramped it 0..1. That is wrong, it is not in the
+  116-entry source list, and the Zzz drift built on it did nothing whatsoever on
+  the wrist. Worse, it **passed the validator**: source names inside a Transform
+  `value` are not keyref-checked the way `Compare/@expression` is, so an
+  invented source there is a *silent* failure. **Motion is only ever verified on
+  the watch.**
+- **For a free-running ramp, use `[SECOND_MILLISECOND]`** (float, 0.0–59.999) —
+  the only source with sub-second precision. Confirmed on hardware to re-render
+  smoothly, not in one-second steps. Phase over an N-second period:
+  ```
+  p = (([SECOND] % N) + [SECOND_MILLISECOND] - [SECOND]) / N
+  ```
+  Take the fraction as `SECOND_MILLISECOND - SECOND` rather than a float
+  modulo — integer `%` is the documented case, float `%` is not. Pick N so that
+  `60 % N == 0` or the phase jumps at every minute boundary.
+- A triangle wave is not directly available but falls out of a clamp:
+  `2p - clamp(4p - 2, 0, 2)` is 0 at p=0, 1 at p=0.5, 0 at p=1. The Zzz alpha
+  uses it so the sawtooth reset in `y` happens while they are transparent; the
+  moon mask uses the same trick.
+- **Do not put an animated `Transform` and an AMBIENT `Variant` on the same
+  attribute of the same element.** Which wins in ambient is not something the
+  schema settles. Put the animation on an inner Group instead; the outer one
+  keeps the Variant.
+- **Two animated things on the same cycle should be phase-offset**, or they read
+  as one mechanism blinking. The companion's Zzz run `([SECOND] + 1) % 3`.
+- **`<Gyro>` is inherited by children, and the accessories are NOT children.**
+  This is the trap. `hero_umbrella`, `sleep_zzz`, `companion_burst`,
+  `companion_lightning` and `mini_sleep_zzz` are top-level siblings of the blob
+  groups — they have to be, because each is gated by its own `Condition` — so
+  they inherit nothing, and the umbrella slid out of the fist by up to 16px
+  across a full tilt sweep. Each now repeats its blob's gain verbatim: the hero's
+  0.229/0.143 for the umbrella and its z's, the companion's 0.157/0.1 for the
+  burst, the bolt and its z's. **There is no variable mechanism in WFF**, so
+  changing a blob's gain means hand-editing every accessory that tracks it.
+  Things actually inside the groups — leaves, limbs, gloves, scarf, cocktail,
+  goal flag — are fine and need nothing.
+- `freeze_mark` and `moon_mark` are deliberately left with **no** Gyro: nothing
+  joins to them, and holding them in the same plane as the clock is what makes
+  them read as sky. Distant things moving least is the effect, not a gap in it.
+- To audit this, walk the tree rather than reading it — a `<Gyro>` sitting
+  behind a 12-line comment is easy to miss and easy to regex wrong.
+
+**How to verify motion without a wrist.** For a final judgement you need
+`tools/cycle-states.ps1` and your arm, but a loop can be *measured*: burst
+`screencap` and sample the mean luminance of the element's bounding box across
+frames. A working 3s Zzz cycle reads as a clean rise and fall peaking ~3.06s
+apart; a broken one is flat to two decimal places. Two rules make it trustworthy —
+**check every frame is interactive** (`Test-IsFace`; `KEYCODE_WAKEUP` alone does
+not lift the watch out of AOD, so an unchecked probe silently measures the
+ambient screen and reports "frozen"), and **confirm which APK is installed**
+before believing anything the screen shows.
+
+### `Part*` x/y are integers
+
+`x="1.5"` on a `PartDraw`/`PartText` fails validation with `'1.5' is not a valid
+value for 'integer'`. Only the primitives inside — `Ellipse`, `Rectangle`,
+`Line`, `Arc`, `RoundRectangle` — take floats. So sub-pixel placement has to be
+done by moving the shapes within the box, not by moving the box. Cost one
+build to discover.
 
 ### Memory footprint: the whole budget is the font
 
@@ -910,29 +1259,17 @@ nothing, a state the watch can never actually be in — and it was written up as
 deliberate "lets each piece be reviewed alone" artefact, which was the wrong
 call. A sweep that documents impossible states is not documentation.
 
-`cold` therefore carries an explicit `replaceWith` in the STATES table covering
-both 84 and 85. Any future trigger that nests inside another needs the same.
+`cold` therefore carried an explicit `replaceWith` in the STATES table covering
+both 84 and 85. Any future trigger that nests inside another needed the same.
 
-`tools/debug-triggers.mjs` does the repointing and `tools/capture-states.ps1`
-drives the sweep into `docs/states/*.png`. Do not hand-edit the triggers: two of
-them are compound expressions that contain a shorter trigger as a substring, so
-substitution order matters and a hand edit can half-substitute one into something
-that still validates but never fires. Full loop:
-
-```powershell
-node tools/debug-triggers.mjs on
-./gradlew :watchface:installDebug
-pwsh tools/capture-states.ps1
-node tools/debug-triggers.mjs off
-./gradlew :watchface:installDebug     # do not skip - otherwise the watch keeps
-                                      # a build whose states are wired to battery
-```
-
-`node tools/debug-triggers.mjs status` says which state the working tree is in.
-The `on`/`off` round trip is byte-identical (verified by checksum), and every
-substitution asserts its own hit count, so editing a trigger in `watchface.xml`
-without updating the script's `STATES` table fails loudly instead of silently
-producing a sweep where one state is missing.
+> **SUPERSEDED, 2026-08-04.** `debug-triggers.mjs` and the whole
+> expression-forcing approach are gone, replaced by `tools/mock-state.mjs`,
+> which patches the **data** and lets the real Conditions evaluate. Nesting then
+> takes care of itself — set the temperature to 0 and both the cold and the
+> freezing branches fire — so `replaceWith` and the substring-ordering hazard
+> below no longer exist. The finding above is kept because the *lesson* stands:
+> **a sweep that documents impossible states is not documentation.** For the
+> current workflow see "Start here" at the top and the README.
 
 - [x] ~~**RE-RUN THE SWEEP — `docs/states/*.png` are all stale.**~~ **Done
       2026-08-03.** All eight frames in `docs/states/` are current: seven states

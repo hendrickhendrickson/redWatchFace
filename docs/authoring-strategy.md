@@ -1,138 +1,111 @@
-# Authoring strategy: should watchface.xml be generated?
+# Authoring strategy: generating watchface.xml from TypeScript
 
-Analysis, 2026-08-08. Numbers taken against the **working tree** (4185 lines), which is well
-ahead of `d06d0bb` — `watchface.xml` is +1983/-238 against HEAD, so nothing here reproduces
-from a clean checkout of the last commit.
+**Decision, 2026-08-08: switch to a TypeScript generator.** `watchface.xml` becomes a build
+artifact emitted by `node tools/gen/build.ts`; the magic numbers move into a concise collection of
+typed constants.
 
-## The question
+> **Status: done, and since built on.** The migration landed the same day and the first feature
+> authored *in* the generator rather than migrated into it followed immediately — see
+> §"After the migration", which is the part to read if you are about to add something rather than
+> to understand how the tree got here. Everything before that section is the case for the decision
+> and the record of executing it, kept because the reasoning is still load-bearing.
+>
+> This document is about *authoring*. For how the face behaves, see `README.md`; for the running
+> engineering log and open items, `TODO.md`.
 
-`watchface.xml` is 4185 lines of hand-authored WFF v5. `TODO.md` opens its list with the reason:
-the seven-colour weekday table is written out **nine times** because WFF has no variables, and
-"the generator that produced all nine lives in the session scratchpad rather than the repo."
+Numbers below are measured against `watchface.xml` as committed in **`9aa11c9` ("1.1.0")** —
+4185 lines, md5 `e2b772c9a2046c202b034a3a204272ef`. They reproduce from a clean checkout of that
+commit, and are historical: they describe the file the migration started from, not today's.
 
-Would authoring in TypeScript and emitting the XML from `node` improve **readability** and
-**maintainability**? And is there something better?
+## Why
 
-## Verdict
+WFF has no variables, no functions and no constants. Every number is written where it is used. The
+result, with comments stripped:
 
-**Maintainability: yes, for a minority of the edits this file actually receives.** The duplication
-is real and a generator would collapse it. It is also concentrated almost entirely in the parts of
-the face that are *finished* — the weekday tables and the rain field, together about 11% of the
-file. The edits that dominate real sessions are bespoke geometry tuning, where a generator saves
-nothing.
+| | total | distinct |
+|---|---|---|
+| numeric literals in attributes | **3737** | **313** |
+| `x` | 433 | 89 |
+| `y` | 433 | 79 |
+| `width` | 437 | 56 |
+| `height` | 437 | 52 |
+| `cornerRadiusX` / `Y` | 68 / 68 | 16 / 16 |
+| `thickness` | 100 | 15 |
+| `alpha` | 50 | **2** |
+| colour literals | 331 | 61 |
 
-**Readability: no, and slightly negative.** The 4185 lines are hard to navigate, not hard to
-understand. Understanding is carried by ~1670 lines of adjacent prose that record measurements
-and rejected alternatives; a generator moves the authoring surface away from the artifact you
-actually read while debugging on a wrist, and puts that prose through a reflow to save it.
+**About 3400 of the 3737 literals are repeats of a value already written elsewhere.**
 
-**Recommendation: don't generate. Fix navigation, and make the invariants checkable.** Codegen
-stays available behind a written trigger (§6) — the work a checker needs is the same spec a
-generator would need, so nothing is wasted if the trigger fires.
+It is not diffuse repetition either — it clusters into a handful of boxes that are typed out over
+and over:
 
-The strongest evidence for that recommendation is already in `TODO.md`: **two checking tools have
-been written for this face and neither was committed** — the palette generator behind open item 2,
-and the expression-agreement evaluator behind open item 1, which found nothing and whose own note
-explains why that was the point. The gap this project has is not missing abstraction. It is that the
-checks keep getting written in a scratchpad and thrown away.
-
-One thing this analysis found on the way, which is the sharpest argument for where the effort
-should go instead: **a live inconsistency in the date crossfade** (§5) that the validator, all 24
-mock states, the memory-footprint tool, and 1670 lines of careful prose all miss — and that a
-generator would have emitted just as faithfully.
-
----
-
-## 1. What maintainability actually costs here
-
-Maintainability is not "how many lines are duplicated." It is "what does the next change cost."
-So here are the changes this face actually receives, costed.
-
-| Change | Today | With a generator | Helps? |
-|---|---|---|---|
-| Revise the palette (7 hexes) | derive 21 colours by hand, edit 63 literals across 11 sites | edit 7 lines | **massively** |
-| Retune the precipitation ramp | 73 identical edits | 1 | **massively** |
-| Change a gyro gain | 3 or 4 sites, found by walking the tree | 1 | **yes** |
-| Change the phase idiom | 20 copies, 4 of them inside one attribute | 1 | **yes** |
-| Add/move a rain drop | edit a 14-line block | edit a table row | mildly |
-| **Nudge a blob's arm 2px** | edit 1-2 numbers | edit 1-2 numbers, regenerate | **no** |
-| **Add a reaction state** | new bespoke `Condition` + geometry | same, in TS | **no** |
-| **Tune a crossfade** | 4 `Variant` elements | 4 `Variant` calls | **no** |
-| **Fix a shape that clips** | adjust a `PartDraw` box | same | **no** |
-| **Work out why it looks wrong on the wrist** | read the XML + adjacent prose | read the XML, then find the TS | **negative** |
-
-The top four rows are the generator's case and it is a genuinely strong one. But look at what they
-have in common: **they are all global constant changes to finished subsystems.** The rain field is
-done. The weekday palette has been revised once. The gyro gains are tuned.
-
-The bottom six rows are what a working session on this face actually looks like, and the current
-uncommitted work measures it directly. Of **2192 added lines** since `d06d0bb`, the ones naming a
-weekday-table or rain-drop element — `hero_body_*`, `hero_mouth_*`, `mini_*`, `date_chip_*`,
-`rain_drop_*`, `rain_shape_*` — number **127. That is 5.8%.**
-
-So on the largest body of recent work available, **94% of the editing happened in exactly the
-regions a generator would not have helped with.** This is the single most decisive number in the
-analysis, and it is the one that should be re-measured before the trigger in §6 is judged: if a
-future work batch inverts that ratio, the verdict inverts with it.
-
-### The 11%
-
-Of 331 colour literals, 61 are distinct. Of the ~2143 markup lines, the mechanically-derivable
-regions — 11 weekday tables plus 24 rain drops — are roughly 450 lines, about 21% of markup and
-**11% of the file**. Everything else is one-of-a-kind geometry that exists because someone looked
-at a watch and moved something.
-
-A generator is a permanent tax on all edits in exchange for a large discount on a small,
-already-stable minority of them.
-
----
-
-## 2. What readability actually costs here
-
-The file is not hard to read locally. Any given 40 lines is clear, because it is preceded by prose
-explaining what was tried and why it lost. It is hard to **navigate**: 4185 lines, 32
-banner-delimited sections, and the only way to find one is search.
-
-A generator does not fix that. It relocates it — you now navigate a TS module tree *and* a 4185-line
-generated XML file, because the XML is still what you read when the watch shows the wrong thing.
-
-Two things genuinely do fix it, neither of which is codegen:
-
-- **An outline.** Walk the tree, print the banner sections and top-level groups with line ranges,
-  and assert the banner convention holds. ~1 h, no build step. Makes 4185 lines feel like 32
-  sections. This is the single cheapest readability win available.
-- **Leave the prose where it is.** 40% comments looks like bloat and is the opposite. The blocks
-  run 30-85 lines and record things that cannot be re-derived: the v1/v2/v3 crossfade history, the
-  1px "accidental nose" from a flush mask, why `[IS_AMBIENT]` does not exist, that `[DAY_OF_WEEK]`
-  is 1=Sunday *measured on the watch*. This is the file's most valuable property and the thing a
-  migration most endangers.
-
-### Where a generator would read better, honestly
-
-The authoring surface for the fanned-out regions really is dramatically nicer — 59 lines of
-`<Condition>` becomes about 7:
-
-```ts
-byWeekday('body', d => HERO[d], (d, c) => [
-  PartDraw({ name: `hero_body_${d}`, ...HERO_BOX }, [
-    RoundRectangle({ x: 0, y: 0, width: 72, height: 80, cornerRadiusX: 36, cornerRadiusY: 34 },
-      [Fill(c)]),
-  ]),
-])
+```
+31 x  x="14" y="36" width="72" height="80"     the hero's body box
+30 x  x="8"  y="20" width="44" height="42"     the companion's body box
+26 x  x="0"  y="0"  width="450" height="450"   the canvas
+20 x  x="0"  y="0"  width="106" height="132"   the drip box
 ```
 
-And because the body and its mask would take the *same* `c`, the failure `TODO.md` calls the
-dangerous one — "a dark bar across a face on exactly one weekday" — becomes unrepresentable rather
-than merely absent. That is a real gain. §6 says when it is worth 30-40 hours.
+and whole primitive lines recur verbatim 7-8 times:
+
+```
+8 x  <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+7 x  <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
+7 x  <Ellipse x="30" y="42" width="11" height="11">
+7 x  <Rectangle x="22" y="35" width="26" height="13">
+```
+
+**The maintainability consequence is direct:** moving the hero's body is not a one-line edit, it is
+up to 31 coordinated edits that nothing verifies. Retuning the precipitation ramp is 73. Changing
+the phase idiom is 20, four of them inside a single attribute. Under a generator each is one edit
+to one named constant.
+
+The second half of the case is the conditional logic. WFF's only branching construct is
+`<Condition>` / `<Expressions>` / `<Compare>` / `<Default>`, which cannot be factored, parameterised
+or referenced across conditions. So a seven-way weekday choice costs ~45-70 lines of markup, and the
+face pays that **eleven times** (§"the eleven sites"). The salute's window is written out five times
+in two forms for the same reason. In TypeScript a seven-way choice is a `Record<Weekday, T>` and a
+loop.
+
+> The salute was retired on 2026-08-08 and its five window copies went with it. The measurement
+> stands as history — it is what the file looked like at `9aa11c9` — and the pattern outlived the
+> feature: the meeting windows that replaced it are restated four times from one binding in
+> `meetings.ts`. See §"After the migration".
+
+### The counter-argument, and why it lost
+
+An earlier draft of this document recommended *against* generating, on the grounds that ~450 lines
+of structurally-duplicated markup (the weekday tables and the rain field) were only 11% of the file,
+were internally consistent, and were already finished — while the bulk of real editing was
+one-of-a-kind geometry a generator would not help with.
+
+That reasoning had a hole. It counted *structural block* duplication and colour literals, and
+treated everything else as un-abstractable bespoke geometry. But bespoke geometry is exactly where
+the 3737 literals live, and `HERO_BOX` repeated 31 times is abstractable by any standard. The 11%
+figure measured the wrong thing.
+
+What survives from that draft, because it is still true and still shapes the design:
+
+- **The ~1670 comment lines are the project's engineering memory** and must survive the migration
+  intact. §"Comments" makes that a hard requirement, not a best effort.
+- **There is no ground truth except a wrist.** `hasCode="false"` means no logs, and the validator
+  cannot type-check `Transform/@target`, `Variant/@target` or any expression — all three are
+  `xs:string`, so a typo validates, ships and silently does nothing. A generator can therefore emit
+  valid, validator-passing, semantically-wrong XML. This is the migration's central risk and
+  §"Byte-identity" is the answer to it.
+- **`generate-preview.mjs` was deleted for drifting** out of sync with the face. A generator is
+  immune to that specific failure — it inverts the relationship, so file-vs-tool drift becomes
+  impossible — but only once a region is fully migrated. Half-migrated regions have the old problem.
+- **Two checking tools were written for this face and neither was committed** (`TODO.md` open items
+  1 and 2: the palette generator, and the expression-agreement evaluator that "found nothing, which
+  is the point"). Whatever else happens, those belong in the repo.
 
 ---
 
-## 3. The evidence: the duplication is consistent
+## The eleven sites
 
-The case for urgency rests on the nine tables being a live hazard. They are not, today. Measured:
-
-**There are 11 sites, not nine.** `TODO.md` counts the date row as one; it is three. The full list
-of `Part*` sites carrying all seven weekdays:
+`TODO.md` says the seven-colour table is written out nine times. Measured, it is **eleven `Part*`
+sites** — the date row is three, not one:
 
 ```
 date_chip          #563b39 #564f39 #4d5639 #394456 #564639 #394656 #473956
@@ -148,254 +121,390 @@ mini_mouth_open    #594c1e #3f4c24 #273f69 #57381f #3a434d #482e62 #5b2622
 mini_mouth_mask    #f5c92e #a5d63a #6b9df2 #f0862f #8fa3bc #b07ce4 #ee4e43
 ```
 
-That the documented count is already off by two is itself a small maintainability finding: the
-prose describing the duplication has drifted from the duplication.
+All eleven agree today: both masks match their bodies on all seven days, and
+`mini_body[d] === hero_body[next(d)]`. **All 21 derived hexes reproduce byte-for-byte** from the
+seven body colours using standard HSL and `Math.round` at the documented ratios — mouth
+S×0.55/L×0.41, chip S 0.20/L 0.28, text S 0.22/L 0.78. 21 match, 0 mismatch, no fudge factor.
 
-**Every invariant a generator would enforce holds right now:**
-
-- `hero_mouth_mask === hero_body` and `mini_mouth_mask === mini_body`, all seven days. The
-  dangerous mismatch is not present.
-- `mini_body[d] === hero_body[next(d)]`, all seven — the "companion wears tomorrow's colour" rule.
-- All 21 derived hexes reproduce **byte-for-byte** from the 7 body colours using standard HSL and
-  `Math.round` with the documented ratios (mouth S×0.55/L×0.41, chip S 0.20/L 0.28, text S
-  0.22/L 0.78). **21 match, 0 mismatch. No fudge factor.**
-
-So the scratchpad generator's output is intact and self-consistent months later. That is evidence
-*against* the urgency, not for it — and it means the derivation is cheap to re-implement whenever
-it is wanted, which is the thing `TODO.md` was actually worried about losing.
-
-**The duplication is near-duplicate, not copy-paste.** Byte-identical 6-line windows: 3%. After
-masking numeric literals, hex colours and `name=`/`expression=` attributes: 56% at 6 lines, 38% at
-10, 27% at 16. Same shape, different constants. A checker verifies that cheaply; a generator has to
-model it in full.
+That matters twice over: it confirms the scratchpad generator's output is intact, and it means the
+derivation is ~12 lines to re-implement, so `palette.ts` can compute all 21 rather than tabulate
+them.
 
 ---
 
-## 4. Why a generator loses here
+## Design
 
-1. **The prose is the asset and the migration is what threatens it.** ~1670 comment lines, adjacent
-   to what they explain, recording rejected alternatives. Spending 30-40 hours to protect ~450 lines
-   of duplication while reflowing the best 1670 is a bad trade. *Honest counter:* a migration can
-   carry comments verbatim, and the prose that is duplicated *because the markup is* should collapse
-   to one canonical copy plus pointers. That part would be an improvement.
-2. **Generated WFF cannot be reviewed against ground truth.** `hasCode="false"` means no logs; truth
-   is a Pixel Watch 4 over wireless adb. A generator bug emits valid, validator-passing,
-   semantically-wrong XML that surfaces as a wrong pixel someone eventually notices — the same
-   failure mode as the deleted `generate-preview.mjs`, relocated into the shipping artifact.
-3. **`generate-preview.mjs` is the precedent.** Deleted for drifting so far behind the face that
-   running it would have made the preview worse (`README.md`).
-4. **The experiment was already run.** The generator existed and was deliberately not committed.
+### Source of truth: typed builder functions → node tree → serialiser
 
----
+**Not JSX** — Node's strip-only mode cannot transform it, which would force a bundler, a `dist/` and
+source maps. **Not template literals** — the file is already a string; that buys indentation pain
+and no type safety. Plain functions returning a small node union. Functions are precisely the
+abstraction WFF lacks.
 
-## 5. The defect this analysis found
+```ts
+export type Node =
+  | { k: 'el';      tag: string; attrs: Attrs; children: Node[] }
+  | { k: 'comment'; text: string; verbatim?: boolean }
+  | { k: 'raw';     text: string }   // migration escape hatch
+```
 
-The date row's ambient crossfade disagrees with its own documentation.
+### Constants — the point of the exercise
 
-| | out-going | in-coming | overlap |
-|---|---|---|---|
-| `DigitalClock` `:418` / `:426` | `0.45`, offset `0`, **EASE_IN** | `0.50`, offset `0.50`, **EASE_OUT** | none — disjoint |
-| `date_*` `:117` / `:303` | `0.55`, offset `0`, **EASE_OUT** | `0.55`, offset `0.45`, **EASE_IN** | **0.45 – 0.55** |
+```ts
+// geometry.ts — each box named once, used everywhere it is used today
+export const CANVAS    = { x: 0,  y: 0,  width: 450, height: 450 } as const  // 26 sites
+export const HERO_BOX  = { x: 14, y: 36, width: 72,  height: 80  } as const  // 31 sites
+export const MINI_BOX  = { x: 8,  y: 20, width: 44,  height: 42  } as const  // 30 sites
+export const DRIP_BOX  = { x: 0,  y: 0,  width: 106, height: 132 } as const  // 20 sites
+```
 
-The clock's note at `:385-413` describes `0.55/0.45` as the **rejected v2**, whose overlap "is
-centred exactly on the moment both copies are near half alpha, which is the worst possible place to
-put it," and specifies the opposite interpolations for the reason given at `:405-409`. Yet `:114`
-claims the date copies get "the same staggered cross-fade as the clock, and for the same reason."
+```ts
+// expr.ts — the idioms the comments already name, each written once
+export const ramp = (v: Expr, lo: number, hi: number): Expr =>
+  `clamp((${v} - ${lo}) / ${hi - lo}, 0, 1)` as Expr
 
-Either the markup or the comment is wrong. Which one is a design call — the date is 26px under a
-100px clock and may well want different timing — so this document reports it rather than resolving it.
+/** 73 verbatim copies today. */
+export const PRECIP = ramp(src('WEATHER.CHANCE_OF_PRECIPITATION'), 50, 100)
 
-**Why it belongs in an analysis about maintainability:** the validator passes it (valid floats, both
-sums ≤ 1.0); all 24 mock states are steady-state so no screenshot can catch a crossfade midpoint; on
-the wrist it lasts ~200 ms. It is invisible to the entire verification stack. It was found by about a
-dozen lines of checking — and **a generator would have emitted it unchanged.** The fragility in this
-file is in semantics the schema cannot express, not in the line count.
+/** fract() is VERIFIED on hardware; it is what made per-drop rain phases possible. */
+export const phase = (hz: number, offset: number): Expr =>
+  `fract([SECOND_MILLISECOND] * ${hz} + ${offset})` as Expr
 
----
+/** Triangle over a 0..1 phase, ZERO at both ends, so a sawtooth reset in y
+ *  happens at alpha 0 rather than as a visible snap. */
+export const triangleAlpha = (p: Expr): Expr =>
+  `255 * (clamp(4 * ${p}, 0, 1) - clamp(4 * ${p} - 3, 0, 1))` as Expr
+```
 
-## 6. Where a generator genuinely wins, and when to revisit
+### Types that catch what the validator cannot
 
-Being fair to the option, because the trigger matters more than the verdict:
+- **`Source` as a closed union.** `[ANIMATION_VALUE]` was invented, passed the validator and did
+  nothing for a whole session. `src('ANIMATION_VALUE')` will not compile.
+- **`Transform`/`Variant` targets as a per-element union**, modelled as a keyed object rather than a
+  child list. Kills three bugs at once: a misspelled target, two `Transform`s on one target, and a
+  `Variant` and a `Transform` fighting over one attribute — which the XML's own comment says "is not
+  something the schema settles."
+- **`Int` for `Part*` x/y/width/height**, which are `xs:integer` in WFF. Today a float is a validator
+  SEVERE with a line number; here it is an error naming the element and telling you to move the
+  fraction into the primitive inside.
+- **`Record<Weekday, Hex>`** over a seven-member union — adding or dropping a day fails to compile at
+  all eleven sites at once. Body and mask take the *same* argument, so the desync `TODO.md` calls
+  "a dark bar across a face on exactly one weekday" becomes unrepresentable.
 
-- **Drift becomes structurally impossible.** Every checker is a patch over a duplication a generator
-  removes. That is categorical, not a matter of degree.
-- **Palette revision** goes from 63 literals to 7.
-- **A typed `Source` union makes an invented `[ANIMATION_VALUE]` a compile error.** That mistake cost
-  a full session and passed the validator.
-- **Typed per-element `Transform`/`Variant` targets** kill a bug class the XSD provably cannot see:
-  both attributes are `xs:string`, so `target="hieght"` validates, ships, and does nothing forever.
-- **`Part*` `xs:integer` violations** become a build error naming the element.
+### Comments
 
-### Trigger — revisit when any of these is true
+**Hard requirement: all ~1670 lines survive.** They are the engineering memory and most record
+things measured on hardware that cannot be re-derived.
 
-- A third fan-out dimension appears — another blob, a seasonal palette, or a `<UserConfigurations>`
-  theme picker — multiplying 11 tables by 7 again.
-- The palette is revised more than once more.
-- A checker actually catches a weekday desync in the wild.
-- **The 5.8% in §1 climbs past roughly a third.** That figure is the empirical form of this whole
-  verdict, and it is cheap to re-measure: count added lines naming a fanned-out element as a share
-  of all added lines, over the last substantial batch of work.
-
-Until then: a checker's data file and invariant list *are* the generator's spec, so building the
-checker first is not a detour.
-
----
-
-## 7. What to do instead, ranked by value ÷ effort
-
-| # | Change | Est. | Buys |
-|---|---|---|---|
-| 1 | Missing verification jars **fail** instead of skip | 0.5 h | the build stops lying |
-| 2 | `--outline` mode over the XML | 1 h | **the readability win** |
-| 3 | Invariant checker, tier A | 4 h | catches §5; makes the 11 tables safe to leave duplicated |
-| 4 | Palette + ratios as one data file (**with** #3, never alone) | 1 h | `TODO.md`'s actual complaint |
-| 5 | Wire the checker into Gradle `check` | 0.5 h | it runs |
-| 6 | Comment↔markup lint | 1.5 h | stale prose in a 40%-comment file |
-| 7 | `Transform`/`Variant` `@target` legality, hand-curated | 1.5 h | silent no-op typos |
-| 8 | `[SOURCE]` legality against the vendored v5 enum | 0.5 h | invented sources |
-| 9 | `docs/face-model.json` semantic snapshot | 2 h | reviewable diffs |
-| 10 | Expression evaluator + **state-coverage report** | 6 h | untested branches |
-| 11 | Palette expander printing to stdout, never writing | 1.5 h | the scratchpad generator, safely |
-| 12 | Marker-delimited region generation | 4 h | little — recommend against |
-| 13 | Full TypeScript codegen | 30-41 h | deferred, see §6 |
-
-**#1** is the highest value-per-hour item in the repo and has nothing to do with codegen.
-`watchface/build.gradle.kts:63-67` and `:96-100` gate both verification tasks on gitignored jars, so
-a clean clone prints two `Skipping:` lines and reports BUILD SUCCESSFUL having verified nothing.
-`README.md` documents the footgun; documenting is not removing. A `-Pwff.tools.required` property
-makes "I chose not to verify" an explicit flag rather than a silent default.
-
-**#3** must be **read-only** — `mock-state.mjs` mutates the face, this never does, so it needs no
-backup dance and can run on every build. Collect every problem and exit once rather than fail-fast; a
-palette revision would otherwise mean 21 edit-run cycles. Checks worth having: the 11 tables agree;
-derived colours match the ratios; `mini_body[d] === hero_body[next(d)]`; `duration + startOffset <= 1.0`
-(exceeding it means the offset is **silently ignored**); crossfade pairs consistent across the file
-(this is the one that finds §5); `<Compare expression="X">` resolves within its **own** `<Condition>`,
-not merely globally; expressions sharing a name stem are byte-identical; all 73 copies of the
-precipitation ramp identical. One trap to record: a naive extractor reads `wx_icon_sun` as Sunday —
-require all seven day suffixes present, which is what produced the clean list in §3.
-
-**#7/#8:** do **not** build an XSD reader. Full resolution chases element → named complexType →
-recursive `attributeGroup ref` → global `attribute ref` (`alpha` on `Group` sits three hops away in
-`abstractPartType.xsd`) — roughly 3 h and a source of false positives. WFF v5 is frozen; hand-curate
-~20 lines, and vendor the 100 `sourceType.xsd` enumerations with a provenance comment. Reading them
-out of the gitignored jar at runtime would re-create problem #1 exactly.
-
-**#10 is the one addition worth arguing for — and the repo has already half-built it.** `TODO.md`
-open item 1 describes exactly this tool for the salute: pull the `<Expression>` bodies out of the XML
-with a regex, unescape, evaluate over 7 days × 24 hours × boundary minutes × three weather variants,
-and assert that all five copies agree. Its own verdict is the argument: *"It found nothing this time,
-which is the point — it is what makes 'I copied it correctly five times' a checked claim rather than a
-hope."* And like the palette generator, **it is sitting in a session scratchpad rather than the repo.**
-
-Two tools now, both written, both discarded, both solving the same category of problem. That is the
-actual maintainability finding of this analysis: the missing thing is not abstraction, it is a home
-for the checks.
-
-Generalising it is cheap. The expression grammar is tiny — `clamp` ×185, `fract` ×75, `rand` ×2,
-`sqrt` ×1, `textLength` ×1, plus arithmetic, comparison and boolean operators and `[SOURCE]` tokens.
-A Pratt parser is ~150 lines, and it then answers a question nothing else can: *do the 24 states in
-`mock-state.mjs` actually exercise every branch?* — reporting never-true and never-false expressions,
-and states sitting exactly on a threshold (`cold` = 10 = the scarf gate; `goal` = 100; `rainy` = 50,
-all currently boundary cases). It also finds non-monotonic predicates mechanically, without a watch —
-which is precisely open item 3, the forehead pearls that flicker by construction. Hard line:
-**predicates only.** No geometry, no compositing, no drawing. That is `generate-preview.mjs` again.
-
-**#12, recommend against:** rain is the most *stable* region in the file, and its 24 x-positions are a
-hand-placed scatter with repeated values and no formula, so the spec table would be as long as the
-interesting part of the output. Regions worth generating are ones that churn; these do not.
+- Comments are first-class nodes and sit in the children array where they sit today. The importer
+  captures each one **verbatim**, so the migration never has to reproduce reflow — only indentation.
+- Prose that is duplicated *because the markup is* (the nine copies of the nine-times note) collapses
+  to one canonical copy in the owning module, plus a short provenance stub at each emitted site, so
+  someone reading the XML on the wrist is still pointed at the reason.
+- The header palette table is **generated from `palette.ts`**, so the documentation of the colours
+  can no longer drift from the colours. It is hand-maintained today and lists every hex a second time.
+- Every emitted file carries a `GENERATED FILE - DO NOT EDIT` header naming the regenerate command.
+  Without it someone iterating on the wrist edits the XML directly and loses it. That is a certainty.
 
 ---
 
-## 8. The rot rule
+## Migration: the semantic differ is the gate
 
-The most reusable thing this analysis produced, and the reason #4 above carries a condition.
+**Superseded 2026-08-08.** The first plan gated on byte-identical output. That was dropped once the
+requirement was stated properly: the generated XML does not need to *look* like the hand-authored
+file, it needs to *render* the same. Byte comparison cannot express that — it fires on every
+reflowed attribute — and chasing it would have meant reproducing 128 inline elements, 61
+hand-aligned wrapped attribute lines and a stray odd indent, forever.
 
-`generate-preview.mjs` died because it **restated** the face — it held its own copy of the geometry,
-the face moved, the copy did not, and nothing said so. It kept producing a plausible-looking PNG.
-`mock-state.mjs` has survived the same period because it **derives**: it string-matches the actual
-current markup and calls `fail()` when reality does not match. Its own header says so — "every
-substitution asserts something, so an edit to watchface.xml fails here loudly instead of silently
-producing a wrong snapshot."
+What replaced it is stronger. `tools/gen/model.ts` reduces a face to what actually reaches the
+screen — element order (which *is* draw order in WFF), tag, attributes, text — normalises away what
+does not (comments, whitespace, attribute order, `1.0` vs `1`, including numeric literals *inside*
+expressions), and compares. `node tools/gen/build.ts --diff` must report zero differences against
+the baseline.
 
-Three properties:
+During the migration that baseline was a frozen copy of the pre-migration `watchface.xml`. Once the
+generated face had been validated, memory-checked and shot across all 25 states on the wrist, the
+copy was replaced by **`tools/gen/face.model.json`** — a committed semantic snapshot of the same
+thing. It answers the identical question at a fraction of the size, and unlike the frozen XML it
+keeps answering it for every *future* change rather than only for the migration. An intended
+rendering change is accepted with `--snapshot`, and the new baseline lands in the same commit as
+the change that caused it.
 
-- **P1 derivation** — takes `watchface.xml` as input; holds no second copy of the face.
-- **P2 loud failure** — aborts naming the file; never degrades to plausible-but-wrong output.
-- **P3 always runs** — cheap enough to wire into `check`, so divergence surfaces within one commit.
+**The differ has a self-test, because a green check proves nothing until you have watched it fail.**
+`--selftest` mutates the reference in seven ways that would change the rendering — a colour, a 1px
+move, an expression, a ramp threshold, a dropped element, a rename, a typo'd `Transform` target —
+and asserts each is caught, plus two controls (all comments stripped, `72` → `72.0`) that must be
+ignored. It runs in a second and it stays.
 
-| | P1 | P2 | P3 |
-|---|---|---|---|
-| `mock-state.mjs` | yes | yes | no — only on capture |
-| `generate-preview.mjs` (deleted) | no | no | no |
-| invariant checker (#3) | yes | yes | yes |
-| palette data file **alone** | no | no | no |
-| palette data file **+ checker** | yes | yes | yes |
-| `face-model.json` dumped and diffed | yes | yes | yes |
-| expression harness (parses the file) | yes | yes | yes |
-| palette expander (stdout only) | no | yes, via the checker | no, by design |
-| full codegen | inverted | partly | yes |
+This was not theoretical. The first `--check` compared the generator's output against its own
+input, so it passed on a hand-edited file; and the first `--selftest` reported three false failures
+because its mutations were landing in the header comment rather than in markup. Both were found by
+making the checks prove themselves.
 
-**The rule, for `README.md`'s tool section:** *a tool may restate a fact about the face only if
-something asserts the restatement, on every build.* That one sentence licenses the palette data file,
-forbids a second rasteriser, and explains the difference. It also means **#4 and #3 land together or
-not at all** — a palette data file without the checker is strictly worse than today.
+**How it actually ran.** Rather than a line-range manifest of un-migrated regions, the whole tree
+was converted mechanically in one pass — a throwaway emitter walked the parsed XML and wrote
+TypeScript builder calls, with repeated boxes and colours already swapped for named constants — and
+then the interesting regions were collapsed by hand on top of a base that was already known good.
+Each collapse was one commit with `--diff` clean. The emitter and its driver were deleted once the
+migration landed; they could only produce a *worse* result if re-run against the refactored source.
 
-Full codegen sits outside the table because it inverts the relationship: with one source, file-vs-tool
-drift is definitionally impossible. That is a real advantage and it is the strongest thing in §6.
+For the record, on byte-identity, which was the original plan and would have been affordable:
+
+| | |
+|---|---|
+| Markup, attribute order, indent | **yes** — the file is already machine-regular, 2-space indent |
+| Comments | **yes**, via verbatim capture |
+| The 21 derived colours | **yes — verified 21/21** |
+| Rain width/height extras | **yes** — `w*0.3` exact; `h*0.35` needs banker's rounding |
+| Rain fall distances | **no** — 2 of 9 sampled were hand-nudged; table them |
+| Numeric formatting | **yes, fiddly** — `fmt()` must not normalise `1.0` to `1` |
+
+Expect 2-3 places where a one-line non-identical diff is accepted deliberately and justified in the
+commit message.
+
+**Sequence:** skeleton + serialiser + copier (identical, 0% migrated) → Gradle wiring and the
+mock-state guard → rain (isolated, purely numeric, failure visible in one `cycle-states` run) →
+`expr.ts` + `sources.ts` + typed targets → `geometry.ts` boxes → `palette.ts` + the date row → the
+eight blob weekday sites → gyro constants and the ambient/interactive pairs → delete the legacy copy.
+
+Every commit boundary is a working repo.
+
+### Status — migrated
+
+`watchface.xml` is now generated in full from `tools/gen/*.ts`. 4381 hand-authored lines became
+2228 generated ones plus ~1700 lines of TypeScript, and the semantic differ reports zero
+differences against the pre-migration face.
+
+| Module | What it holds |
+|---|---|
+| `palette.ts` | the 7 chosen weekday hexes, the HSL derivations, and 30 named fixed colours |
+| `geometry.ts` | every repeated box — `HERO_BOX` was 31 literal copies, `MINI_BOX` 30, `CANVAS` 26 |
+| `expr.ts` | the closed `Source` union and the ramp/phase/triangle idioms |
+| `weekday.ts` | `byWeekday()` — the seven-way fan-out, written once instead of eleven times |
+| `blob.ts` | shared blob primitives taking explicit geometry |
+| `crossfade.ts` | `FADE_OUT`/`FADE_IN`, one binding for four hand-written `Variant` window sets |
+| `meetings.ts` | the meeting windows (added after the migration — see below) |
+| `face/*.ts` | 17 section modules, one per Scene child, in draw order |
+
+Measured effect on the duplication that motivated this:
+
+| | before | after |
+|---|---|---|
+| weekday fan-out sites | 11 hand-written tables | 1 `byWeekday()` |
+| precipitation ramp | 73 verbatim copies | 1 binding (`PRECIP`) |
+| hero body box | 31 literal copies | 1 constant |
+| rain field | 282 lines | 126, of which 24 are the drop table |
+| `blob-hero` | 816 lines | 552 |
+
+The audit that came free with the tree found nothing wrong but is worth keeping: **228 part names,
+all unique**. It initially reported duplicates — `hero_eyes_startled` and two salute palms — which
+are `<Expression>` names colliding with the parts they gate. That is a separate namespace and reads
+well, so the check excludes `Expression`. Noted because a check that cries wolf is one people learn
+to skip, and because the collision recurs by design: the salute's two are gone but
+`hero_controller` now names both an expression and the part it gates.
+
+**The generator must not read the file it writes.** The first version of `--check` did, and it was
+therefore vacuous: output equalled input by construction, so appending a newline to `watchface.xml`
+passed. The safety net had reintroduced this project's signature failure — silently wrong, with a
+green result. The fix is `tools/gen/face.ts`, which reads a frozen
+`tools/gen/legacy/watchface.original.xml`; `watchface.xml` is then a genuine output and a hand edit
+to it fails:
+
+```
+$ printf '\n' >> watchface/src/main/res/raw/watchface.xml
+$ node tools/gen/build.ts --check
+  watchface.xml is out of date with tools/gen.
+    first difference at byte 259310 (line 4382)
+    original: "...</Scene>\r\n</WatchFace>\r\n\n"
+    emitted:  "...</Scene>\r\n</WatchFace>\r\n"
+  exit=1
+```
+
+`face.ts` no longer reads the frozen copy at all — the face is built entirely from TypeScript. The
+copy survives as the semantic differ's reference, which is the only thing that can still answer
+"does this render the same as what shipped". Deleting it retires that question permanently, so keep
+it until the generated face has been on a wrist long enough to trust.
+
+**Wired in.** `:watchface:checkWatchFaceXmlUpToDate` runs before `validateWatchFaceXml`, and unlike
+the two jar-gated tasks it **throws rather than skips** when the generator is missing — those skip
+because the jars are a separate download, whereas a missing generator is a broken checkout. It does
+skip, loudly, when a mock is in place, because after a capture run that is the normal state of the
+tree.
+
+```
+> Task :watchface:checkWatchFaceXmlUpToDate
+  OK  watchface.xml is up to date.
+> Task :watchface:validateWatchFaceXml
+INFO: PASSED : watchface.xml is valid against watch face format version #5
+BUILD SUCCESSFUL
+```
+
+### Two things that must not break
+
+**`mock-state.ts` rewrites `watchface.xml` in place.** If generation is wired into the build, a
+`mock-state on rainy` followed by `installDebug` regenerates the file and blows the mock away before
+aapt sees it — every snapshot silently becomes the un-mocked face. Resolution: the generated XML is
+**committed**, `mock-state.ts` is unchanged and runs as a post-processor, generation is **never**
+wired into `assembleDebug`, and `build.ts` aborts if a mock backup exists.
+
+It still broke, and finding out how was worth the trip. `mock-state.ts` matches a whole
+`<Template>` as one exact string when it swaps in literal text, and the serialiser had been
+indenting `Template`'s CDATA onto its own line. `node tools/mock-state.ts on rainy` refused:
+*"ABORT: a [DAY_OF_WEEK_S] Template was not in the swap table — watchface.xml has changed."* That is
+the script working exactly as designed; its header says every substitution asserts something so an
+edit fails loudly instead of silently producing a wrong snapshot. The fix went into the serialiser,
+not into `mock-state.ts`: any element with text or CDATA content now renders inline, which also
+stopped `<Expression>` bodies picking up leading whitespace.
+
+**A clean clone must still build.** The generated XML is committed — like `docs/states/*.png` and
+`preview.png` already are — so a clone with no Node produces a correct APK, and `git diff` on the XML
+remains the closest thing this project has to a test suite. The up-to-date check is a separate
+verification task. It must **fail** rather than skip when the toolchain is absent, or it acquires the
+exact problem that already lets a clean clone report BUILD SUCCESSFUL having verified nothing
+(`watchface/build.gradle.kts:63-67`, `:96-100`).
 
 ---
 
-## 9. XSLT, XInclude, preprocessing — not viable
+## After the migration
 
-Three independent blockers, any one fatal:
+Everything above is about *moving* a finished face into a generator. Design pass 7 — retiring the
+salute and replacing it with a headset, a coffee cup and a game controller, 2026-08-08 — was the
+first feature **authored** in it, and it is the better test: the migration only had to reproduce
+something that already worked, whereas a new feature has to be right the first time in a language
+where nothing checks it.
 
-- **`res/raw/` is copied verbatim** — that is the definition of `raw` versus `res/xml`, and
-  `watchface/build.gradle.kts:29-31` (`noCompress += listOf("xml")`) guarantees byte passthrough.
-  No XInclude processor ever sees the file.
-- **The consumer is the Wear OS WFF runtime**, with its own parser, not a general XML parser. It does
-  not implement XInclude, entities, or `xsl:` anything.
-- **WFF's XSDs use closed `xs:all` particles**, so any foreign element fails validation before it
-  reaches a watch.
+**What the generator delivered as advertised.** Retiring the salute meant deleting two bindings
+(`HANDS_FULL`, `SALUTE_BUSY`) and collapsing the `Condition`s that used them; **all eight XML copies
+of that expression pair went with them**, verified — the emitted file now contains zero. `--diff`
+proved nothing else moved. Adding three palette entries and removing two was a compile error at
+every use site until it was consistent.
 
-Running XSLT as a Gradle pre-step would work, but that is codegen in a worse language with all of §4's
-review problems. If the goal was splitting the file for readability, #2 gets it without a build step.
+Worth being accurate about the window duplication, because it is the headline claim and it is
+currently *latent* rather than demonstrated: `meetings.ts` holds three bindings, and each is emitted
+**exactly once** today. The copies that would prove the point disappeared when the companion's
+headset was scrapped mid-pass — `HEADSET_WINDOW` was briefly emitted twice, once per blob. It
+returns to two the moment that headset comes back, which is the open item at the end of `TODO.md`.
+The module earns its keep either way, since restating a window is a one-line call rather than a
+300-character paste, but a reader checking the output today will find one copy of each and should
+not conclude the tooling is doing nothing.
+
+**Two hazards the generator introduces that hand-authoring did not**, both worth knowing before
+composing expressions:
+
+1. **Operator precedence survives composition.** `or(a, b, c, d)` builds the flat string
+   `a || b || c || d` with no parentheses of its own. Passed straight into
+   `and(days, hourTest, minuteTest)` it parses as `a || b || (d && hourTest && minuteTest)`, because
+   `&&` binds tighter than `||` and nothing stops the last OR term reaching past its own boundary.
+   The symptom was two weekdays showing a headset at *every* hour of the day. **Reading the
+   expression looks correct**; it was caught by evaluating the emitted text at midnight. The helpers
+   return strings, so **any `or()` later combined with `and()` needs `group()` around it** — the
+   type system brands `Expr` but cannot express associativity. This is the one place where the
+   generator is *more* dangerous than writing the parenthesis by hand, because composition hides it.
+2. **`--snapshot` is a ratchet, not a review.** It accepts whatever the generator currently emits.
+   The gate only works if the diff is read before it is accepted, and a large intended change (this
+   pass opened with ~900 differences) is exactly when skimming is tempting. The `--selftest` proves
+   the differ *can* fail; nothing proves the human looked.
+
+**An architectural finding worth recording next to the section modules.** A `PartDraw` cannot start
+left of its parent group's origin — content there is clipped, as the companion's left hand
+demonstrates (its cream cap is drawn from `x-2` and arrives flat-sided). The hero's raised hand sits
+at group-local `x10.5`, so a prop wider than 21px could not be centred on it — and a round of art
+was shipped 3.5px off-centre on the strength of that, *and documented as unfixable*, which is the
+part worth flinching at: a correct premise had been carried to a false conclusion and then written
+down as a constraint. **The group is not the only coordinate space available.** The umbrella, the
+bolt, the burst and both sets of Zzz are already siblings of the blob rather than children,
+positioned in absolute canvas coordinates, each repeating the blob's Gyro gain by hand so they still
+track the wrist. Moving the three hand props into their own top-level section
+(`face/hero-props.ts`, canvas `(199,262)`) centred them exactly. Draw order was preserved by
+registering it immediately after `blobHero()`, which is where those `Condition`s had been its last
+children; the cocktail's box moved from `(0,6)` to `(8,6)` for the same canvas position `(207,268)`,
+asserted in a check and confirmed by reshooting `3-sunny`. Generalised: **anything that needs to
+overhang a blob belongs beside it, not inside it**, and `heroGyro()` is what makes that free.
+
+**Where the generator does not help, and what did.** It has nothing to say about whether a shape
+*reads* at 426×426 — that still costs a build, an install and a look at a wrist, and this pass took
+four rounds of it. What shortened the last two was borrowing the generator's own habit: writing a
+throwaway script that asserted the claims the code comments were making (buttons contained against
+a shell's rounded *corner arcs* rather than its bounding box, a handle tangent at 16.97 against a
+wall at 17, steam wisps' stroke-inflated bands not touching, a band's clearance over the head
+sampled across its whole span, and — the one that would never have been checked by eye — that the
+band's colour differed from the arms' by a luma of 2.8, i.e. was the same colour). Thirty
+assertions, all green before the build, and the shoot confirmed them. **Geometry that can be stated
+in a comment can be asserted in a script**; doing so is what turned "shoot and see" into "shoot to
+confirm."
 
 ---
 
-## 10. Toolchain, if tooling is built
+## Toolchain
 
-**Decided: TypeScript with `package.json`.**
+**TypeScript with `package.json`.** Node 22.21.1 executes type-annotated TS with no flag
+(`--experimental-strip-types` default since 22.18); `enum` throws
+`ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`, so the constraint is erasable-syntax-only and `tsconfig`'s
+`erasableSyntaxOnly` makes that a compiler error rather than a convention. Stripping does **not**
+type-check, so `typescript` is a devDependency used solely for `tsc --noEmit` — and since the types
+are the entire justification, that check has to run somewhere reproducible.
 
-Node 22.21.1 (this machine) executes type-annotated TS with no flag — `--experimental-strip-types` has
-been default since 22.18 — and `enum` throws `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`, so the constraint is
-erasable-syntax-only; `tsconfig`'s `erasableSyntaxOnly` makes that a compiler error rather than a
-convention. But **stripping does not type-check**, so `typescript` as a devDependency is what makes
-the types real.
+Two devDependencies (`typescript`, `@types/node` — the second is types-only, no runtime code),
+zero runtime dependencies, no build step. The repo gains its first `package.json`, lockfile and
+`node_modules`; Node was already an undeclared prerequisite, since `mock-state.ts` and both
+PowerShell scripts shell out to it.
 
-The cost, stated once: the repo's first `package.json`, lockfile and `node_modules`, against a current
-convention of zero-dependency `.mjs`. One consequence to plan around — a task needing `npm ci` cannot
-be unconditionally wired into Gradle the way a zero-dep script could, so it inherits the same
-`onlyIf`-gating that already lets a clean clone build green having verified nothing (§7 #1). Wire it so
-that a missing toolchain *fails* rather than skips, or the checker acquires the exact problem it was
-built to remove.
+`erasableSyntaxOnly` is verified working: an `enum` fails `tsc --noEmit` with
+`error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled`, which is a far
+better failure than node's `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` stack trace at run time.
+
+---
+
+## Not viable: XSLT, XInclude, resource preprocessing
+
+Three independent blockers. `res/raw/` is copied verbatim by definition, and
+`watchface/build.gradle.kts:29-31` (`noCompress += listOf("xml")`) guarantees byte passthrough, so no
+XInclude processor ever sees the file. The consumer is the Wear OS WFF runtime with its own parser.
+WFF's XSDs use closed `xs:all` particles, so any foreign element fails validation. Running XSLT as a
+Gradle pre-step is just this plan in a worse language.
+
+---
+
+## Carried over: work worth doing regardless
+
+1. **Make the missing verification jars fail rather than skip** (0.5 h). Highest value-per-hour item
+   in the repo, unrelated to codegen. A `-Pwff.tools.required` property makes "I chose not to verify"
+   explicit instead of silent.
+2. **Commit the expression-agreement evaluator.** Still worth having, though not for the reason it
+   was listed: the generator closed the "do the copies agree" question structurally, since every
+   copy is emitted from one binding. The grammar is tiny — `clamp` ×185, `fract` ×75, `rand` ×2,
+   `sqrt` ×1, `textLength` ×1 — so a Pratt parser is ~150 lines. It answers what the generator
+   cannot: *do the mock states in `mock-state.ts` exercise every branch?*, and it finds
+   non-monotonic predicates without a watch. Predicates only — no geometry, no compositing, no
+   drawing.
+
+   **A throwaway version of this has now paid for itself twice**, both times on work built *on* the
+   generator rather than by it. Evaluating `HEADSET_WINDOW` straight out of the emitted text caught
+   an operator-precedence bug that reading the expression could not (§"After the migration"), and a
+   second script asserting 30 geometry claims before a build ended a three-round cycle of
+   shoot-and-eyeball. Neither script was kept, which is the argument for committing one that is.
+3. ~~**The date crossfade disagrees with its own documentation.**~~ **Closed 2026-08-08**, judged on
+   the wrist — the only way it was ever visible, since the transition lasts ~200 ms and every mock
+   state is steady-state. The finding: a `<Variant>` window is used in **both** directions, so a gap
+   going one way is an overlap coming back and there is no timing that avoids both. The date's real
+   problem was never the timing but that its two copies were not congruent — a centred `"%s %d"`
+   against two parts pinned around a chip. Fixed in `crossfade.ts` (one binding, which throws at
+   build time if the windows overlap into ambient) and `face/date-common.ts` (the boxes both copies
+   must agree on). Full write-up in `TODO.md`.
 
 ---
 
 ## Reproducing these numbers
 
-- **Composition** — 4185 lines, 2143 markup, ~40% comment. Any XML parser over the working tree.
-- **Derivation, 21/21** — read the 7 `hero_body` hexes, convert to HSL, apply the three documented
-  ratio pairs, `Math.round` back to hex, compare against the file's 21 derived values. If this ever
-  prints anything but 21/21, §3's central claim is dead and the verdict in §6 should flip.
-- **The 11 tables** — extract every `<PartDraw|PartText name="BASE_DAY">` block's `color=`, group by
-  `BASE`, keep only groups having all seven day suffixes.
-- **§5** — read the four `Variant` elements at `:117`, `:303`, `:418`, `:426` against the prose at
-  `:114` and `:385-413`. One minute, no tooling.
-- **Edit-cost surface** — 331 colour literals / 61 distinct; 73 precipitation-ramp copies; 20 phase-idiom
-  copies; gyro gains at 3 and 4 sites; 32 banner sections.
-- **The 5.8%** — `git diff -U0 -- watchface/src/main/res/raw/watchface.xml`, count `^+` lines, then
-  count those matching `hero_body_|hero_mouth_|mini_body_|mini_mouth_|date_chip_|date_weekday_|date_day_|rain_drop_|rain_shape_`.
-  127 of 2192 at the time of writing.
+- **Literal census** — strip comments (`perl -0pe 's/<!--.*?-->//gs'`), extract quoted attribute
+  values, count numerics: 3737 total / 313 distinct.
+- **Repeated boxes** — `grep -oE 'x="[0-9.-]+" y="[0-9.-]+" width="[0-9.-]+" height="[0-9.-]+"' | sort | uniq -c | sort -rn`.
+- **Derivation, 21/21** — read the 7 `hero_body` hexes, convert to HSL, apply the three ratio pairs,
+  `Math.round` back to hex, compare against the file's 21 derived values.
+- **The eleven sites** — extract every `<PartDraw|PartText name="BASE_DAY">` block's `color=`, group by
+  `BASE`, keep groups having all seven day suffixes. (A naive extractor reads `wx_icon_sun` as Sunday;
+  requiring all seven suffixes rejects it.)
+- **The crossfade** — read the four `Variant` elements at `:117`, `:303`, `:418`, `:426` against the
+  prose at `:114` and `:385-413`.
 
 Nothing here needs a build, an install, or a watch.

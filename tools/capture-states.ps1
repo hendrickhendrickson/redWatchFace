@@ -20,7 +20,7 @@
     relationships between them, most visibly producing a freezing frame with a
     snowflake above two blobs wearing no scarves, which the watch can never do.
 
-    Now tools/mock-state.mjs patches the DATA instead - temperature, heart rate,
+    Now tools/mock-state.ts patches the DATA instead - temperature, heart rate,
     hour, and so on - and the real Conditions evaluate normally, so nesting
     takes care of itself. The cost is one BUILD PER STATE, about nine minutes
     for the set of twenty-five. Correctness is worth more than the two minutes saved.
@@ -63,7 +63,7 @@ $repo = Split-Path -Parent $PSScriptRoot
 $dir = Join-Path $repo $OutDir
 New-Item -ItemType Directory -Force $dir | Out-Null
 
-# file name -> mock-state.mjs state name
+# file name -> mock-state.ts state name
 # SUB-STATES USE A LETTER SUFFIX rather than their own number, so that inserting
 # one does not renumber every file after it, and so the set never needs two-digit
 # names where '10-x' would sort before '2-x'.
@@ -90,14 +90,16 @@ $states = @(
     # sweep meant the only record that it exists was the XML. If a reaction
     # cannot be seen in docs/states, assume it will be believed missing.
     @{ file = '9-step-goal';    mock = 'goal';         label = 'step goal met: flag' },
-    # THE SALUTE - a clock reaction like 2-night, so it keeps its place in the
-    # numbered set. It is the first state to need TWO DIGITS, which the note above
-    # was written to avoid; that clause is now only about how the folder lists, since
-    # the sheet's order comes from $sheetOrder and not from the filenames.
-    @{ file = '10-salute';         mock = 'salute';     label = 'weekday 09:05-09:20: salute, near arm' },
-    @{ file = '10b-salute-blocked'; mock = 'salutebusy'; label = 'salute 16:00-16:30, hand full: far arm' },
-    @{ file = '10c-friday-salute'; mock = 'salutefri';  label = 'Fri 15:00-15:30: afternoon salute, early' },
-    @{ file = '10d-friday-drink';  mock = 'fridrink';   label = 'Fri 15:30-16:00: cocktail replaces it' },
+    # THE MEETING SCHEDULE - a clock reaction like 2-night, so it keeps its place
+    # in the numbered set. It is the first state to need TWO DIGITS, which the note
+    # above was written to avoid; that clause is now only about how the folder
+    # lists, since the sheet's order comes from $sheetOrder and not from the
+    # filenames. Replaces the old salute/salutebusy/salutefri/fridrink quartet -
+    # see meetings.ts for why the salute itself no longer exists.
+    @{ file = '10-headset';          mock = 'headset';       label = 'digital standup 09:05-09:20: headset' },
+    @{ file = '10b-friday-headset';  mock = 'headsetfri';    label = 'Fri 15:00-15:30: game time, headset only' },
+    @{ file = '10c-friday-controller'; mock = 'fricontroller'; label = 'Fri 15:30-16:00: controller replaces it' },
+    @{ file = '10d-wednesday-coffee'; mock = 'wedcoffee';    label = 'Wed 10:30-10:45: in-person, coffee cup' },
     # THE WEEKDAY COLOUR SCHEME - seven frames, prefixed 'w-' so they sort after
     # the reaction states rather than among them. These are a THEME dimension, not
     # reactions: every one of them is the baseline face, differing only in the hue
@@ -322,14 +324,14 @@ function Nudge($serial) {
 function Invoke-Mock($mockName) {
     Push-Location $repo
     try {
-        & node tools/mock-state.mjs on $mockName 2>&1 | Out-Null
+        & node tools/mock-state.ts on $mockName 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) {
-            & node tools/mock-state.mjs on $mockName
-            throw "mock-state.mjs failed for '$mockName'"
+            & node tools/mock-state.ts on $mockName
+            throw "mock-state.ts failed for '$mockName'"
         }
         & cmd /c ".\gradlew.bat :watchface:installDebug --console=plain" 2>&1 | Out-Null
         $ok = ($LASTEXITCODE -eq 0)
-        & node tools/mock-state.mjs off 2>&1 | Out-Null
+        & node tools/mock-state.ts off 2>&1 | Out-Null
         if (-not $ok) { throw "install failed for '$mockName'" }
     }
     finally { Pop-Location }
@@ -348,15 +350,22 @@ function Grab($serial, $file, $label) {
         Nudge $serial
         Wake $serial
     }
-    if (-not $ok) { Write-Warning "  $file may show the launcher, a notification or ambient - not the face" }
+    if (-not $ok) {
+        Write-Warning "  $file may show the launcher, a notification or ambient - not the face"
+        $script:problems++
+    }
     if (Test-Path $local) {
         $script:written += @{ path = $local; label = $label }
         Write-Host "  wrote $script:OutDir/$file.png  ($label)"
     }
-    else { Write-Warning "  failed: $file" }
+    else { Write-Warning "  failed: $file"; $script:problems++ }
 }
 
 $written = @()
+
+# Anything that should make this script report failure. See the exit at the
+# bottom for why the exit code could not be trusted before.
+$problems = 0
 
 if (-not $partial) {
     Get-ChildItem -Path $dir -Filter '*.png' -ErrorAction SilentlyContinue |
@@ -387,12 +396,12 @@ try {
         Write-Host "  building $($s.mock)..."
         Invoke-Mock $s.mock
         $w = Get-Watch
-        if (-not $w) { Write-Warning "  no device for $($s.file), skipping"; continue }
+        if (-not $w) { Write-Warning "  no device for $($s.file), skipping"; $script:problems++; continue }
         Wake $w
         Grab $w $s.file $s.label
     }
 }
-catch { Write-Warning "  sweep aborted: $_" }
+catch { Write-Warning "  sweep aborted: $_"; $script:problems++ }
 
 # Ambient. A display mode rather than a data state, so it uses the base values
 # and its own timeout dance. Reachable on its own with -Only 0-ambient, which
@@ -453,7 +462,7 @@ else {
 #
 # Invoke-Mock restores watchface.xml after each state but does NOT reinstall,
 # so without this the watch is left running whichever state was captured last.
-# It looks fine - it is the same face - and `mock-state.mjs status` reports
+# It looks fine - it is the same face - and `mock-state.ts status` reports
 # "real values (clean)", because that inspects the working tree and knows
 # nothing about the device. The gap between those two facts cost a full round
 # of "the animation is frozen / the parallax is gone / the ambient font is
@@ -467,7 +476,7 @@ if ($w) {
     Write-Host "restoring the real build to the watch..."
     Push-Location $repo
     try {
-        & node tools/mock-state.mjs off 2>&1 | Out-Null   # no-op when already clean
+        & node tools/mock-state.ts off 2>&1 | Out-Null   # no-op when already clean
         # `cmd /c`, NOT `cmd \c`. With a backslash, cmd does not recognise the
         # switch, opens an INTERACTIVE shell, reads EOF, exits 0, and never runs
         # the command - so the install silently does not happen and the exit
@@ -481,12 +490,16 @@ if ($w) {
         # Trust the DEVICE, not the exit code: the package's install timestamp
         # has to have actually moved.
         if ($gradleOk -and $after -ne $before) { "  real build reinstalled - the watch is showing live data again" }
-        else { Write-Warning "  REINSTALL FAILED - the watch is STILL RUNNING A MOCK BUILD. Run: .\gradlew :watchface:installDebug" }
+        else {
+            Write-Warning "  REINSTALL FAILED - the watch is STILL RUNNING A MOCK BUILD. Run: .\gradlew :watchface:installDebug"
+            $script:problems++
+        }
     }
     finally { Pop-Location }
 }
 else {
     Write-Warning "no device - the watch may still be running a MOCK build. Run: .\gradlew :watchface:installDebug"
+    $script:problems++
 }
 
 # ---------------------------------------------------------------------------
@@ -498,3 +511,28 @@ if ($partial) {
 elseif ($written.Count -gt 0) {
     Write-ContactSheet $written
 }
+
+# ---------------------------------------------------------------------------
+# Exit code
+#
+# THIS SCRIPT USED TO REPORT FAILURE ON EVERY SUCCESSFUL RUN. PowerShell hands
+# back whatever $LASTEXITCODE the last native command left, and two of the calls
+# here leave a non-zero one as a matter of course:
+#
+#   adb shell settings get ... | Select-Object -First 1
+#       Select-Object closes the pipe after the first line, adb is torn down
+#       mid-write and exits 255.
+#   node tools/mock-state.ts off
+#       exits 1 when the tree is already clean, which during the restore step is
+#       the normal case.
+#
+# Neither is a problem, and a caller cannot tell that from a 255. Everything in
+# this repo that matters is verified by looking at the device rather than at an
+# exit code, precisely because exit codes here have lied before - so the fix is
+# to make this one mean something rather than to remove the check.
+# ---------------------------------------------------------------------------
+if ($problems -gt 0) {
+    Write-Warning "$problems problem(s) above - the sweep did not fully succeed."
+    exit 1
+}
+exit 0

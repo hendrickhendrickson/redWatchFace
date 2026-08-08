@@ -2,7 +2,168 @@
 
 Ordered so that nothing blocks on the watch until the face already works in an emulator.
 
-## Start here (as of 2026-08-07, design passes 4–6 — reactions, colour, the salute)
+## Start here (as of 2026-08-08, design pass 7 — the salute retired, headset/coffee/controller added, then revised after the first shoot)
+
+**The salute is gone. In its place: a headset for every digital meeting, a coffee
+cup for Wednesday's in-person one, and a game controller for the back half of
+Friday's game time.** The wearer's actual weekly schedule turned out not to match
+what the face had been showing: the two daily windows were digital standups (a
+headset fits, a salute never did), Friday's afternoon window is a shared game
+session rather than a second standup, and Wednesday - previously saluting twice a
+day like everyone else - actually has no digital standup at all, only a single
+in-person 10:30-10:45 one. All of this lives in `tools/gen/meetings.ts` now
+(replaces `salute.ts`), and the arm-routing machinery the salute needed
+(`HANDS_FULL`/`SALUTE_BUSY`, the two "which arm" Conditions, the palm-on-the-brow
+PartDraws) is deleted rather than left dormant - nothing in the new schedule ever
+raises an arm, so there was nothing left for it to route between.
+
+**A REAL BUG WAS CAUGHT BEFORE IT SHIPPED, and it is worth reading regardless of
+whether you touch this area again:** `or(eq(DOW,2), eq(DOW,3), eq(DOW,5),
+eq(DOW,6))` builds a flat `A || B || C || D` with no parentheses of its own, and
+pasting that straight into `and(days, eq(HOUR,9), ...)` parses as `A || B || (D &&
+HOUR==9 && ...)` - `&&` binds tighter than `||` with nothing grouping the OR chain.
+The symptom was Monday and Tuesday showing a headset at every hour of the day,
+found by evaluating `HEADSET_WINDOW` at midnight rather than by reading the
+expression - reading it looks fine. Fixed by wrapping both day-lists in `group()`.
+The lesson generalises: any `or()` result that is later ANDed with something else
+needs `group()` around it, and this is why - see the comment now sitting on
+`MON_TUE_THU_FRI` in meetings.ts.
+
+Priority for the one new collision - a hot, sunny Wednesday 10:30-10:45, or a hot,
+sunny Friday 15:30-16:00, where the weather-driven cocktail and a meeting-time prop
+would otherwise both want the same fist - is resolved the same no-negation way the
+salute's busy test used to be: the coffee cup and the controller are tested AHEAD
+of the cocktail in one `Condition`, so the cocktail's own `Compare` means "hot and
+sunny AND NOT coffee-time AND NOT controller-time" for free. `wedcoffeehot` in
+`mock-state.ts` exists to prove it.
+
+**THE ART TOOK THREE SHOOTS, and the lesson is in how the third one differed.**
+Passes one and two were drawn from reasoning and judged after the fact; pass three
+was drawn from *measurements* - a photograph of the real controller for its layout,
+and the face's own committed geometry for every anchor point - and then **asserted
+before the build**, by a throwaway script that checked all 28 claims the code
+comments make (buttons contained against the shell's rounded *corner arcs*, not its
+bounding box; the handle tangent to the cup wall at 16.97 against a wall at 17; the
+mic's arc endpoints landing inside the ear cup's lower half and beside the mouth
+rather than over it). Every one held, and the shoot confirmed it. The two earlier
+passes each cost a full build-shoot-review cycle to discover things that were
+arithmetic all along.
+
+The first-shoot feedback, and what each item became:
+
+- **The controller was unrecognisable, twice.** Pass one packed the whole layout
+  into ~30x24 *device* pixels (the design canvas is ~5% larger than the wrist, so
+  "design pixels" overstate real size) and it read as a smudge with coloured dots.
+  Pass two overshot to 52x42 - legible, but too big, still with the wrong internal
+  proportions and with buttons poking out through the shell's rounded corners. **Pass
+  three is traced off a photograph**: every offset is a measured fraction of the body
+  width (left stick 0.204 across / 0.191 down, d-pad 0.355 / 0.388, right stick
+  0.691 / 0.382, ABXY centre 0.822 / 0.204, grips 0.145 and 0.855, body height 0.55
+  of its width), and those fractions are written into the comment on
+  `hero_controller` so the next person can check them rather than re-judge them.
+  **The d-pad sits INBOARD of the left stick** - 0.355 against 0.204 - which is the
+  single most recognisable thing about the layout and the thing both earlier passes
+  had backwards. Final size 28 wide. Only the buttons are exaggerated: true scale is
+  0.079 of the body width, or 2.2px, below the point where a colour reads at all, so
+  they are 3.2px with the diamond's spread opened to match. Everything else is
+  honest. It is WHITE for contrast against black, with Xbox's own ABXY colours reused
+  from hexes the palette already had (A green, B coral, X the scarf blue, Y the sun's
+  yellow) rather than four new ones.
+- **The coffee cup's steam read as an arrowhead, then as a kink.** Two lines
+  converging on a shared point above the cup *is* an arrowhead, geometrically; two
+  disjoint one-bend wisps still read as two bent wires. Three segments each - **two
+  direction changes** - is where it starts reading as vapour. They are also now
+  translucent (`C.STEAM`, alpha 0x99), the only translucent colour on the face. The
+  cup body is centred on the hand's centre with its **base exactly on that centre**,
+  and the handle's 60-degree gap faces the cup so the ring's leftmost pixel lands
+  *on* the cup's right wall rather than inside it - that overlap was what made the
+  wall look twice as thick on one side.
+- **The headset was the worst of the three, and is the only one still
+  single-blob.** The companion's version is SCRAPPED FOR NOW, deliberately, so this
+  shape could be judged and fixed on its own rather than two shapes' problems being
+  tangled together - see the note in blob-companion.ts for what comes back once the
+  hero's is settled. Pass two made the cups a narrow standing oval, which
+  over-corrected into a sliver and left a **1px gap** between cup and body - and at
+  this scale a hairline of black between two shapes separates them completely, which
+  is exactly what "not attached" meant. Pass three widens them to 10, drops them 6px
+  to y60..80 (straddling the eyes at y62 and the mouth at y84..94, the way an ear
+  does), and **overlaps them 3px into the body's outline** rather than abutting it.
+  The band is thinner (4, was 5) and its peak at y40 sits *inside* the body's
+  outline, with the leaf tuft ending at exactly y40 so the leaves rest on the band
+  rather than being cut by it. The boom mic keeps pass two's single smooth `Arc` -
+  that part was right - but both ends moved: it now leaves the cup's lower half and
+  finishes at (67,88), level with the mouth and 7px clear of its right edge, instead
+  of stopping above it.
+
+**PASS FOUR FIXED THE THING PASS THREE CALLED UNFIXABLE, and the lesson is that the
+constraint was real but the framing was wrong.** Pass three left the controller 3.5px
+right of the hand and wrote that off: the hand sits at x10.5 in the hero group's own
+coordinates, a `PartDraw` cannot start left of the group origin, and content there is
+clipped - which is true, and the companion's left hand demonstrates it (its cream cap
+is drawn from x-2 and arrives flat-sided). What that reasoning missed is that **the
+group is not the only coordinate space available**. The umbrella, the bolt, the burst
+and both sets of Zzz are all *siblings* of the blob rather than children of it,
+positioned in absolute canvas coordinates, each repeating the blob's Gyro gain by hand
+so it still tracks the wrist.
+
+So the three hand props moved out of `blob_hero` into their own top-level section,
+`tools/gen/face/hero-props.ts`, at canvas (199,262) - which puts the hand at
+group-local (18.5,35) with room on every side. The controller is now centred on the
+hand **exactly**, and so is the cup. Two things made this safe rather than risky:
+the new section is registered immediately after `blobHero()` in `face/index.ts`,
+which is where those Conditions used to sit as its last children, so **draw order is
+unchanged**; and the cocktail's part box moved from the hero group's (0,6) to the new
+group's (8,6), which is the same canvas position, (207,268) - asserted in the geometry
+check and confirmed by reshooting `3-sunny` as a regression.
+
+The general lesson for this face: **"a Part cannot go there" is a statement about one
+group, not about the canvas.** Anything that needs to overhang a blob belongs beside
+it, not inside it - and `heroGyro()` is what makes that free.
+
+**Pass four's other three fixes**, all from the same round of feedback:
+
+- **The cup's base was flat and its rim had vanished.** It was a RoundRectangle,
+  which bottoms out flat - wrong in a view looking down far enough to see into the
+  cup at all: if the rim reads as an ellipse the base has to as well. It is now a rim
+  ellipse, a straight-sided body and a bottom ellipse stacked, which gives a CONVEX
+  base. The rim is a separate white ellipse *under* the coffee, inset 1.75px
+  horizontally and 1px vertically; without it the liquid touched open background on
+  both sides and the cup had no wall at the top, reading as a bowl of brown.
+- **A third steam wisp**, and the constraint that they must never touch is now
+  arithmetic rather than eyeballed: centrelines at 5..7, 9.5..11.5 and 14..16, each
+  growing 0.7 per side at 1.4 thick, leaving 1.1px gaps.
+- **The controller's sides angle out.** A single rounded rectangle gave dead-vertical
+  sides, which read as a slab; the real shell is 0.67 of its maximum width at the top
+  edge. Built as a 24-wide shell with the grip ellipses reaching 28 at their widest,
+  so the silhouette runs 15 across the very top, 24 by y4.5 and 28 by y13.5.
+- **The band was invisible against the arms**, and this one is worth a number: the
+  old band `#2b3a4a` differed from the limbs' `#23384f` by a **luma of 2.8** - not
+  "similar", effectively identical - and the arms cross the band. It is now
+  `C.HEADSET_LIGHT`, the headset's own cushion tone, at a luma gap of 73.7. It is
+  also drawn *behind* the cups, which it always was; that only became visible once it
+  stopped being the same colour as them. And its peak moved from y40 to y36, which is
+  the body's topmost point, so the band rides ON the crown instead of cutting a chord
+  through the head - checked across the whole span, worst clearance 0.00px at the
+  crown and positive everywhere else.
+
+What HAS been checked, on the final revision: the validator, the assemble, the
+memory footprint, all mock states round-tripping, the generator's own type-check,
+**30 geometry assertions** run before the build (containment against the shell's
+rounded *corner arcs*, the handle tangent at 16.97 against a wall at 17, steam gaps,
+band-vs-head clearance sampled across the span, the colour-contrast claim, and the
+cocktail's canvas position being unchanged by the group move), and - **shot on the
+watch four times, 2026-08-08**. The last shoot also re-took `3-sunny` as a
+regression check on the cocktail, since it changed coordinate spaces. All frames plus
+the contact sheet are current. The pulsing controller button is visible in a still,
+but `cycle-states.ps1 -Only headset,fricontroller` is still worth a run before
+calling the *motion* settled - a still shows the pulse at one arbitrary phase, not
+its cadence.
+
+**Genuinely open**: the companion's headset needs to come back once anyone judges
+the hero's shape final - see the note in blob-companion.ts. Nothing else from this
+pass is outstanding.
+
+## Superseded — start here (as of 2026-08-07, design passes 4–6 — reactions, colour, the salute)
 
 **Nine changes went in across three passes.**
 Items 1–7 (reaction split and animation) and item 8 (the weekday colour scheme) went
@@ -122,7 +283,7 @@ Three things that change how you work on this:
   locked to whole seconds, which is what made per-drop rain possible. The Zzz drift
   is still on the old whole-second formula and could lose its 3-second period the
   same way.
-- **`mock-state.mjs` takes `--set=KEY=VALUE`.** Both new reactions are continuous
+- **`mock-state.ts` takes `--set=KEY=VALUE`.** Both new reactions are continuous
   functions of a reading, so judging them means looking at points BETWEEN the named
   states — `--set=HEART_RATE=150`, `--set=WEATHER.CHANCE_OF_PRECIPITATION=70`.
   Adding a named state per value you want to eyeball once turns `STATES` into a junk
@@ -132,42 +293,62 @@ Three things that change how you work on this:
   figure sitting on the number makes that flicker. Where a threshold survives it is
   because it was asked for (see the forehead pearls).
 
-**Whether to generate `watchface.xml` instead of editing it was analysed on 2026-08-08:
-[docs/authoring-strategy.md](docs/authoring-strategy.md).** The answer is no, for now, with a
-written trigger for reversing it. Two findings there bear on the list below: items 1 and 2 are
-both "a tool that would check this was written and left in a scratchpad", and the date row's
-ambient crossfade runs the timing the clock's own note records as rejected.
+**DONE 2026-08-08: `watchface.xml` is now GENERATED from `tools/gen/*.ts`. Do not edit it.**
+
+    node tools/gen/build.ts              regenerate
+    node tools/gen/build.ts --diff       prove it still renders the same as before
+    node tools/gen/build.ts --selftest   prove the differ can still fail
+    npx tsc --noEmit                     type-check the generator
+
+See [docs/authoring-strategy.md](docs/authoring-strategy.md). The case in one line: with comments
+stripped the hand-authored file held **3737 numeric literals with only 313 distinct values**, and
+the hero's body box alone was typed out 31 times - so moving a blob was up to 31 coordinated edits
+that nothing verified.
+
+**The gate is a SEMANTIC differ, not a byte comparison.** The generated XML looks nothing like the
+old file - 4381 lines became 2228, and the prose moved into the TypeScript - but it must render
+identically. `tools/gen/model.ts` compares draw order, tags, attributes and text, normalising away
+comments, whitespace and `1.0` vs `1`. It has a self-test that mutates the reference seven ways and
+asserts each is caught, because the first version of `--check` compared the generator's output to
+its own input and could never fail.
+
+Two things that must not break, both already handled: `mock-state.ts` matches `<Template>` markup
+as an exact string, so the serialiser renders any element with text content inline; and the
+generated XML stays committed so a clone without Node still builds.
+
+Items 1 and 2 below are what the generator closes. The date crossfade disagreement was **closed
+on the wrist on 2026-08-08** - see the entry below the list.
 
 Still open, most important first:
 
-1. **The salute's window is written out FIVE times, in two forms** - plain in
-   the near arm, the hand and the near mitten, and AND-ed with the busy test in
-   the far arm, the hand and the far mitten - plus the Friday half inside
-   `hero_drink`. Expressions cannot be referenced across Conditions. Disagreement
-   shows up as two left arms at once, a floating cocktail, a mitten beside a bare
-   hand, or half an hour with nothing in either hand. The cheap defence is in the
-   session scratchpad and worth keeping: pull the `<Expression>` bodies out of the
-   XML with a regex, unescape them, evaluate them in Python over 7 days x 24 hours
-   x the boundary minutes x three weather variants, and assert that all copies of
-   each form agree. It found nothing this time, which is the point - it is what
-   makes "I copied it correctly five times" a checked claim rather than a hope.
+1. ~~**The salute's window is written out FIVE times, in two forms.**~~
+   **CLOSED 2026-08-08 by the generator.** The window and the busy test now live
+   in `tools/gen/salute.ts` as `SALUTE_WINDOW` and `SALUTE_BUSY`, and the eight
+   copies in the output are all emitted from those two bindings. Expressions
+   still cannot be referenced across Conditions, so the duplication is still in
+   the XML - it just cannot disagree any more.
+
+   The scratchpad Python checker this entry asked for is no longer needed for
+   *this* problem: it evaluated all copies over 7 days x 24 hours x boundary
+   minutes and asserted they agreed, which is now structural. A general
+   expression evaluator is still worth having for the question it alone answers -
+   do the 24 mock states actually exercise every branch - see the open item
+   below.
 2. **The seven-colour table is written out NINE times** — hero body, hero round
    mouth, hero open mouth, hero mouth mask, companion body, companion round mouth,
    companion open mouth, companion mouth mask, date row — because WFF has no
    variables. The masks are the dangerous ones: an open mouth is a dark ellipse
    whose top half is repainted in the body colour, so a body/mask mismatch shows up
-   as a dark bar across a face on exactly one weekday. Change a hue and grep the old
-   value first. The generator that produced all nine lives in the session scratchpad
-   rather than the repo; if the palette is ever revised, deriving the mouth and date
-   colours by hand is the error-prone part, not the XML.
+   as a dark bar across a face on exactly one weekday.
 
-   Promoting that generator to the repo — or going further and generating the whole
-   file from TypeScript — was evaluated on 2026-08-08 and declined for now; see
-   [docs/authoring-strategy.md](docs/authoring-strategy.md) for the trigger that would
-   reverse it. Two things measured there are worth having here. **It is eleven `Part*`
-   sites, not nine** - the date row is three of them (`date_chip`, `date_weekday`,
-   `date_day`), and the companion's four are `mini_body`, `mini_mouth_sleep`,
-   `mini_mouth_open`, `mini_mouth_mask`. And **all of them agree today**:
+   THIS IS WHAT THE GENERATOR CLOSES - see the note at the top of this list. Under
+   `palette.ts` the body and its mask take the same argument, so the mismatch becomes
+   unrepresentable rather than merely absent, and the seven derived colours are
+   computed rather than transcribed. Two things measured on 2026-08-08 are worth
+   having here. **It is eleven `Part*` sites, not nine** - the date row is three of
+   them (`date_chip`, `date_weekday`, `date_day`), and the companion's four are
+   `mini_body`, `mini_mouth_sleep`, `mini_mouth_open`, `mini_mouth_mask`. And
+   **all of them agree today**:
    both masks match their bodies on all seven days, `mini_body[d] == hero_body[d+1]`,
    and all 21 derived hexes reproduce byte-for-byte from the seven body colours at the
    documented ratios. So the scheme is intact and the derivation is cheap to rebuild -
@@ -189,9 +370,59 @@ Still open, most important first:
 6. **`PartDraw` clipping is still unsettled**, and three existing shapes quietly
    depend on the answer while the step-goal flag's 12px width depends on it being
    real. See the finding below; one throwaway build settles it.
-7. Everything from pass 3 that is still open: the ambient transition by eye, the
-   thunderstorm condition code, the moon's mirrored limb, and the ~15 `Variant`
-   elements on default timing.
+7. Everything from pass 3 that is still open: the thunderstorm condition code, the
+   moon's mirrored limb, and the ~15 `Variant` elements on default timing. **"Judge
+   the ambient transition by eye" is now done** - see below.
+
+### CLOSED 2026-08-08 — the date crossfade, judged on the wrist
+
+Watched in both directions on hardware, which is the only way any of this is
+visible: it lasts about 200ms, all 24 mock states are steady-state so no
+screenshot can catch a midpoint, and both timings were valid floats so the
+validator had nothing to say.
+
+**A `<Variant>` window is used in BOTH directions.** It declares the ambient
+value, and the attribute animates toward whichever value the destination mode
+wants — through the same window, with the same curve. So a gap going one way is
+an overlap coming back, and there is no way to have neither: gapping the wake
+needs the ambient copy's window first, gapping the sleep needs the opposite.
+This is the fact the whole v1/v2/v3 history was circling without stating.
+
+**Which means the timing was never the date's real problem.** The clock has the
+same overlap and has never looked wrong, because its two copies are the same
+string at the same origin — the LIGHT stems sit inside the BOLD ones and the
+overlap reads as a weight morph. The date's ambient copy was a single centred
+`"%s %d"` while its interactive copy is two parts pinned around a chip, so a
+centred string distributed its own word space and put the weekday ~16px right of
+the interactive one. The overlap had nothing to hide behind: two dates, side by
+side. It also made the ambient row shift horizontally between the 1st and the
+31st.
+
+Fixed in three parts, all in the generator:
+
+- `tools/gen/crossfade.ts` — `FADE_OUT` / `FADE_IN`, one binding for what was
+  four hand-written window sets. The clock and both date copies now share them,
+  so date and time transition synchronously. It throws at build time if
+  `startOffset + duration > 1.0` (over it the offset is **silently ignored** and
+  both copies fade across the whole transition — the v1 smear, unreported) or if
+  the windows overlap going into ambient.
+- `tools/gen/face/date-common.ts` — the boxes, font and chip radius both copies
+  must agree on, so neither gets to state them itself. Congruence is the
+  requirement; the timing is secondary.
+- The ambient date draws the chip as a **2px outline** (`DATE_CHIP_OUTLINE_SHAPE`,
+  inset by half the stroke so the line's outer edge lands on the filled chip's
+  edge). Without it, sharing the interactive boxes inherits the chip-sized gap
+  between weekday and day number and reads as a typographic error. Outlined
+  keeps the lit-pixel budget near the old single-string version.
+
+The interpolations were also inverted on the date — EASE_OUT leaving, EASE_IN
+arriving, i.e. drop fast then arrive slowly — which is what made its sleep gap
+noticeably longer than the clock's. Now EASE_IN out, EASE_OUT in.
+
+Still true and not worth chasing: waking is a morph rather than a cut. Built-in
+faces change weight in code; WFF cannot, so two copies and an overlap is the
+whole toolkit. The only lever is where the overlap sits, and narrowing it trades
+the morph for a blink.
 
 ## Superseded — start here (as of 2026-08-04, design pass 3 — motion)
 
@@ -205,7 +436,7 @@ blob groups are alpha 0 there — and a contact sheet.
 
 Three things that change how you work on this:
 
-- **`tools/mock-state.mjs` replaces `debug-triggers.mjs` and
+- **`tools/mock-state.ts` replaces `debug-triggers.mjs` and
   `preview-mock.mjs`, both deleted.** Snapshots patch the DATA (temperature,
   hour, heart rate…) and let the real Conditions evaluate, instead of forcing
   trigger expressions at battery levels. One build per state, ~3 min for the
@@ -248,7 +479,7 @@ watch** for anything that moves.
 **Pass 4 adds a fifth row to that table: an offline rasteriser.** With no watch
 connected, the 2026-08-06 geometry was checked by a throwaway ~250-line Python
 script that reads the real `watchface.xml`, substitutes the sources the way
-`mock-state.mjs` does, evaluates the actual `Condition`s and `Transform`s, draws
+`mock-state.ts` does, evaluates the actual `Condition`s and `Transform`s, draws
 the primitives with PIL and reports any shape outside its `PartDraw` box or
 outside the round bezel. It caught nothing wrong in the end but it *proved* the
 placement — including combinations no mock state covers, like rain plus night plus
@@ -280,9 +511,9 @@ Genuinely left:
 3. Smaller: lowering the companion's arms at night so the pair can sit closer,
    and the ~15 `Variant` elements still on default timing.
 
-Optional, if you want them: the preview carries a Wear OS system dot near the
-bottom edge (it is a system overlay, not part of the face), and the `docs/`
-history directory `verified-2026-08-03/` is now redundant.
+Optional, if you want it: the preview carries a Wear OS system dot near the
+bottom edge (it is a system overlay, not part of the face). The `docs/` history
+directory `verified-2026-08-03/` was deleted on 2026-08-08.
 
 ## Superseded — earlier "start here" (2026-08-03, third session)
 
@@ -618,7 +849,7 @@ which is the one that supports format version 5.
 
 ### Session log — 2026-08-04, design pass 2
 
-**Snapshots are now value-mocked.** `tools/mock-state.mjs` replaces both
+**Snapshots are now value-mocked.** `tools/mock-state.ts` replaces both
 `debug-triggers.mjs` and `preview-mock.mjs`, which are deleted. Instead of
 forcing each trigger expression to a battery level, it substitutes the source
 tokens with literals for the state being captured and lets the real Conditions
@@ -714,8 +945,8 @@ two unrelated reasons, with a third hiding one of them.
 they have to be, each is gated by its own `Condition` — so none inherited the
 `<Gyro>`. The hero's fist would have slid off the umbrella shaft by up to 16px
 at full tilt, and the bolt tip out of the burst spoke. Each now repeats its
-blob's gain verbatim; WFF has no variables, so that duplication is load-bearing
-and commented at every site. `freeze_mark` and `moon_mark` stay static on
+blob's gain verbatim; WFF has no variables, so that duplication is load-bearing.
+(It is now emitted from one constant - see `heroGyro()` / `companionGyro()`.) `freeze_mark` and `moon_mark` stay static on
 purpose — nothing joins to them, and holding them in the clock's plane is what
 makes them read as sky. **Found by walking the element tree, not by reading it**;
 a `<Gyro>` behind a 12-line comment is easy to miss and easy to regex wrong.
@@ -727,13 +958,13 @@ interactive font weight. All three were real, and all three were **the mock
 build still sitting on the watch**.
 
 `capture-states.ps1` installs a mocked APK per state and calls
-`mock-state.mjs off` afterwards — which restores `watchface.xml` but **does not
+`mock-state.ts off` afterwards — which restores `watchface.xml` but **does not
 reinstall**. Re-shooting one snapshot therefore left the watch on that state's
 mock, which pins the clock sources (drift frozen), zeroes the accelerometer (no
 parallax) and swaps `<DigitalClock>` for a static bold `PartText` (ambient in
 the wrong weight). Three symptoms, one cause, none of them in the watch face.
 
-What made it stick: `mock-state.mjs status` said **"real values (clean)"** and
+What made it stick: `mock-state.ts status` said **"real values (clean)"** and
 that was read as "the watch is fine". It only ever inspected the working tree.
 A clean tree and a mocked device are not merely compatible — after a capture run
 they are the *normal* combination.
@@ -749,13 +980,13 @@ Fixed at the mechanism, not the symptom:
 - `capture-states.ps1` reinstalls the real build as the last thing it does to
   the device — on partial runs and after failures — and verifies the package's
   `lastUpdateTime` actually moved instead of trusting an exit code.
-- `mock-state.mjs status` now states outright that it cannot see the watch.
+- `mock-state.ts status` now states outright that it cannot see the watch.
 - The clock mock emits **both** `TimeText` copies with their real Variant
   timings. The single-copy version had been quietly wrong in *every* ambient
   snapshot since it was written.
 
 **Round 4 — "where's the step-goal screenshot?"** The flag was built in pass 2
-and works, but `mock-state.mjs` labelled its state "not a snapshot", so it was
+and works, but `mock-state.ts` labelled its state "not a snapshot", so it was
 never shot and `docs/states/` held no record of it. Reasonably read as never
 having been built. Now `9-step-goal`. **If a reaction appears in no snapshot, it
 will be believed missing** — the snowflake and the moon get away with being
@@ -861,7 +1092,7 @@ verified on the watch; the full sweep in `docs/states/` is current.
 a good day rather than like whatever the sky and your pulse were doing. Almost
 none of that is settable from the host, so the values are hardcoded into the XML
 and you build, shoot, and restore. (This was `tools/preview-mock.mjs`; it is now
-just `mock-state.mjs on baseline`, since the preview and the snapshots want the
+just `mock-state.ts on baseline`, since the preview and the snapshots want the
 same values and there is no reason to keep two tables in sync.)
 
 The clock is the one value that cannot be substituted: `TimeText` renders the
@@ -1219,8 +1450,10 @@ standard any new function should be held to here.
   they inherit nothing, and the umbrella slid out of the fist by up to 16px
   across a full tilt sweep. Each now repeats its blob's gain verbatim: the hero's
   0.229/0.143 for the umbrella and its z's, the companion's 0.157/0.1 for the
-  burst, the bolt and its z's. **There is no variable mechanism in WFF**, so
-  changing a blob's gain means hand-editing every accessory that tracks it.
+  burst, the bolt and its z's. **There is no variable mechanism in WFF**, so the
+  duplication is unavoidable in the output - but since 2026-08-08 all seven sites
+  are emitted from `GYRO_HERO` / `GYRO_COMPANION` in `tools/gen/geometry.ts`, so
+  changing a gain is one edit rather than seven.
   Things actually inside the groups — leaves, limbs, gloves, scarf, cocktail,
   goal flag — are fine and need nothing.
 - `freeze_mark` and `moon_mark` are deliberately left with **no** Gyro: nothing
@@ -1597,7 +1830,7 @@ call. A sweep that documents impossible states is not documentation.
 both 84 and 85. Any future trigger that nests inside another needed the same.
 
 > **SUPERSEDED, 2026-08-04.** `debug-triggers.mjs` and the whole
-> expression-forcing approach are gone, replaced by `tools/mock-state.mjs`,
+> expression-forcing approach are gone, replaced by `tools/mock-state.ts`,
 > which patches the **data** and lets the real Conditions evaluate. Nesting then
 > takes care of itself — set the temperature to 0 and both the cold and the
 > freezing branches fire — so `replaceWith` and the substring-ordering hazard
@@ -1609,8 +1842,8 @@ both 84 and 85. Any future trigger that nests inside another needed the same.
       2026-08-03.** All eight frames in `docs/states/` are current: seven states
       plus a verified-greyscale AOD frame, and `all-states.png` rebuilt. The
       orphaned `2-sunglasses.png` was pruned automatically and `7-cold` is
-      present. `docs/verified-2026-08-03/` is now redundant history rather than
-      the only trustworthy record.
+      present. `docs/verified-2026-08-03/` stopped being the only trustworthy
+      record at that point, and was deleted on 2026-08-08.
 
       **The sweep needed three fixes to the capture script before it produced a
       trustworthy set**, and all three failed *silently* — every bad frame landed

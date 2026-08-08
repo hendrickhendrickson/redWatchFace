@@ -52,13 +52,15 @@ $stateFile = Join-Path $PSScriptRoot 'cycle-states.state'
 # rain's drop count, size and speed; sweating/puffing/drenched are 100/135/200bpm,
 # which drives the drip speed and the forehead pearl count. A still frame shows
 # one arbitrary phase of each and says nothing about how either ramp reads.
-# 'salute' and 'salutebusy' are the exception to that: they animate nothing, but
-# the salute is the only pose where a limb crosses the head, and whether a flat
-# hand at 37 degrees reads as a salute or as a smudge is a question about real size
-# on a real screen. Both are here because the two arms are NOT mirror images - the
-# box is 106 wide with the body at 14..86, so the far arm has 20px of room and the
-# near one 14, and the near elbow is folded tighter to fit.
-$order = @('baseline', 'night', 'sunny', 'uv', 'cold', 'gloves', 'freezing', 'rainy', 'thunderstorm', 'downpour', 'sweating', 'puffing', 'drenched', 'goal', 'salute', 'salutebusy')
+# 'headset' is here for the reason 'salute' used to be: it is the one pose where
+# an accessory crosses the head rather than sitting beside it, and whether a band
+# arcing over the leaf tuft reads as "worn on top of" or "cutting through" is a
+# question about real size on a real screen, not about the geometry alone - see
+# the front-of-leaf/front-of-sweat priority note in blob-hero.ts. 'fricontroller'
+# is here because it is the one NEW animated element, the controller's pulsing
+# face button - a still frame proves the geometry but says nothing about whether
+# the pulse itself reads as "on" rather than as a flicker.
+$order = @('baseline', 'night', 'sunny', 'uv', 'cold', 'gloves', 'freezing', 'rainy', 'thunderstorm', 'downpour', 'sweating', 'puffing', 'drenched', 'goal', 'headset', 'fricontroller')
 if ($Only) {
     $order = @($order | Where-Object { $_ -in $Only })
     if (-not $order) { throw "-Only matched nothing. Valid: $($order -join ', ')" }
@@ -89,7 +91,7 @@ function Restore-Device($w, $origTimeout) {
     }
     Push-Location $repo
     try {
-        & node tools/mock-state.mjs off 2>&1 | Out-Null
+        & node tools/mock-state.ts off 2>&1 | Out-Null
         & cmd /c ".\gradlew.bat :watchface:installDebug --console=plain" 2>&1 | Out-Null
         $ok = ($LASTEXITCODE -eq 0)
         # Verify against the DEVICE: the installed APK must be byte-identical to
@@ -145,11 +147,11 @@ try {
         foreach ($st in $order) {
             Push-Location $repo
             try {
-                & node tools/mock-state.mjs on $st --live 2>&1 | Out-Null
+                & node tools/mock-state.ts on $st --live 2>&1 | Out-Null
                 if ($LASTEXITCODE -ne 0) { Write-Warning "mock failed for $st, skipping"; continue }
                 & cmd /c ".\gradlew.bat :watchface:installDebug --console=plain" 2>&1 | Out-Null
                 $ok = ($LASTEXITCODE -eq 0)
-                & node tools/mock-state.mjs off 2>&1 | Out-Null
+                & node tools/mock-state.ts off 2>&1 | Out-Null
                 if (-not $ok) { Write-Warning "install failed for $st, skipping"; continue }
             }
             finally { Pop-Location }

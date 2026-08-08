@@ -1,0 +1,24 @@
+{
+  "name": "redwatchface-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Build tooling for the redPlant Blob watch face. Not shipped in the APK.",
+  "scripts": {
+    "gen": "node tools/gen/build.ts",
+    "check": "node tools/gen/build.ts --check",
+    "diff": "node tools/gen/build.ts --diff",
+    "snapshot": "node tools/gen/build.ts --snapshot",
+    "selftest": "node tools/gen/build.ts --selftest",
+    "audit": "node tools/gen/build.ts --audit",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm run selftest && npm run diff && npm run check"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=22.18"
+  }
+}

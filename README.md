@@ -49,6 +49,48 @@ The Gradle wrapper **is** committed — `gradlew`, `gradlew.bat` and
 by an Android Studio sync (only `gradle-wrapper.properties` was), and `gradle wrapper`
 can't bootstrap it either, since there is no standalone Gradle to run it with.
 
+## watchface.xml is generated — do not edit it
+
+`watchface/src/main/res/raw/watchface.xml` is a build artifact produced from
+`tools/gen/*.ts`. Edit the TypeScript, then regenerate. A hand edit to the XML survives
+until the next `node tools/gen/build.ts` and then vanishes.
+
+```bash
+npm ci                              # once: typescript + @types/node, nothing else
+node tools/gen/build.ts             # regenerate watchface.xml
+node tools/gen/build.ts --diff      # prove it still renders the same as before the migration
+node tools/gen/build.ts --selftest  # prove the differ can still fail
+npx tsc --noEmit                    # type-check the generator
+```
+
+`:watchface:validateWatchFaceXml` depends on `checkWatchFaceXmlUpToDate`, so a stale
+committed file fails the build rather than shipping. That task **throws** if the generator
+is missing, unlike the two jar-gated verification tasks which skip — a missing jar is a
+separate download, a missing generator is a broken checkout.
+
+Where things live:
+
+| File | Holds |
+|---|---|
+| `tools/gen/palette.ts` | the 7 chosen weekday hexes; the other 21 are derived by HSL ratio |
+| `tools/gen/geometry.ts` | every named box — `HERO_BOX` alone was 31 literal copies |
+| `tools/gen/expr.ts` | the closed `Source` union and the ramp / phase / triangle idioms |
+| `tools/gen/weekday.ts` | `byWeekday()`, the seven-way fan-out that was written 11 times |
+| `tools/gen/blob.ts` | shared blob primitives; the two blobs stay separate call sequences |
+| `tools/gen/face/*.ts` | 17 section modules, one per Scene child, **in draw order** |
+
+**The gate is a semantic differ, not a byte comparison.** `tools/gen/model.ts` compares draw
+order, tags, attributes and text against the committed baseline `tools/gen/face.model.json`,
+normalising away comments, whitespace and `1.0` vs `1`. When a rendering change is intended,
+`node tools/gen/build.ts --snapshot` accepts it and the new baseline lands in the same commit
+as the change that caused it. The generated file looks nothing like
+the hand-authored one — 4381 lines became 2228, and the design notes moved onto the constants
+they explain — but it must render identically. See `docs/authoring-strategy.md`.
+
+The design prose that used to sit in the XML is now TSDoc in those modules. That was the
+point: the palette table in the old XML header had already drifted, still listing the retired
+navy `#8fa9c6` as the limb colour.
+
 ## Build and install
 
 Open the project, pick the `watchface` run configuration, hit Run — Android Studio builds
@@ -215,7 +257,9 @@ and slate, because those were blue to begin with.
 
 **Ambient is deliberately not coloured**: `date_ambient` stays ice blue on black, since
 colour costs OLED power on a screen nobody is looking at closely and the documented ambient
-budget is 15% of pixels lit.
+budget is 15% of pixels lit. It does keep the chip, as a 2px outline rather than a fill —
+both for the pixel budget and because the two date copies are cross-faded against each
+other, so they have to occupy the same boxes. See `tools/gen/crossfade.ts`.
 
 ### `[DAY_OF_WEEK]` is 1 = Sunday, not 1 = Monday
 
@@ -254,9 +298,10 @@ deliberately far yellower than the leaves so they still read as the darker green
 
 The blobs react to the data. Every accessory is an independent `<Condition>`, so
 they **stack** — a wet night shows both sleeping blobs and the umbrella — and the only
-thing deciding what covers what is document order. **The salute is the one exception**: a
-hand that is busy saluting cannot also hold the step-goal flag, so that one mark is nested
-inside the salute's `Default` rather than standing beside it.
+thing deciding what covers what is document order. **The one meeting-time prop is the
+exception**: the coffee cup, the game controller and the cocktail all anchor to the
+same fist, so only one of the three is ever drawn, in that priority order — see
+[The meeting schedule](#the-meeting-schedule).
 
 | # | state | trigger |
 |---|-------|---------|
@@ -273,16 +318,18 @@ inside the salute's `Default` rather than standing beside it.
 | 8 | sweating | `HEART_RATE >= 100` — one forehead pearl, drips begin |
 | 8b | puffing | `HEART_RATE >= 120` — the outer pair of pearls |
 | 8c | drenched | `HEART_RATE >= 150` — all three pearls, drips at full ramp by 200 |
-| 10 | salute | weekdays `09:05–09:20` and `16:00–16:30` — a hand to the brow |
-| 10b | salute, hand full | same, but the near hand is holding something: the far arm salutes |
-| 10c | Friday salute | Friday's afternoon window is `15:00–15:30` instead |
-| 10d | Friday drink | Friday `15:30–16:00` — the cocktail replaces it |
+| 10 | headset | digital standup, `09:05–09:20` and `16:00–16:30` — hero only, no hand |
+| 10b | Friday headset | Friday's game-time window, `15:00–15:30` — headset, hand still empty |
+| 10c | Friday controller | Friday `15:30–16:00` — a controller replaces the empty hand |
+| 10d | Wednesday coffee | the in-person standup, `10:30–10:45` — no headset, a coffee cup instead |
 
-The lettered rows are **sub-states split out of the row above them on 2026-08-06**, not
-new mechanisms. What used to be one "sunny" Condition is now two: the sunglasses answer
+The lettered rows are **sub-states split out of the row above them**, not new
+mechanisms. What used to be one "sunny" Condition is now two: the sunglasses answer
 `WEATHER.UV_INDEX` (6 is where the WHO/EPA scale calls the index "high") while the
 cocktail keeps its original warm-and-clear trigger, so a bright cold March afternoon gets
-shades and no drink. Cold splits the same way — 10° is scarf weather, 5° is gloves.
+shades and no drink. Cold splits the same way — 10° is scarf weather, 5° is gloves. Row
+10 used to be the salute; see [The meeting schedule](#the-meeting-schedule) for why it
+is a headset now.
 
 Cold's steps are strict subsets of one another, so nothing has to exclude anything: 3° is
 scarf *and* gloves *and* snowflake. The sweat bands are **not** subsets — the middle pearl
@@ -369,17 +416,22 @@ seventeen reaction frames plus ambient, and then **seven `w-<weekday>` frames** 
 scheme. The weekday frames are a theme dimension rather than reactions — each is the baseline
 face differing only in hue — and all seven are kept rather than a sample, because the pairing
 is the point: the only way to check the cycle closes is to see Sunday's companion match
-Monday's hero. The set is current as of 2026-08-07 and was shot on the watch. The step-goal flag gets its own frame
-(`9-step-goal`) even though it is a mark rather than a state, because unlike the
-snowflake and the moon it shows up in no other frame — and a reaction with no
-screenshot gets taken for a reaction that was never built.
+Monday's hero. The set is current as of 2026-08-08 — row 10 was reshot after the salute
+was replaced by the headset/coffee/controller schedule (see
+[The meeting schedule](#the-meeting-schedule)); the four frames the old salute showed are
+deleted rather than left stale under their old names. The step-goal flag gets its own frame
+(`9-step-goal`) even though it is a mark rather than a state, because unlike the snowflake
+and the moon it shows up in no other frame — and a reaction with no screenshot gets taken
+for a reaction that was never built.
 
 Sub-states are lettered (`3b-uv`, `4b-gloves`, `8b-puffing`, `8c-drenched`) rather than
 renumbered, which avoids renaming everything downstream of an insertion. It was also meant to
-avoid two-digit names, where `10-x` sorts before `2-x` — and the salute spent that budget on
-2026-08-07: `10-salute`, `10b-salute-blocked`, `10c-friday-salute`, `10d-friday-drink`. The only cost is how the
-folder lists, since the contact sheet's order has come from the declaration order rather than
-from filenames since the collation bug below.
+avoid two-digit names, where `10-x` sorts before `2-x` — and row 10 has spent that budget
+twice now: first on the salute (`10-salute`, `10b-salute-blocked`, `10c-friday-salute`,
+`10d-friday-drink`, 2026-08-07), then on what replaced it (`10-headset`,
+`10b-friday-headset`, `10c-friday-controller`, `10d-wednesday-coffee`, 2026-08-08). The
+only cost is how the folder lists, since the contact sheet's order has come from the
+declaration order rather than from filenames since the collation bug below.
 
 **The sheet's order comes from the order the states are declared in, not from the
 filenames**, and that is a correction rather than a preference: `Sort-Object` is
@@ -393,7 +445,7 @@ because the no-data values are not neutral. `TEMPERATURE` reads 0, which satisfi
 `<= 10`, so an ungated cold trigger puts scarves on the blobs every time weather drops
 out, which it does routinely.
 
-To review the states without waiting for the weather, `tools/mock-state.mjs` patches the
+To review the states without waiting for the weather, `tools/mock-state.ts` patches the
 **data** — temperature, hour, heart rate — into `watchface.xml`, so the real Conditions
 evaluate against known values, and `tools/capture-states.ps1` drives a build per state:
 
@@ -402,11 +454,11 @@ powershell -File tools/capture-states.ps1                          # all twenty-
 powershell -Command "& tools/capture-states.ps1 -Only 4b-gloves"   # one
 powershell -Command "& tools/capture-states.ps1 -SheetOnly"        # redraw the contact
                                                                    #   sheet from disk
-node tools/mock-state.mjs list                                     # what each state sets
+node tools/mock-state.ts list                                     # what each state sets
 
 # any point BETWEEN the named states - both new reactions are continuous ramps
-node tools/mock-state.mjs on sweating --set=HEART_RATE=150 --live
-node tools/mock-state.mjs on rainy --set=WEATHER.CHANCE_OF_PRECIPITATION=70 --live
+node tools/mock-state.ts on sweating --set=HEART_RATE=150 --live
+node tools/mock-state.ts on rainy --set=WEATHER.CHANCE_OF_PRECIPITATION=70 --live
 ```
 
 `--set=KEY=VALUE` is repeatable and exists because rain and sweat are functions of a
@@ -442,7 +494,7 @@ states to refresh one tile. `-Only 0-ambient` re-shoots just the ambient frame.
 **A capture run installs a mock APK on the watch, and the script now reinstalls the real
 build afterwards** — it verifies the package timestamp actually moved rather than
 trusting an exit code. If you ever kill a run part-way, reinstall by hand. Note that
-`mock-state.mjs status` reads the *working tree only* and will happily say
+`mock-state.ts status` reads the *working tree only* and will happily say
 `real values (clean)` while the watch is still showing a mock: a mock build looks
 completely normal apart from frozen motion, a dead accelerometer and a bold ambient
 clock, which is exactly the set of symptoms that reads as "the watch face is broken".
@@ -460,9 +512,9 @@ Equal means the watch is running exactly what a clean tree builds.
 To put one state on a wrist and *watch* it rather than photograph it:
 
 ```powershell
-node tools/mock-state.mjs on night --live   # keeps accelerometer + clock live
+node tools/mock-state.ts on night --live   # keeps accelerometer + clock live
 ./gradlew :watchface:installDebug
-node tools/mock-state.mjs off               # ...and reinstall afterwards
+node tools/mock-state.ts off               # ...and reinstall afterwards
 ```
 
 `--live` exists because the defaults are tuned for stills: a plain mock freezes
@@ -489,109 +541,137 @@ bright, some are fading and a few are absent, which is what rain looks like anyw
 
 Traps, all hit in practice, are in [TODO.md](TODO.md).
 
-### The salute
+### The meeting schedule
 
-The hero snaps a hand to its brow on weekdays, twice a day:
+**Replaces the salute**, retired 2026-08-08 because it never fit what the windows actually
+were: two of them were digital standups (a hand to the brow doesn't read as "on a call"),
+Friday's afternoon window is a shared game session rather than a second standup, and
+Wednesday — which had been saluting on the same schedule as everyone else — actually has no
+digital standup at all, only a single in-person one. The full construction (the rotated-capsule
+hand, the arm-asymmetry measurements, the busy-hand routing between two arms) is not reproduced
+here since none of it ships any more; see the 2026-08-07 entries in `TODO.md` if you want the
+hand-attachment technique for something else later, since a rotated capsule landing cleanly on a
+limb is a genuinely reusable trick.
 
-| | morning | afternoon |
+Four windows, all defined once in `tools/gen/meetings.ts` and restated at every site that reacts
+to them, the same way the salute's window used to be — WFF still gives no way to reference one
+Condition's expression from another:
+
+| | window | the hero gets |
 |---|---|---|
-| Mon–Thu | 09:05–09:20 | 16:00–16:30 |
-| Friday | 09:05–09:20 | **15:00–15:30**, then a **cocktail** until 16:00 |
+| Mon, Tue, Thu, Fri | 09:05–09:20 | a headset |
+| Mon, Tue, Thu | 16:00–16:30 | a headset |
+| Friday | 15:00–16:00 | a headset throughout, plus a game controller from 15:30 |
+| Wednesday | 10:30–10:45 | **no headset** — a coffee cup instead |
 
-Friday knocks off early, and the half hour after its salute is a drink instead. Windows are
-half-open — 09:05:00 through 09:19:59, 16:00:00 through 16:29:59 — and weekdays
-are `DAY_OF_WEEK` **2..6**, because 1 is Sunday (see above; that was measured, not read). The
-Friday salute and the Friday drink **abut at 15:30**, which is written in both Conditions and
-derived in neither.
+The companion sits these out entirely for now — its headset is scrapped, see
+[the revision note](#the-first-shoot-was-bad-and-here-is-what-changed) below.
 
-#### Which arm, and why it moves
+Windows are half-open, same convention as before — 09:05:00 through 09:19:59 — and Wednesday is
+excluded from both digital windows on purpose, not folded into a range: `MON_TUE_THU_FRI` and
+`MON_TUE_THU` are each an explicit `OR` of the days they cover, because "which days" is exactly
+what a reader needs at a glance and a range-with-a-hole makes them do the subtraction themselves.
 
-**The blob's right arm — screen left — salutes by preference, and the other one covers when
-that hand is full.** The screen-left fist is the one that holds things: the umbrella shaft and
-the cocktail both terminate at a *fixed point* in it, drawn by their own Conditions. So the
-salute takes that hand when it is free and falls back when it is not:
+**A real bug shipped in draft form here and is worth stating plainly, because it will recur if
+the pattern recurs.** `or(a, b, c, d)` builds a flat `a || b || c || d` with no parentheses of
+its own. Pasting that straight into `and(days, hourTest, minuteTest)` parses as
+`a || b || (d && hourTest && minuteTest)` — `&&` binds tighter than `||`, and nothing in the
+ungrouped OR chain stops it reaching past its own boundary. The symptom was two of the four
+weekdays showing a headset at *every* hour of the day, not just the meeting windows — found by
+evaluating the real expression at midnight, not by reading it; reading it looks correct. **Any
+`or()` result that is later combined with `and()` needs `group()` around it.** Fixed, and the
+comment sits on the two day-lists in `meetings.ts` so the next multi-day window doesn't repeat it.
 
-```
-busy = IS_AVAILABLE && (CHANCE_OF_PRECIPITATION >= 50
-                        || (TEMPERATURE >= 25 && CONDITION == 1 && IS_DAY))
-```
+**The one prop-collision left is resolved the same no-negation way the salute's busy test used
+to be.** The coffee cup, the controller and the cocktail each anchor near the same hand, and a
+hot, sunny Wednesday standup or a hot, sunny Friday game hour would otherwise want two of them at
+once. One `Condition`, three `Compare`s, coffee and controller listed *ahead* of the cocktail: the
+cocktail's own branch means "hot and sunny AND NOT coffee-time AND NOT controller-time" for free,
+no De Morgan required. `wedcoffeehot` in `mock-state.ts` mocks exactly that overlap. This
+`Condition` is drawn **after** the headset one, not before — see the revision note below.
 
-which is the umbrella's own trigger OR the cocktail's *weather* trigger. The cocktail's Friday
-trigger is deliberately absent: 15:30 is where the Friday salute stops, so the two cannot be
-true at once, and including it would only obscure that. Move either window into the other and
-this expression has to grow a term.
+**The headset is the only accessory since the salute itself to cross the head rather than sit
+beside it**, so it inherited the same category of question: what does it do to the leaf tuft and
+the forehead sweat pearls, both of which occupy almost the same pixels the band does. Resolved by
+draw order rather than by carving the shape around them — the headset Condition is added before
+the hand-prop one, so it draws behind whatever is in the hand but in front of the leaf and the
+pearls, which is also just what a headband actually worn over hair (or a hot forehead) looks
+like. See the comment on `hero_headset_band` in `blob-hero.ts`.
 
-**There is no negation anywhere in it, and the branch order is why.** The schema says only the
-*first* successful `Compare` is selected, so a branch testing "salute AND busy" placed above a
-branch testing "salute" gives the second one the meaning "salute AND NOT busy" for free.
-Writing that second test by hand means a De Morgan of the busy expression, kept in step with it
-forever, in three places. This way "busy" exists in exactly one form — and the pair of tests
-appears in **five** Conditions, because Expressions are scoped to their own Condition: the two
-arms' limbs, the hand after the face, and the two mittens.
+**Verified the same way the salute's windows were**: `HEADSET_WINDOW`, `WEDNESDAY_MEETING` and
+`FRIDAY_GAME_ICON` evaluated straight out of the generated expression text — not reimplemented —
+across all 7 days, every hour, and eleven boundary minutes (:00/:04/:05/:09/:19/:20/:29/:30/:44/
+:45/:59), which is what caught the precedence bug above.
 
-The price is that **the raised pose and the raised mitten are each written twice** — once as the
-"busy, carry on holding it" branch and once as the `Default`. That is the cheaper mistake of the
-two: if the copies diverge the arm visibly jumps between states, where a stale negation would
-draw *two* left arms at once.
+#### The art took three shoots
 
-**The step-goal flag now only stands down on the fallback.** It hangs from the screen-right
-hand, so when the salute lands there the flag cannot also be held — but on a dry day with no
-cocktail the salute goes to the other arm and the flag is untouched, which is the common case.
+Worth reading before drawing anything else at this scale, because the third pass differed from
+the first two in *method*, not just in effort. Passes one and two were drawn from reasoning and
+judged after the build; pass three was drawn from **measurements** — a photograph of the real
+controller for its layout, the face's own committed geometry for every anchor — and then
+**asserted before the build** by a throwaway script checking all 28 claims the code comments make.
+Every one held and the shoot confirmed it. The two earlier passes each burned a full
+build-shoot-review cycle discovering things that were arithmetic all along.
 
-**The two arms are not mirror images.** The `PartDraw` box is 106 wide with the body at 14..86,
-so there are 20px of room on the right and 14 on the left. The far arm's elbow reaches (99,66);
-the near one only (5,62), whose cream cap lands on x 1 — the same left margin the raised hand
-has always used. Its V is 98° against the other's 113°, a more clipped salute. Only one is ever
-on screen, so they have to each read, not to match.
+**The controller** went 30×24 (a smudge with coloured dots) → 52×42 (legible but oversized, wrong
+internal proportions, buttons poking through the shell's rounded corners) → 28 wide with every
+offset a measured fraction of the body width, written into the comment on `hero_controller` so the
+next person can check them rather than re-judge them. The headline one: **the d-pad sits inboard
+of the left stick** — 0.355 across against 0.204 — which is the most recognisable thing about the
+layout and the thing both earlier passes had backwards. Only the buttons are exaggerated (true
+scale is 2.2px, below where a colour reads at all). It's white for contrast, with Xbox's own ABXY
+colours reused from hexes the palette already had.
 
-#### The hand
+**The coffee steam** read as an arrowhead (two lines converging on a point *is* an arrowhead),
+then as two bent wires (one direction change each). Three segments — two direction changes — is
+where it starts reading as vapour. It's also translucent now, the only translucent colour on the
+face. The cup body is centred on the hand with its base exactly on the hand's centre, and the
+handle's gap faces the cup so its ring lands *on* the cup wall instead of inside it — that overlap
+was what made one wall look twice as thick.
 
-**It is a rotated capsule, not the round fist every other pose uses**, because a circle at the
-temple reads as a knock on the head. `PartDraw` takes `pivotX`/`pivotY`/`angle` — the leaves
-have used it since the first pass — and **`angle` is clockwise-positive**, which is worth
-writing down because it is nowhere in the schema. Mirroring flips the sign, and the capsule
-inside is concentric, so identical content serves both hands.
+**The headset** was the worst of the three, and the companion's version is **scrapped for now** —
+deliberately, so the hero's could be judged on its own; see `blob-companion.ts`. Pass two's narrow
+cups left a **1px gap** to the body, and at this scale a hairline of black between two shapes
+separates them completely — that is what "not attached" meant. They're now wider, 6px lower
+(straddling the eyes and the mouth the way an ear does), and overlapping 3px *into* the body. The
+band is thinner and its peak sits inside the body's outline, with the leaf tuft ending at exactly
+the band's height so the leaves rest on it rather than being cut by it. The boom mic keeps pass
+two's single smooth `Arc` — that part was right — but now leaves the cup's lower half and finishes
+level with the mouth, 7px clear of it, instead of stopping above it.
 
-Two numbers came from rendering rather than from reasoning:
+#### "A Part cannot go there" is about one group, not the canvas
 
-* **20 × 14, not 22 × 11.** Three pixels wider than the 8px arm is not a hand; it rendered as a
-  tapered dart from elbow to forehead. Every round fist here is 19 wide against the same arm.
-* **The far elbow sits at (99,66), not (97,64).** The first try gave both limbs the same length
-  and mirrored slopes, and a symmetrical V beside a round head reads as an *arrowhead*. 2px out
-  and 2px down flattens the upper arm to 28° against the forearm's 38°, and the shape resolves
-  into a shoulder and a bend.
+Pass three left the controller 3.5px right of the hand and called it unfixable: the hand sits at
+x10.5 in the hero group's coordinates, a `PartDraw` cannot start left of the group origin, and
+content there is clipped. All true — the companion's left hand proves the clipping (its cream cap
+is drawn from x−2 and arrives flat-sided). What the reasoning missed is that **the group is not the
+only coordinate space available.** The umbrella, the bolt, the burst and both sets of Zzz are all
+*siblings* of the blob rather than children, positioned in absolute canvas coordinates, each
+repeating the blob's Gyro gain by hand so they still track the wrist.
 
-**Attaching the hand took three attempts, and the fix is one extra line.** The hand is drawn
-after the face — it has to be, because the limb pass runs *before* the body so that shoulders
-read as joints, and a palm on the forehead drawn before the body is a palm the body paints over.
-Drawing it late means it lands on top of the forearm, and then:
+So the three hand props moved into their own top-level section, `face/hero-props.ts`, at canvas
+(199,262) — which puts the hand at group-local (18.5,35) with room on every side. The controller
+and the cup are now centred on the hand **exactly**. Two things made that safe: the section is
+registered immediately after `blobHero()`, which is where those Conditions used to sit as its last
+children, so **draw order is unchanged**; and the cocktail's box moved from the hero group's (0,6)
+to the new group's (8,6) — the same canvas position, (207,268) — which is asserted in the geometry
+check and was confirmed by reshooting `3-sunny` as a regression. **Anything that needs to overhang
+a blob belongs beside it, not inside it.**
 
-1. **A plain 2px rim** closes across the wrist and cuts the hand off the arm. Reported from the
-   wrist as "the hand looks not attached".
-2. **Navy flush with the capsule, or 2px past it**, joins the cores — and merges hand and
-   forearm into a single tapered paddle that reads as a spoon held to the head.
-3. **A plain rim plus a repeat of the forearm's 4.5px core on top**, which bridges the rim
-   exactly the way the round fists do it: their arm line ends *inside* the hand's navy ellipse.
-   The wrist is continuous navy and the hand keeps its outline on the other three sides.
+Pass four also fixed three drawing errors worth naming, because each is a *class* of mistake:
+a **RoundRectangle bottoms out flat**, which is wrong in any view looking down far enough to see
+into a cup — if the rim reads as an ellipse the base must too, so the cup is now a rim ellipse, a
+straight body and a bottom ellipse stacked, with the rim drawn as a separate white ellipse *under*
+the coffee so the wall is visible at the top. **A single rounded rectangle gives dead-vertical
+sides**, which read as a slab; the controller's shell is now 24 wide with grips reaching 28, so the
+silhouette tapers 15 → 24 → 28 down its height. And **the band was invisible against the arms** —
+its old `#2b3a4a` differed from the limbs' `#23384f` by a luma of **2.8**, effectively identical,
+and the arms cross it. It now uses the headset's own cushion tone at a luma gap of 73.7, and its
+peak moved to the body's topmost point so it rides *on* the crown instead of cutting a chord
+through the head.
 
-The **8px** matters in (3). The first version of that bridge repeated the forearm exactly as the
-limb pass has it, ending at the wrist, and changed nothing at all — a concentric 2px inset on a
-20-long capsule pulls its navy **5.6px back** from the wrist, so the core stopped short of the
-thing it was meant to reach. Redrawing a line is only a bridge if it arrives.
-
-Everything the pose could collide with was measured, not eyeballed: the right eye ends at
-(67,56) and the palm's lower flank is at y 50 by then; the shades' right lens is 52..72 × 56..69
-and the palm bottoms out at 54 above it; `leaf_right` clears the fingertip cap by 5.5px. That
-last one was first recorded as a 1.5px *collision*, from measuring the leaf against the tip of a
-round cap instead of its centre — cap geometry is measured from centres.
-
-**The windows and the arm choice were verified by evaluating the real expressions**, pulled out
-of the XML rather than reimplemented: every boundary minute (09:04/09:05/09:19/09:20,
-15:59/16:00/16:29/16:30, Friday 14:59/15:00/15:29/15:30/15:59/16:00), every day including
-Saturday and Sunday, and the fallback against rain at 49% and 70%, 25° clear, 25° cloudy, and no
-weather data at all. The same pass checks that **all five copies of the pair agree** across 7
-days × 24 hours × 10 minutes × 3 weather variants — which is the only cheap defence against a
-hand-copied expression drifting.
+`headset` and `fricontroller` are both in `cycle-states.ps1` if either accessory changes again — a
+still frame shows the controller's pulse at one arbitrary phase, not its cadence.
 
 ### How the blobs are built
 
@@ -614,9 +694,15 @@ Worth knowing before you edit them, because WFF has **no `<Path>` element**:
 - **Limbs** — `Line` with `cap="ROUND"` plus a small filled `Ellipse` for the hand/foot,
   which is exactly how the CI illustrations are constructed.
 
-Colours live at the top of [watchface.xml](watchface/src/main/res/raw/watchface.xml) as a
-comment block; they are inline attribute values, so search/replace on the hex is the way
-to retheme.
+Colours live in [tools/gen/palette.ts](tools/gen/palette.ts). Retheming means editing the
+seven `HERO` hexes and regenerating — the 21 derived values (both mouths, the date chip and
+the date text, per weekday) are computed from them by the documented HSL ratios, and
+`verifyDerivation()` fails the build if a ratio stops reproducing the colours that shipped.
+
+This used to be a comment block at the top of `watchface.xml` with the hexes inline, retheme
+by search/replace. That block had already drifted: it still listed the retired navy `#8fa9c6`
+as the limb colour when the face had been using `#e9dccb` for some time. Generating the
+palette documentation from the palette is the fix.
 
 ## Preview image
 
@@ -631,16 +717,16 @@ baseline.
 
 Almost none of that is settable from the host — the watch is a production build so the
 clock cannot be set, weather cannot be faked at all, and heart rate and step count have
-no synthetic providers. So `tools/mock-state.mjs` hardcodes the values into the XML
+no synthetic providers. So `tools/mock-state.ts` hardcodes the values into the XML
 instead, and you build, shoot, and restore:
 
 ```powershell
-node tools/mock-state.mjs on baseline
+node tools/mock-state.ts on baseline
 ./gradlew :watchface:installDebug
 adb shell input tap 213 213          # wake it - see below
 adb shell screencap -p /data/local/tmp/preview.png
 adb pull /data/local/tmp/preview.png watchface/src/main/res/drawable/preview.png
-node tools/mock-state.mjs off
+node tools/mock-state.ts off
 ./gradlew :watchface:installDebug    # <- do not skip
 ```
 

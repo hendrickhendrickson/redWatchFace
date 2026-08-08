@@ -7,3 +7,7 @@ local.properties
 
 # Verification tools are downloaded, not vendored (see README)
 tools/*.jar
+
+# Generator toolchain. package-lock.json IS committed - the whole point of
+# pinning typescript is that the type check is the same on the next machine.
+node_modules/

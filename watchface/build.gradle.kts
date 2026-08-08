@@ -82,6 +82,44 @@ tasks.register<Exec>("validateWatchFaceXml") {
     }
 }
 
+// ---------------------------------------------------------------------------
+// watchface.xml is generated from tools/gen/*.ts (see docs/authoring-strategy.md).
+// The generated file IS committed, so a clone without node still builds a correct
+// APK and `git diff` on the XML stays reviewable. This task guards the other
+// direction: the committed file must match what the generator produces.
+// ---------------------------------------------------------------------------
+
+tasks.register<Exec>("checkWatchFaceXmlUpToDate") {
+    group = "verification"
+    description = "Regenerates watchface.xml from tools/gen and fails if the committed file differs."
+
+    val genScript = rootProject.layout.projectDirectory.file("tools/gen/build.ts").asFile
+    // mock-state.ts rewrites watchface.xml in place; after a capture run a mocked
+    // tree is the NORMAL state. Regenerating then would look like a spurious
+    // failure at best and discard the mock at worst.
+    val mockBackup = layout.buildDirectory.file("mock-state-backup.xml").get().asFile
+
+    onlyIf {
+        // Deliberately NOT the onlyIf-on-missing-tool pattern the two jar tasks
+        // use. Those skip because the jars are a separate download; the generator
+        // is in the repo, so if it cannot run that is a broken checkout, not an
+        // opt-out - and a check that silently skips is how this build already
+        // manages to report SUCCESSFUL having verified nothing.
+        if (!genScript.exists()) {
+            throw GradleException("Missing ${genScript.path} - watchface.xml is generated (see docs/authoring-strategy.md).")
+        }
+        (!mockBackup.exists()).also {
+            if (!it) logger.lifecycle("Skipping: a mock is in place (tools/mock-state.ts off to clear it).")
+        }
+    }
+
+    commandLine("node", genScript.path, "--check")
+}
+
+// Run before validation, so a stale file is reported as stale rather than as a
+// confusing schema result against markup nobody generated.
+tasks.named("validateWatchFaceXml") { dependsOn("checkWatchFaceXmlUpToDate") }
+
 tasks.register<Exec>("checkMemoryFootprint") {
     group = "verification"
     description = "Checks the built APK against the 10 MB ambient / 100 MB active limits."

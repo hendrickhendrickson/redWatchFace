@@ -35,16 +35,25 @@
                                 interactive mode only, which made the date the
                                 one element that changed hue rather than just
                                 weight when the screen woke.
-       chip slate    #3a4757    the day-of-month background pill
+       date chip     PER WEEKDAY  the body's hue at S 0.20 / L 0.28. Was a
+                                fixed slate #3a4757, which is what Thursday's
+                                value very nearly still is.
+       date text     PER WEEKDAY  the body's hue at S 0.22 / L 0.78. Was a fixed
+                                ice blue #b9c6d4, ditto.
        coral         #e8543c    accent: heart icon, low battery only. The
                                 temperature used to be coral too; it is a
                                 reading, not a warning, so it is cream now.
        teal          #4fb3c4    steps, umbrella canopy (brightened from
                                 #2e7c8a, which read as mud against black)
        green         #5fb874    battery fill, leaves
-       hero body     #ee4e43    big blob
-       companion     #f7a23a    small blob (yellow-orange)
-       mouth         #5a2a22    open mouth, on-body so still dark
+       hero body     PER WEEKDAY  Mon #ee4e43 (brand red), Tue #f5c92e,
+                                Wed #a5d63a, Thu #6b9df2, Fri #f0862f,
+                                Sat #8fa3bc, Sun #b07ce4. See hero_body.
+       companion     TOMORROW'S hero colour, so the pair never share a hue
+                                and the small blob previews the next day.
+       mouth         PER BLOB   the body's own hue at S x0.55 / L x0.41.
+                                Ratios measured off the original #ee4e43/#5a2a22
+                                pair, so red is unchanged and the rest follow.
        eyes          #23384f    on-body so still dark
        limb          #8fa9c6    arms + legs. The brand navy #16324b raised in
                                 lightness only: dark navy vanishes against
@@ -108,27 +117,186 @@
       <Variant mode="AMBIENT" target="alpha" value="0"
                duration="0.55" startOffset="0" interpolation="EASE_OUT" />
 
-      <PartDraw name="date_chip" x="229" y="41" width="44" height="34">
-        <RoundRectangle x="0" y="0" width="44" height="34" cornerRadiusX="11" cornerRadiusY="11">
-          <Fill color="#3a4757" />
-        </RoundRectangle>
-      </PartDraw>
+      <!-- THE DATE ROW TAKES THE DAY'S HUE, AND ONLY ITS HUE.
 
-      <PartText name="date_weekday" x="148" y="42" width="100" height="32">
-        <Text align="CENTER">
-          <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#b9c6d4">
-            <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
-          </Font>
-        </Text>
-      </PartText>
+           It briefly carried the full-saturation body colour - a filled swatch of
+           chip with near-black digits on it - and that was too loud for a 26px row
+           sitting under a 100px clock. It is now the ORIGINAL scheme, muted chip
+           with light text, recoloured from the body's hue:
 
-      <PartText name="date_day" x="229" y="42" width="44" height="32">
-        <Text align="CENTER">
-          <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#b9c6d4">
-            <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
-          </Font>
-        </Text>
-      </PartText>
+               text  H of the body, S 0.22, L 0.78     (was #b9c6d4 ice blue)
+               chip  H of the body, S 0.20, L 0.28     (was #3a4757 slate)
+
+           Those two S/L pairs are lifted straight off the retired colours, so
+           nothing about the row's weight or contrast changes - only its hue. On
+           Monday it is a warm grey on a dark warm slate; on Thursday it is back to
+           very nearly the ice blue and slate it always was, since those were blue
+           to begin with.
+
+           The day number and the weekday word share the text colour, exactly as
+           before.
+
+           AMBIENT IS DELIBERATELY NOT COLOURED. date_ambient below stays ice blue
+           on black: colour costs OLED power for no benefit on a screen nobody is
+           looking at closely, and the documented ambient budget is 15% of pixels
+           lit. The chip is dropped there anyway. -->
+      <Condition>
+        <Expressions>
+          <Expression name="date_tue">[DAY_OF_WEEK] == 3</Expression>
+          <Expression name="date_wed">[DAY_OF_WEEK] == 4</Expression>
+          <Expression name="date_thu">[DAY_OF_WEEK] == 5</Expression>
+          <Expression name="date_fri">[DAY_OF_WEEK] == 6</Expression>
+          <Expression name="date_sat">[DAY_OF_WEEK] == 7</Expression>
+          <Expression name="date_sun">[DAY_OF_WEEK] == 1</Expression>
+        </Expressions>
+        <Compare expression="date_tue">
+          <PartDraw name="date_chip_tue" x="229" y="41" width="44" height="34">
+            <RoundRectangle x="0" y="0" width="44" height="34" cornerRadiusX="11" cornerRadiusY="11">
+              <Fill color="#564f39" />
+            </RoundRectangle>
+          </PartDraw>
+          <PartText name="date_weekday_tue" x="148" y="42" width="100" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#d3cebb">
+                <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+          <PartText name="date_day_tue" x="229" y="42" width="44" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#d3cebb">
+                <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Compare>
+        <Compare expression="date_wed">
+          <PartDraw name="date_chip_wed" x="229" y="41" width="44" height="34">
+            <RoundRectangle x="0" y="0" width="44" height="34" cornerRadiusX="11" cornerRadiusY="11">
+              <Fill color="#4d5639" />
+            </RoundRectangle>
+          </PartDraw>
+          <PartText name="date_weekday_wed" x="148" y="42" width="100" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#cbd3bb">
+                <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+          <PartText name="date_day_wed" x="229" y="42" width="44" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#cbd3bb">
+                <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Compare>
+        <Compare expression="date_thu">
+          <PartDraw name="date_chip_thu" x="229" y="41" width="44" height="34">
+            <RoundRectangle x="0" y="0" width="44" height="34" cornerRadiusX="11" cornerRadiusY="11">
+              <Fill color="#394456" />
+            </RoundRectangle>
+          </PartDraw>
+          <PartText name="date_weekday_thu" x="148" y="42" width="100" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#bbc4d3">
+                <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+          <PartText name="date_day_thu" x="229" y="42" width="44" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#bbc4d3">
+                <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Compare>
+        <Compare expression="date_fri">
+          <PartDraw name="date_chip_fri" x="229" y="41" width="44" height="34">
+            <RoundRectangle x="0" y="0" width="44" height="34" cornerRadiusX="11" cornerRadiusY="11">
+              <Fill color="#564639" />
+            </RoundRectangle>
+          </PartDraw>
+          <PartText name="date_weekday_fri" x="148" y="42" width="100" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#d3c6bb">
+                <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+          <PartText name="date_day_fri" x="229" y="42" width="44" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#d3c6bb">
+                <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Compare>
+        <Compare expression="date_sat">
+          <PartDraw name="date_chip_sat" x="229" y="41" width="44" height="34">
+            <RoundRectangle x="0" y="0" width="44" height="34" cornerRadiusX="11" cornerRadiusY="11">
+              <Fill color="#394656" />
+            </RoundRectangle>
+          </PartDraw>
+          <PartText name="date_weekday_sat" x="148" y="42" width="100" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#bbc6d3">
+                <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+          <PartText name="date_day_sat" x="229" y="42" width="44" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#bbc6d3">
+                <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Compare>
+        <Compare expression="date_sun">
+          <PartDraw name="date_chip_sun" x="229" y="41" width="44" height="34">
+            <RoundRectangle x="0" y="0" width="44" height="34" cornerRadiusX="11" cornerRadiusY="11">
+              <Fill color="#473956" />
+            </RoundRectangle>
+          </PartDraw>
+          <PartText name="date_weekday_sun" x="148" y="42" width="100" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#c7bbd3">
+                <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+          <PartText name="date_day_sun" x="229" y="42" width="44" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#c7bbd3">
+                <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Compare>
+        <Default>
+          <PartDraw name="date_chip_mon" x="229" y="41" width="44" height="34">
+            <RoundRectangle x="0" y="0" width="44" height="34" cornerRadiusX="11" cornerRadiusY="11">
+              <Fill color="#563b39" />
+            </RoundRectangle>
+          </PartDraw>
+          <PartText name="date_weekday_mon" x="148" y="42" width="100" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#d3bcbb">
+                <Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+          <PartText name="date_day_mon" x="229" y="42" width="44" height="32">
+            <Text align="CENTER">
+              <Font family="SYNC_TO_DEVICE" size="26" weight="BOLD" slant="NORMAL" color="#d3bcbb">
+                <Template><![CDATA[%d]]><Parameter expression="[DAY]" /></Template>
+              </Font>
+            </Text>
+          </PartText>
+        </Default>
+      </Condition>
     </Group>
 
     <Group name="date_ambient" x="0" y="0" width="450" height="80" alpha="0">
@@ -741,11 +909,18 @@
 
          Triggers, and why each is written the way it is:
 
-           sweat      [HEART_RATE] >= 120
+           sweat      [HEART_RATE] >= 100, ramped to 200
                       Exact. Heart rate needs no permission for the face to
-                      read, the runtime brokers it. Was 100, which a brisk
-                      walk or a flight of stairs reaches, so the blobs were
-                      sweating most of the day; 120 is properly "working".
+                      read, the runtime brokers it. A static cluster on the
+                      forehead plus beads DRIPPING down both cheeks. The drips
+                      scale in speed and length linearly from 100bpm to 200 and
+                      their number fades up over 140..160; the forehead cluster
+                      fills in three steps - middle pearl at 100, the outer pair
+                      at 120, all three at 150. Nothing about it is binary,
+                      which is what makes a 100bpm floor reasonable - it was
+                      raised to 120 back when the reaction was on-or-off and a
+                      flight of stairs put the blobs in full sweat. See the long
+                      note at hero_drip_a.
 
          HOW THESE COMBINE. Every accessory is an independent <Condition>, so
          they stack freely - shades, sweat and an umbrella can all be on at
@@ -762,12 +937,20 @@
          Plus the weather icon, where five Compares share one Condition and the
          first true one wins.
 
-           sunny      CONDITION == 1 && IS_DAY && TEMPERATURE >= 25
-                      Shades plus a cocktail in the hero's raised hand. Exact,
-                      since code 1 (clear) is confirmed on real hardware - this
-                      was once a warm-and-dry proxy that could put shades on
-                      during a warm overcast day. Was called "sunglasses"; the
-                      state is more than eyewear now.
+           shades     UV_INDEX >= 6 && IS_DAY
+                      Split out of the old sunny state on 2026-08-06. Six is
+                      where the WHO/EPA scale calls the UV index "high".
+                      [WEATHER.UV_INDEX] is a real v5 source; it was simply
+                      never read before.
+
+           cocktail   CONDITION == 1 && IS_DAY && TEMPERATURE >= 25
+                      The other half of the old sunny state, unchanged: a warm
+                      clear day, in the hero's raised hand. Exact, since code 1
+                      (clear) is confirmed on real hardware - this was once a
+                      warm-and-dry proxy that could put shades on during a warm
+                      overcast day. The two halves now overlap rather than
+                      coincide: a bright cold March afternoon gets shades and no
+                      drink.
 
            startled   precipitation >= 90%, same trigger as the storm
                       Round mouth and wide round eyes on the hero. Lives inside
@@ -781,7 +964,18 @@
                       the only mode source is IS_24_HOUR_MODE - so the clock
                       is the only option, as agreed.
 
+           cold       TEMPERATURE <= 10   scarf
+           gloves     TEMPERATURE <= 5    mittens over whichever hand pose is
+                      showing. Split from the scarf on 2026-08-06; each step is
+                      a strict subset of the one above it, so 3 degrees means
+                      scarf and gloves and a snowflake with no exclusions
+                      anywhere.
+
            umbrella   precipitation >= 50%
+           rain       precipitation >= 50%, so it covers the storm too. Two
+                      animated curtains of drops in the outer margins - the only
+                      part of the canvas that is free in every combination of
+                      night, storm and step goal. See the note at rain_fall.
            storm      precipitation >= 90%
                       Also a PROXY, for the same reason as shades: the
                       thunderstorm condition code is unknown. Heavy rain is
@@ -924,100 +1118,271 @@
         </Ellipse>
       </PartDraw>
 
-      <!-- Screen-RIGHT arm - the blob's LEFT. Two poses, added 2026-08-04.
-           Out to the side normally; down along the body when asleep.
+      <!-- ============================================================
+           THE SALUTE, added 2026-08-07, windows and arm choice revised the same
+           day. The hero snaps a hand to its brow on weekdays, twice a day:
 
-           Unlike the screen-left arm this one has no umbrella or cocktail to
-           hold, so its rest condition is the plain night test with no "and dry"
-           clause - it can drop even in the rain.
+               Mon-Thu    09:05-09:20   and   16:00-16:30
+               Friday     09:05-09:20   and   15:00-15:30
+                                              15:30-16:00 -> the COCKTAIL
 
-           The lowered pose is the screen-left one MIRRORED ABOUT THE BODY
-           CENTRE, x' = 100 - x, not about the group centre 53. The body is
-           14..86 so its centre is 50, and mirroring about 53 is exactly the
-           3px error the note above this describes. That puts the hand's inner
-           edge at 80.5 against a body outline of 80.5 at that height - flush,
-           the same way the left hand is.
+           Friday knocks off early, and the half hour it gains at the front of
+           the afternoon salute it hands back as a drink - see hero_drink below,
+           which is where the second half of the Friday rule lives. The two
+           windows ABUT and must stay that way: 15:30 is written in both places
+           and means the same boundary.
 
-           Bottom of the hand is y 111, six pixels above the right foot at 117,
-           which is the clearance the left arm needed to stop reading as a third
-           leg. -->
+           EVERY WINDOW IS HALF-OPEN, and every one of them is written the same
+           way: MINUTE &gt;= start on the near edge where there is one, and
+           N &gt; MINUTE on the far edge. 09:05:00 up to 09:19:59; 16:00:00 up to
+           16:29:59; Friday 15:00:00 up to 15:29:59. So the minute an end time
+           begins is already outside, which is what makes the Friday salute and
+           the Friday cocktail abut at 15:30 with no gap and no overlap.
+
+           The afternoon window was briefly 16:00-16:39, from a typo in the
+           request that was implemented literally rather than queried. Both
+           afternoon windows are 30 minutes now, and if a third one is ever added
+           the shape above is the one to copy.
+
+           Written from HOUR_0_23 and MINUTE rather than a minute-of-day source,
+           because both are sources this file already trusts; SECONDS_IN_DAY
+           exists in sourceType.xsd but its zero point is not documented
+           anywhere.
+
+           WEEKDAYS ARE DAY_OF_WEEK 2..6, BECAUSE 1 IS SUNDAY. Measured on the
+           watch, not read in a reference - see the long note on hero_body. The
+           ISO reading would have put this on Sunday-to-Thursday, which is the
+           kind of error that looks right most of the week.
+
+           ============================================================
+           WHICH ARM: THE BLOB'S RIGHT ONE (screen LEFT) BY PREFERENCE, and the
+           other one only when that hand is already full.
+
+           The screen-left fist is the one that holds things: the umbrella shaft
+           and the cocktail both terminate at a FIXED point in it, drawn by their
+           own Conditions. So the salute cannot simply take that hand - it takes
+           it when it is free, and falls back to the screen-right arm when it is
+           not. Free means neither object is out:
+
+               busy = IS_AVAILABLE &amp;&amp; (CHANCE_OF_PRECIPITATION &gt;= 50
+                                        || (TEMPERATURE &gt;= 25
+                                            &amp;&amp; CONDITION == 1 &amp;&amp; IS_DAY))
+
+           which is the umbrella's own trigger OR the cocktail's WEATHER trigger.
+           The cocktail's FRIDAY trigger is deliberately not in there: 15:30 is
+           where the Friday salute stops, so the two can never be true at once,
+           and adding it would only hide that fact. If those windows are ever
+           made to overlap, this expression has to grow.
+
+           NO NEGATION ANYWHERE, and that is the reason for the branch order in
+           the Conditions below rather than a style preference. The schema says
+           only the FIRST successful Compare is selected, so a branch testing
+           "salute AND busy" placed above a branch testing "salute" gives the
+           second one the meaning "salute AND NOT busy" for free. Writing that
+           second test out by hand means a De Morgan of the busy expression, kept
+           in step with it forever, in three places; this way "busy" appears in
+           exactly one form.
+
+           WHERE THE PAIR OF TESTS APPEARS - five Conditions, because WFF
+           Expressions are scoped to their own Condition and cannot be shared:
+             1. here, the screen-right arm's limbs (busy only)
+             2. hero_arm_left_*, the screen-left arm's limbs (both branches)
+             3. hero_salute_palm, the hand, after the face (both branches)
+             4. hero_glove_r_*, the mitten on the screen-right hand (busy only)
+             5. hero_glove_l_*, the mitten on the screen-left hand (both)
+           Change a window and all five move together.
+
+           THE STEP-GOAL FLAG ONLY STANDS DOWN ON THE FALLBACK. It hangs from
+           the screen-right hand, so when the salute lands there the flag cannot
+           also be held - hence this wrapper, and hence the flag living inside
+           its Default rather than beside it (an empty <Compare> is not legal;
+           the schema requires at least one child, so "draw neither the flag nor
+           the ordinary arm" has to be a wrapper). On a dry, non-cocktail day
+           the salute goes to the other arm and the flag is untouched, which is
+           the common case.
+
+           THE HAND IS DRAWN IN TWO PASSES, and it has to be. The limb pass runs
+           BEFORE the body, which is what makes every other shoulder read as a
+           joint instead of a stick pasted on - but a palm on the forehead drawn
+           before the body is a palm the body then paints over. So the arms are
+           here and the hand is a separate Condition after the face, carrying a
+           copy of these tests. Same split the umbrella shaft uses, same reason:
+           occlusion is the only depth cue there is.
+
+           Geometry of this arm, group-local. Shoulder (84,74) - two pixels
+           inside the body outline, exactly like hero_arm_right_out, so the body
+           hides the cap - out and up to the elbow at (99,66), then back in to
+           the wrist at (85,55). Cream 8 then navy 4.5, BOTH segments cream
+           first: draw them limb-by-limb instead and the second limb's rim cuts
+           a pale notch across the first one's core at the elbow.
+
+           THE TWO SEGMENTS ARE DELIBERATELY UNEQUAL. The first attempt put the
+           elbow at (97,64), which gave both limbs the same length and mirrored
+           slopes - and a symmetrical V beside a round head reads as an arrowhead
+           pointing away from the blob, not as an arm. Moving the elbow 2px out
+           and 2px down flattens the upper arm to 28 degrees against the
+           forearm's 38, and the shape resolves into a shoulder and a bend. The
+           wrist could not move to fix it: the forearm's slope is pinned by where
+           the hand has to land.
+
+           Widest point is the elbow's cream cap at absolute (310,332), radius
+           136 from the centre against the 225 bezel. Nothing here is close to
+           an edge; the constraint on this pose was the body, not the glass. -->
       <Condition>
         <Expressions>
-          <Expression name="hero_arm_r_rest">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+          <Expression name="hero_salute_r">(([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 7 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 9 &amp;&amp; [MINUTE] &gt;= 5 &amp;&amp; 20 &gt; [MINUTE]) || ([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 6 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 16 &amp;&amp; 30 &gt; [MINUTE]) || ([DAY_OF_WEEK] == 6 &amp;&amp; [HOUR_0_23] == 15 &amp;&amp; 30 &gt; [MINUTE])) &amp;&amp; ([WEATHER.IS_AVAILABLE] &amp;&amp; ([WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 50 || ([WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY])))</Expression>
         </Expressions>
-
-        <Compare expression="hero_arm_r_rest">
-          <PartDraw name="hero_arm_right_down" x="0" y="0" width="106" height="132">
-            <Line startX="76" startY="78" endX="88" endY="96">
+        <Compare expression="hero_salute_r">
+          <PartDraw name="hero_arm_right_salute" x="0" y="0" width="106" height="132">
+            <Line startX="84" startY="74" endX="99" endY="66">
               <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
             </Line>
-            <Ellipse x="80.5" y="93" width="19" height="18">
-              <Fill color="#e9dccb" />
-            </Ellipse>
-            <Line startX="76" startY="78" endX="88" endY="96">
+            <Line startX="99" startY="66" endX="85" endY="55">
+              <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+            </Line>
+            <Line startX="84" startY="74" endX="99" endY="66">
               <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
             </Line>
-            <Ellipse x="82.5" y="95" width="15" height="14">
-              <Fill color="#23384f" />
-            </Ellipse>
+            <Line startX="99" startY="66" endX="85" endY="55">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
           </PartDraw>
         </Compare>
-
+        <!-- No salute: the flag and the ordinary two-pose arm, both untouched.
+             THE SALUTE IS DECIDED BEFORE THE NIGHT POSE inside here. That is
+             documentation rather than arbitration - neither window comes near
+             23:00-07:00 - but if the sleep hours are ever widened, this says
+             which one was meant to win. -->
         <Default>
-          <!-- Starts at x 84, not 90 - see the 3px note above. -->
-          <PartDraw name="hero_arm_right_out" x="0" y="0" width="106" height="132">
-            <Line startX="84" startY="74" endX="93" endY="62">
-              <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
-            </Line>
-            <Ellipse x="84" y="52" width="18" height="17">
-              <Fill color="#e9dccb" />
-            </Ellipse>
-            <Line startX="84" startY="74" endX="93" endY="62">
-              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
-            </Line>
-            <Ellipse x="86" y="54" width="14" height="13">
-              <Fill color="#23384f" />
-            </Ellipse>
-          </PartDraw>
+          <!-- STEP GOAL REACHED: a small flag in the blob's LEFT hand, i.e. the
+               screen-RIGHT one. Deliberately the opposite hand from the cocktail and
+               the umbrella, which both occupy the screen-left fist, so a hot day or
+               a wet one can coexist with hitting your step goal.
+
+               IT DOES NOT COEXIST WITH A FALLBACK SALUTE, and that is why this
+               Condition is nested here rather than standing on its own - see
+               hero_salute_r immediately above. The hand it hangs from is the one
+               the salute falls back to when the other is holding an umbrella or a
+               drink, and then there is no flag. On a dry day with no cocktail the
+               salute goes to the far arm and the flag is unaffected.
+
+               Uses STEP_PERCENT, not STEP_COUNT >= 10000. STEP_PERCENT and STEP_GOAL
+               are both real data sources, so this tracks whatever goal the wearer has
+               actually set instead of hardcoding someone else's.
+               NOTE: >= 100 assumes STEP_PERCENT is a 0..100 percentage rather than a
+               0..1 fraction. Unverified on hardware - if the flag never appears, that
+               is the first thing to check.
+
+               Also gated on NOT night, because the arm it hangs from drops when the
+               blob is asleep and a flag flying from a lowered hand would trail on the
+               floor. "Not night" is written out as 23 > HOUR && HOUR >= 7 rather than
+               negating, so it needs no "!" operator.
+
+               DECLARED BEFORE THE ARM, ON PURPOSE, AND THAT IS THE WHOLE FIX
+               (2026-08-06). It used to sit after the arm Condition with the pole
+               stopping at y 56 - four pixels above the hand's centre - so the pole
+               ended ON TOP of the fist's upper edge and the flag read as balanced on
+               the knuckles rather than held. Now the pole runs the full way THROUGH
+               the hand (y 19 to 74) and the arm, drawn afterwards, covers the middle
+               of it: visible above the fist, hidden behind it, and out again as a
+               five-pixel stub below. Occlusion is the only "gripped" cue available -
+               the same problem the umbrella shaft solves by splitting itself in two,
+               which is what that one has to do because it cannot be reordered.
+
+               The stub's length was chosen by eye against 68, 71, 74 and 77: at 68
+               the pole vanishes into the fist, at 71 it is a 2px bump that reads as
+               an artefact, and 77 starts to look like a walking stick. It sits on
+               black - the body outline is at x 86 by that height and the arm's rim
+               stroke reaches only x 88, against a pole at 91.75..94.25.
+
+               Geometry: the out-pose hand is the cream ellipse (84,52)-(102,69),
+               centre (93,60.5). The pole is on x 93 - the hand's centre line - and
+               the FLAG NOW FLIES RIGHT, 93..105 at y 21..30.
+
+               Flying right is what was asked for and it fits, but only just: the
+               PartDraw box is the group's own 106 and content is clipped to it, so
+               the flag is 12 wide rather than the 14 it was when it flew left, and
+               its far edge lands at 105 with one pixel to spare. Do not widen it.
+               (The old comment here said a flag flying right "would clip" - true of
+               14 wide, not of 12.)
+
+               That spot is clear of the leaf tuft, which ends about x 90, and of the
+               body, which starts at y 36. In canvas terms the flag is 300..312 x
+               283..292, well inside the bezel and 31px below the stat row. -->
+          <Condition>
+            <Expressions>
+              <Expression name="hero_goal">[STEP_PERCENT] &gt;= 100 &amp;&amp; 23 &gt; [HOUR_0_23] &amp;&amp; [HOUR_0_23] &gt;= 7</Expression>
+            </Expressions>
+            <Compare expression="hero_goal">
+              <PartDraw name="hero_flag" x="0" y="0" width="106" height="132">
+                <Line startX="93" startY="19" endX="93" endY="74">
+                  <Stroke color="#e8e0d4" thickness="2.5" cap="ROUND" />
+                </Line>
+                <RoundRectangle x="93" y="21" width="12" height="9" cornerRadiusX="2" cornerRadiusY="2">
+                  <Fill color="#5fb874" />
+                </RoundRectangle>
+              </PartDraw>
+            </Compare>
+          </Condition>
+
+          <!-- Screen-RIGHT arm - the blob's LEFT. Two poses, added 2026-08-04.
+               Out to the side normally; down along the body when asleep.
+
+               Unlike the screen-left arm this one has no umbrella or cocktail to
+               hold, so its rest condition is the plain night test with no "and dry"
+               clause - it can drop even in the rain.
+
+               The lowered pose is the screen-left one MIRRORED ABOUT THE BODY
+               CENTRE, x' = 100 - x, not about the group centre 53. The body is
+               14..86 so its centre is 50, and mirroring about 53 is exactly the
+               3px error the note above this describes. That puts the hand's inner
+               edge at 80.5 against a body outline of 80.5 at that height - flush,
+               the same way the left hand is.
+
+               Bottom of the hand is y 111, six pixels above the right foot at 117,
+               which is the clearance the left arm needed to stop reading as a third
+               leg. -->
+          <Condition>
+            <Expressions>
+              <Expression name="hero_arm_r_rest">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+            </Expressions>
+
+            <Compare expression="hero_arm_r_rest">
+              <PartDraw name="hero_arm_right_down" x="0" y="0" width="106" height="132">
+                <Line startX="76" startY="78" endX="88" endY="96">
+                  <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+                </Line>
+                <Ellipse x="80.5" y="93" width="19" height="18">
+                  <Fill color="#e9dccb" />
+                </Ellipse>
+                <Line startX="76" startY="78" endX="88" endY="96">
+                  <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+                </Line>
+                <Ellipse x="82.5" y="95" width="15" height="14">
+                  <Fill color="#23384f" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+
+            <Default>
+              <!-- Starts at x 84, not 90 - see the 3px note above. -->
+              <PartDraw name="hero_arm_right_out" x="0" y="0" width="106" height="132">
+                <Line startX="84" startY="74" endX="93" endY="62">
+                  <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+                </Line>
+                <Ellipse x="84" y="52" width="18" height="17">
+                  <Fill color="#e9dccb" />
+                </Ellipse>
+                <Line startX="84" startY="74" endX="93" endY="62">
+                  <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+                </Line>
+                <Ellipse x="86" y="54" width="14" height="13">
+                  <Fill color="#23384f" />
+                </Ellipse>
+              </PartDraw>
+            </Default>
+          </Condition>
         </Default>
-      </Condition>
-
-      <!-- STEP GOAL REACHED: a small flag in the blob's LEFT hand, i.e. the
-           screen-RIGHT one. Deliberately the opposite hand from the cocktail and
-           the umbrella, which both occupy the screen-left fist, so a hot day or
-           a wet one can coexist with hitting your step goal.
-
-           Uses STEP_PERCENT, not STEP_COUNT >= 10000. STEP_PERCENT and STEP_GOAL
-           are both real data sources, so this tracks whatever goal the wearer has
-           actually set instead of hardcoding someone else's.
-           NOTE: >= 100 assumes STEP_PERCENT is a 0..100 percentage rather than a
-           0..1 fraction. Unverified on hardware - if the flag never appears, that
-           is the first thing to check.
-
-           Also gated on NOT night, because the arm it hangs from drops when the
-           blob is asleep and a flag flying from a lowered hand would trail on the
-           floor. "Not night" is written out as 23 > HOUR && HOUR >= 7 rather than
-           negating, so it needs no "!" operator.
-
-           Geometry: the out-pose hand is (84,52)-(102,69), centre (93,60.5). The
-           pole runs up x 93 to y 22 and the flag flies LEFT from it, 79..93 at y
-           22..32 - inward, because the group is only 106 wide and a flag flying
-           right would clip. That spot is clear of both the leaf tuft (which ends
-           about x 70) and the body (which starts at y 36). -->
-      <Condition>
-        <Expressions>
-          <Expression name="hero_goal">[STEP_PERCENT] &gt;= 100 &amp;&amp; 23 &gt; [HOUR_0_23] &amp;&amp; [HOUR_0_23] &gt;= 7</Expression>
-        </Expressions>
-        <Compare expression="hero_goal">
-          <PartDraw name="hero_flag" x="0" y="0" width="106" height="132">
-            <Line startX="93" startY="56" endX="93" endY="22">
-              <Stroke color="#e8e0d4" thickness="2.5" cap="ROUND" />
-            </Line>
-            <RoundRectangle x="79" y="22" width="14" height="10" cornerRadiusX="2" cornerRadiusY="2">
-              <Fill color="#5fb874" />
-            </RoundRectangle>
-          </PartDraw>
-        </Compare>
       </Condition>
 
       <!-- Screen-LEFT arm, the long one. Two poses.
@@ -1064,10 +1429,73 @@
            Its right edge at 19.5 also just clears the body outline (20.9 at
            that height), so the whole hand is visible rather than half-swallowed
            the way the shoulder deliberately is. -->
+      <!-- FOUR POSES SINCE 2026-08-07, and the branch ORDER is the logic - see
+           the long note on hero_salute_r above. First branch: it is salute time
+           but this hand is holding something, so it stays up and the other arm
+           salutes. Second: salute time and the hand is free, which is what the
+           first branch's failure means, so no negation is needed. Then the two
+           original poses.
+
+           THE FIRST BRANCH IS A BYTE-IDENTICAL COPY OF THE Default, on purpose.
+           WFF has no way to say "this branch does what the default does", and
+           the alternative was to write the negation of the busy test and keep
+           the two in step by hand. A duplicated 12-line pose is the cheaper
+           mistake: if the copies ever diverge the arm visibly jumps between
+           states, where a stale negation would draw TWO left arms at once.
+           The raised pose cannot be edited in one place any more - grep
+           hero_arm_left_up and expect two hits.
+
+           Geometry of the salute, group-local, and it is NOT a mirror of the
+           other arm's. Shoulder (16,74), two pixels inside the outline; elbow
+           (5,62), whose cream cap lands on x 1 - the same left margin the raised
+           hand has always used, and the reason the elbow could not simply be
+           mirrored to x 1: the box is 106 wide with the body at 14..86, so there
+           are 20px of room on the right and only 14 on the left. Wrist (17,53),
+           which keeps the forearm at 37 degrees so the hand can carry the same
+           angle as on the other side. The V is a little tighter here, 98 degrees
+           against 113, because the elbow cannot go as far out - it reads as a
+           more clipped salute, which is fine, since only one of the two is ever
+           on screen. -->
       <Condition>
         <Expressions>
+          <Expression name="hero_arm_l_busy">(([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 7 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 9 &amp;&amp; [MINUTE] &gt;= 5 &amp;&amp; 20 &gt; [MINUTE]) || ([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 6 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 16 &amp;&amp; 30 &gt; [MINUTE]) || ([DAY_OF_WEEK] == 6 &amp;&amp; [HOUR_0_23] == 15 &amp;&amp; 30 &gt; [MINUTE])) &amp;&amp; ([WEATHER.IS_AVAILABLE] &amp;&amp; ([WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 50 || ([WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY])))</Expression>
+          <Expression name="hero_arm_l_salute">([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 7 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 9 &amp;&amp; [MINUTE] &gt;= 5 &amp;&amp; 20 &gt; [MINUTE]) || ([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 6 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 16 &amp;&amp; 30 &gt; [MINUTE]) || ([DAY_OF_WEEK] == 6 &amp;&amp; [HOUR_0_23] == 15 &amp;&amp; 30 &gt; [MINUTE])</Expression>
           <Expression name="hero_arm_rest">([HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]) &amp;&amp; 50 &gt; [WEATHER.CHANCE_OF_PRECIPITATION]</Expression>
         </Expressions>
+
+        <Compare expression="hero_arm_l_busy">
+          <PartDraw name="hero_arm_left_up_busy" x="0" y="0" width="106" height="132">
+            <Line startX="22" startY="70" endX="11" endY="40">
+              <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+            </Line>
+            <Ellipse x="1" y="26" width="19" height="18">
+              <Fill color="#e9dccb" />
+            </Ellipse>
+            <Line startX="22" startY="70" endX="11" endY="40">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
+            <Ellipse x="3" y="28" width="15" height="14">
+              <Fill color="#23384f" />
+            </Ellipse>
+          </PartDraw>
+        </Compare>
+
+        <Compare expression="hero_arm_l_salute">
+          <PartDraw name="hero_arm_left_salute" x="0" y="0" width="106" height="132">
+            <Line startX="16" startY="74" endX="5" endY="62">
+              <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+            </Line>
+            <Line startX="5" startY="62" endX="17" endY="53">
+              <Stroke color="#e9dccb" thickness="8" cap="ROUND" />
+            </Line>
+            <Line startX="16" startY="74" endX="5" endY="62">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
+            <Line startX="5" startY="62" endX="17" endY="53">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
+          </PartDraw>
+        </Compare>
 
         <Compare expression="hero_arm_rest">
           <PartDraw name="hero_arm_left_down" x="0" y="0" width="106" height="132">
@@ -1106,12 +1534,120 @@
 
       <!-- Body and face. The body is one solid colour; the speckles that
            used to sit on it are gone. -->
-      <PartDraw name="hero_body" x="14" y="36" width="72" height="80">
-        <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
-          <Fill color="#ee4e43" />
-        </RoundRectangle>
+      <!-- ============================================================
+           EVERY COLOUR ON THE BLOBS IS THE DAY OF THE WEEK, added 2026-08-06.
 
-      </PartDraw>
+               day        body      mouth     companion   (= tomorrow's body)
+               Monday     #ee4e43   #5b2622   #f5c92e   brand red, unchanged
+               Tuesday    #f5c92e   #594c1e   #a5d63a   yellow
+               Wednesday  #a5d63a   #3f4c24   #6b9df2   lime green
+               Thursday   #6b9df2   #273f69   #f0862f   medium blue (lightened)
+               Friday     #f0862f   #57381f   #8fa3bc   orange
+               Saturday   #8fa3bc   #3a434d   #b07ce4   blueish grey
+               Sunday     #b07ce4   #482e62   #ee4e43   purple (lightened)
+
+           THE MOUTH KEEPS THE BODY'S HUE, at 0.55x its saturation and 0.41x its
+           lightness. Those two ratios are not invented: they are MEASURED off the
+           pair the face already had, #ee4e43 body against #5a2a22 mouth, so red
+           keeps the exact relationship it always had (to within a rounding step -
+           the generated value is #5b2622) and the other six inherit it. A mouth
+           that is merely "dark brown" reads as a smudge on a blue or a lime blob;
+           a mouth that is a dark version of the body reads as an opening in it.
+
+           THE COMPANION WEARS TOMORROW'S COLOUR and its mouth is derived from its
+           OWN body, not the hero's. On Monday the hero is red and the companion is
+           Tuesday's yellow; on Sunday the hero is purple and the companion is
+           Monday's red, so the cycle closes and the two are never the same hue.
+           The small blob is therefore also a preview of tomorrow.
+
+           [DAY_OF_WEEK] IS 1 = SUNDAY, NOT 1 = MONDAY. Measured on the watch on
+           2026-08-06 - a Thursday - with a temporary PartText printing the raw
+           value, which read 5. That is the Java/ICU Calendar convention
+           (Calendar.SUNDAY == 1) rather than ISO 8601. The source is undocumented
+           in sourceType.xsd, so this is measurement and not reference; assuming
+           ISO would have put every colour one day out, which looks exactly like a
+           correct implementation six days a week.
+
+           MONDAY IS THE Default RATHER THAN A Compare, deliberately: the brand red
+           is then the fallback for anything unexpected, including a 0 if the source
+           is ever unavailable the way [WEATHER.*] can be. Six Compares plus a
+           Default cover seven days with no gap and no overlap.
+
+           THE TABLE IS WRITTEN OUT NINE TIMES in this file, because WFF has no
+           variables: hero body, hero round mouth, hero open mouth, hero mouth
+           MASK, companion body, companion round mouth, companion open mouth,
+           companion mouth mask, and the date row. The masks are the dangerous
+           ones - an open mouth is a dark ellipse whose top half is repainted in
+           the BODY colour, since Arc takes no Fill - so a body/mask mismatch shows
+           up as a dark bar across a face on exactly one weekday. Grep a hex before
+           changing it and expect several hits.
+
+           Thursday's blue and Sunday's purple were LIGHTENED here (from #4b83e8
+           and #9b5fd0) to open up the contrast against the dark eyes and mouth.
+           Wednesday's lime is still the tightest hue in the set against the green
+           leaf tuft (#4fa968 / #5fb874) - deliberately far yellower so the leaves
+           stay readable as the darker green - and the companion hits the same pair
+           on Tuesday, when it wears Wednesday's lime.
+           ============================================================ -->
+      <Condition>
+        <Expressions>
+          <Expression name="body_tue">[DAY_OF_WEEK] == 3</Expression>
+          <Expression name="body_wed">[DAY_OF_WEEK] == 4</Expression>
+          <Expression name="body_thu">[DAY_OF_WEEK] == 5</Expression>
+          <Expression name="body_fri">[DAY_OF_WEEK] == 6</Expression>
+          <Expression name="body_sat">[DAY_OF_WEEK] == 7</Expression>
+          <Expression name="body_sun">[DAY_OF_WEEK] == 1</Expression>
+        </Expressions>
+        <Compare expression="body_tue">
+          <PartDraw name="hero_body_tue" x="14" y="36" width="72" height="80">
+            <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
+              <Fill color="#f5c92e" />
+            </RoundRectangle>
+          </PartDraw>
+        </Compare>
+        <Compare expression="body_wed">
+          <PartDraw name="hero_body_wed" x="14" y="36" width="72" height="80">
+            <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
+              <Fill color="#a5d63a" />
+            </RoundRectangle>
+          </PartDraw>
+        </Compare>
+        <Compare expression="body_thu">
+          <PartDraw name="hero_body_thu" x="14" y="36" width="72" height="80">
+            <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
+              <Fill color="#6b9df2" />
+            </RoundRectangle>
+          </PartDraw>
+        </Compare>
+        <Compare expression="body_fri">
+          <PartDraw name="hero_body_fri" x="14" y="36" width="72" height="80">
+            <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
+              <Fill color="#f0862f" />
+            </RoundRectangle>
+          </PartDraw>
+        </Compare>
+        <Compare expression="body_sat">
+          <PartDraw name="hero_body_sat" x="14" y="36" width="72" height="80">
+            <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
+              <Fill color="#8fa3bc" />
+            </RoundRectangle>
+          </PartDraw>
+        </Compare>
+        <Compare expression="body_sun">
+          <PartDraw name="hero_body_sun" x="14" y="36" width="72" height="80">
+            <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
+              <Fill color="#b07ce4" />
+            </RoundRectangle>
+          </PartDraw>
+        </Compare>
+        <Default>
+          <PartDraw name="hero_body_mon" x="14" y="36" width="72" height="80">
+            <RoundRectangle x="0" y="0" width="72" height="80" cornerRadiusX="36" cornerRadiusY="34">
+              <Fill color="#ee4e43" />
+            </RoundRectangle>
+          </PartDraw>
+        </Default>
+      </Condition>
 
       <!-- Eyes, split out of hero_body so they can flatten at night. The
            happy arcs still curve upward, which read as cheerful even with a
@@ -1180,63 +1716,369 @@
 
            Both variants use the body's own box (14,36,72,80) so the numbers
            stay in body-local coordinates, same as before the split. -->
+      <!-- THE ROUND MOUTH SERVES TWO STATES, and they are now ONE branch.
+           Startled (a 90% downpour) and asleep both draw the identical 11x11
+           circle at 30,42 - the eyes above carry the whole difference between a
+           gasp and a snore - so they used to be two Compares with byte-identical
+           bodies, described in the old comment as "a deliberate duplicate". With
+           the mouth colour now varying by weekday that duplicate would have meant
+           fourteen PartDraws instead of seven, so the two tests are combined with
+           "||" instead. Behaviour is unchanged: both branches always produced the
+           same pixels.
+
+           ORDER STILL MATTERS between this and the open mouth below - the round
+           one has to win - which is what the Compare/Default split does. -->
       <Condition>
         <Expressions>
-          <Expression name="hero_mouth_shocked">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
-          <Expression name="hero_asleep">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+          <Expression name="hero_mouth_round">([WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90) || [HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
         </Expressions>
-        <!-- Startled by the lightning: the round mouth, identical geometry to
-             the sleeping one. A small "o" reads as snoring under closed eyes and
-             as a gasp under wide ones, so the eyes above carry the whole
-             difference and this branch is a deliberate duplicate rather than a
-             new shape. Ordered before asleep for the same reason as the eyes. -->
-        <Compare expression="hero_mouth_shocked">
-          <PartDraw name="hero_mouth_shocked" x="14" y="36" width="72" height="80">
-            <Ellipse x="30" y="42" width="11" height="11">
-              <Fill color="#5a2a22" />
-            </Ellipse>
-          </PartDraw>
-        </Compare>
-        <Compare expression="hero_asleep">
-          <PartDraw name="hero_mouth_sleep" x="14" y="36" width="72" height="80">
-            <Ellipse x="30" y="42" width="11" height="11">
-              <Fill color="#5a2a22" />
-            </Ellipse>
-          </PartDraw>
+        <Compare expression="hero_mouth_round">
+            <Condition>
+              <Expressions>
+                <Expression name="rmouth_tue">[DAY_OF_WEEK] == 3</Expression>
+                <Expression name="rmouth_wed">[DAY_OF_WEEK] == 4</Expression>
+                <Expression name="rmouth_thu">[DAY_OF_WEEK] == 5</Expression>
+                <Expression name="rmouth_fri">[DAY_OF_WEEK] == 6</Expression>
+                <Expression name="rmouth_sat">[DAY_OF_WEEK] == 7</Expression>
+                <Expression name="rmouth_sun">[DAY_OF_WEEK] == 1</Expression>
+              </Expressions>
+              <Compare expression="rmouth_tue">
+                <PartDraw name="hero_mouth_round_tue" x="14" y="36" width="72" height="80">
+                  <Ellipse x="30" y="42" width="11" height="11">
+                    <Fill color="#594c1e" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+              <Compare expression="rmouth_wed">
+                <PartDraw name="hero_mouth_round_wed" x="14" y="36" width="72" height="80">
+                  <Ellipse x="30" y="42" width="11" height="11">
+                    <Fill color="#3f4c24" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+              <Compare expression="rmouth_thu">
+                <PartDraw name="hero_mouth_round_thu" x="14" y="36" width="72" height="80">
+                  <Ellipse x="30" y="42" width="11" height="11">
+                    <Fill color="#273f69" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+              <Compare expression="rmouth_fri">
+                <PartDraw name="hero_mouth_round_fri" x="14" y="36" width="72" height="80">
+                  <Ellipse x="30" y="42" width="11" height="11">
+                    <Fill color="#57381f" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+              <Compare expression="rmouth_sat">
+                <PartDraw name="hero_mouth_round_sat" x="14" y="36" width="72" height="80">
+                  <Ellipse x="30" y="42" width="11" height="11">
+                    <Fill color="#3a434d" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+              <Compare expression="rmouth_sun">
+                <PartDraw name="hero_mouth_round_sun" x="14" y="36" width="72" height="80">
+                  <Ellipse x="30" y="42" width="11" height="11">
+                    <Fill color="#482e62" />
+                  </Ellipse>
+                </PartDraw>
+              </Compare>
+              <Default>
+                <PartDraw name="hero_mouth_round_mon" x="14" y="36" width="72" height="80">
+                  <Ellipse x="30" y="42" width="11" height="11">
+                    <Fill color="#5b2622" />
+                  </Ellipse>
+                </PartDraw>
+              </Default>
+            </Condition>
         </Compare>
         <Default>
-          <!-- Open mouth: a dark ellipse with its top half painted back
-               over in the body colour, leaving a half-moon smile.
+          <!-- Open mouth: a dark ellipse with its top half painted back over in
+               the body colour, leaving a half-moon smile. Arc accepts only Stroke,
+               never Fill, so a filled half-moon has to be faked this way.
 
-               THE MASK STARTS 3px ABOVE THE ELLIPSE (y 35 against y 38), and
-               that is a fix, not slack. When both started at the same y their
-               antialiased top edges did not cancel: the mask only partially
-               covered the ellipse's topmost row, so a 1px sliver of #5a2a22
-               bled through as a faint horizontal dash a third of the way up the
-               face. It read convincingly as a little nose - convincingly enough
-               that it had to be measured to establish it was never drawn on
-               purpose. The companion's mouth had exactly the same artefact.
-
-               Any mask built this way must overshoot the shape it is cutting. -->
-          <PartDraw name="hero_mouth_awake" x="14" y="36" width="72" height="80">
-            <Ellipse x="24" y="38" width="22" height="20">
-              <Fill color="#5a2a22" />
-            </Ellipse>
-            <Rectangle x="22" y="35" width="26" height="13">
-              <Fill color="#ee4e43" />
-            </Rectangle>
-          </PartDraw>
+               THE MASK STARTS 3px ABOVE THE ELLIPSE (y 35 against y 38), and that
+               is a fix, not slack. When both started at the same y their
+               antialiased top edges did not cancel: a 1px sliver of the mouth
+               colour bled through as a faint horizontal dash a third of the way up
+               the face, and it read convincingly as a little nose - convincingly
+               enough that it had to be measured to establish it was never drawn on
+               purpose. Any mask built this way must overshoot the shape it cuts. -->
+          <Condition>
+            <Expressions>
+              <Expression name="omouth_tue">[DAY_OF_WEEK] == 3</Expression>
+              <Expression name="omouth_wed">[DAY_OF_WEEK] == 4</Expression>
+              <Expression name="omouth_thu">[DAY_OF_WEEK] == 5</Expression>
+              <Expression name="omouth_fri">[DAY_OF_WEEK] == 6</Expression>
+              <Expression name="omouth_sat">[DAY_OF_WEEK] == 7</Expression>
+              <Expression name="omouth_sun">[DAY_OF_WEEK] == 1</Expression>
+            </Expressions>
+            <Compare expression="omouth_tue">
+              <PartDraw name="hero_mouth_open_tue" x="14" y="36" width="72" height="80">
+                <Ellipse x="24" y="38" width="22" height="20">
+                  <Fill color="#594c1e" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Compare expression="omouth_wed">
+              <PartDraw name="hero_mouth_open_wed" x="14" y="36" width="72" height="80">
+                <Ellipse x="24" y="38" width="22" height="20">
+                  <Fill color="#3f4c24" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Compare expression="omouth_thu">
+              <PartDraw name="hero_mouth_open_thu" x="14" y="36" width="72" height="80">
+                <Ellipse x="24" y="38" width="22" height="20">
+                  <Fill color="#273f69" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Compare expression="omouth_fri">
+              <PartDraw name="hero_mouth_open_fri" x="14" y="36" width="72" height="80">
+                <Ellipse x="24" y="38" width="22" height="20">
+                  <Fill color="#57381f" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Compare expression="omouth_sat">
+              <PartDraw name="hero_mouth_open_sat" x="14" y="36" width="72" height="80">
+                <Ellipse x="24" y="38" width="22" height="20">
+                  <Fill color="#3a434d" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Compare expression="omouth_sun">
+              <PartDraw name="hero_mouth_open_sun" x="14" y="36" width="72" height="80">
+                <Ellipse x="24" y="38" width="22" height="20">
+                  <Fill color="#482e62" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Default>
+              <PartDraw name="hero_mouth_open_mon" x="14" y="36" width="72" height="80">
+                <Ellipse x="24" y="38" width="22" height="20">
+                  <Fill color="#5b2622" />
+                </Ellipse>
+              </PartDraw>
+            </Default>
+          </Condition>
+          <!-- ...then the top half painted back out IN THE BODY COLOUR. This is
+               the mask, and it is the one place a wrong day colour is loud: a
+               mismatch against hero_body leaves a dark bar across the face. It
+               still overshoots the ellipse by 3px, which is a fix and not slack -
+               see the note above. -->
+          <Condition>
+            <Expressions>
+              <Expression name="mask_tue">[DAY_OF_WEEK] == 3</Expression>
+              <Expression name="mask_wed">[DAY_OF_WEEK] == 4</Expression>
+              <Expression name="mask_thu">[DAY_OF_WEEK] == 5</Expression>
+              <Expression name="mask_fri">[DAY_OF_WEEK] == 6</Expression>
+              <Expression name="mask_sat">[DAY_OF_WEEK] == 7</Expression>
+              <Expression name="mask_sun">[DAY_OF_WEEK] == 1</Expression>
+            </Expressions>
+            <Compare expression="mask_tue">
+              <PartDraw name="hero_mouth_mask_tue" x="14" y="36" width="72" height="80">
+                <Rectangle x="22" y="35" width="26" height="13">
+                  <Fill color="#f5c92e" />
+                </Rectangle>
+              </PartDraw>
+            </Compare>
+            <Compare expression="mask_wed">
+              <PartDraw name="hero_mouth_mask_wed" x="14" y="36" width="72" height="80">
+                <Rectangle x="22" y="35" width="26" height="13">
+                  <Fill color="#a5d63a" />
+                </Rectangle>
+              </PartDraw>
+            </Compare>
+            <Compare expression="mask_thu">
+              <PartDraw name="hero_mouth_mask_thu" x="14" y="36" width="72" height="80">
+                <Rectangle x="22" y="35" width="26" height="13">
+                  <Fill color="#6b9df2" />
+                </Rectangle>
+              </PartDraw>
+            </Compare>
+            <Compare expression="mask_fri">
+              <PartDraw name="hero_mouth_mask_fri" x="14" y="36" width="72" height="80">
+                <Rectangle x="22" y="35" width="26" height="13">
+                  <Fill color="#f0862f" />
+                </Rectangle>
+              </PartDraw>
+            </Compare>
+            <Compare expression="mask_sat">
+              <PartDraw name="hero_mouth_mask_sat" x="14" y="36" width="72" height="80">
+                <Rectangle x="22" y="35" width="26" height="13">
+                  <Fill color="#8fa3bc" />
+                </Rectangle>
+              </PartDraw>
+            </Compare>
+            <Compare expression="mask_sun">
+              <PartDraw name="hero_mouth_mask_sun" x="14" y="36" width="72" height="80">
+                <Rectangle x="22" y="35" width="26" height="13">
+                  <Fill color="#b07ce4" />
+                </Rectangle>
+              </PartDraw>
+            </Compare>
+            <Default>
+              <PartDraw name="hero_mouth_mask_mon" x="14" y="36" width="72" height="80">
+                <Rectangle x="22" y="35" width="26" height="13">
+                  <Fill color="#ee4e43" />
+                </Rectangle>
+              </PartDraw>
+            </Default>
+          </Condition>
         </Default>
       </Condition>
 
-      <!-- COLD: scarf and gloves. Now 10 degrees or below, not 0.
+      <!-- THE SALUTING PALM - the second half of hero_salute_r above, and the
+           only part of the arm that has to be drawn AFTER the face, because it
+           sits ON the brow rather than beside the head. Same expression,
+           written out again: Expressions cannot be referenced across
+           Conditions, so these two must be kept in step by hand.
 
-           There are two cold states as of 2026-08-03:
-             cold      TEMPERATURE &lt;= 10   scarf + gloves
-             freezing  TEMPERATURE &lt;= 0    scarf + gloves + a snowflake
-           Freezing is a strict subset of cold, so this expression covers both
-           and the snowflake is a separate Condition further down the scene.
-           Nothing here needs to exclude freezing.
+           ONE Condition FOR BOTH HANDS, in the same order as the arms: busy
+           first, so the second branch means "free" without a negation. The two
+           differ only in where the box sits and in the SIGN of the angle -
+           mirroring a rotation flips it - which is why the capsule inside is
+           concentric: identical content serves both.
+
+           IT IS A FLAT CAPSULE, NOT THE ROUND FIST every other pose uses. A
+           circle at the temple reads as a knock on the head; a palm reads as a
+           salute, and the flat shape is the whole gesture. Rotation makes that
+           possible: PartDraw takes pivotX/pivotY/angle - the leaves have used
+           it since the first pass - and ANGLE IS CLOCKWISE-POSITIVE, which is
+           worth stating because it is nowhere in the schema. leaf_left's -36
+           leans left; this hand's +37 leans down-right, along the forearm.
+
+           37 degrees is the forearm's own slope: (99,66) to (85,55) is a
+           gradient of 0.79, atan 38.2. The palm is collinear with it to within a
+           degree, so the wrist has no kink in it.
+
+           IT IS 20 x 14, AND THE 14 IS THE POINT. The first attempt was 22 x 11
+           against an 8px arm, and three pixels of extra width is not a hand: it
+           rendered as a dart, a tapered spike from the elbow to the forehead. A
+           hand has to be nearly twice the limb it hangs off - every round fist
+           in this file is 19 wide against the same 8px arm - so the capsule got
+           shorter and fatter until the step read.
+
+           THE NAVY IS A PLAIN 2px INSET on all four sides, exactly like every
+           other hand - and then THE FOREARM'S CORE IS DRAWN AGAIN ON TOP of it.
+           That last line is the whole attachment, and it took three tries:
+
+             - inset rim, nothing else: the rim closes across the wrist, and
+               since this part draws after the forearm, that pale band cuts the
+               hand off the arm. Reported as "the hand looks not attached".
+             - navy flush with the rectangle, or 2px past it: navy meets navy, so
+               nothing cuts - but the hand and the forearm merge into one tapered
+               paddle that reads as a spoon held to the head.
+             - inset rim PLUS a repeat of the forearm's 4.5px core, drawn after
+               the capsule and RUN 8px LONGER so it ends inside the capsule's
+               navy. The core bridges the rim exactly the way the round fists do
+               it - their arm line ends INSIDE the hand's navy ellipse - so the
+               wrist is continuous navy while the hand keeps its outline on the
+               other three sides.
+
+           THE 8px IS THE WHOLE FIX. The first version of the bridge repeated the
+           forearm exactly as the limb pass has it, ending at the wrist, and it
+           changed nothing at all: a concentric 2px inset on a 20-long capsule
+           pulls its navy 5.6px back from the wrist, so the core stopped short of
+           the thing it was supposed to reach and the rim still closed in front of
+           it. Redrawing a line is only a bridge if it arrives.
+
+           The repeat is the whole line rather than a stub, because painting it
+           over itself outside the hand changes nothing - same colour, width and
+           caps - and one line is easier to check against the limb pass than two.
+           Where it crosses the head it is inside the capsule's own footprint, so
+           no navy lands on bare skin: measured at (82.3,52.9) on the right,
+           1.1px outside the outline, and (21.3,50) on the left.
+
+           Placement, screen-right hand: box (57,30) 34 x 34, centre (74,47),
+           10px along the axis from the fingertips at (66,41). The head's outline
+           at that height is x 66.9, so the fingertips land just inside it and
+           the rest of the hand overhangs the silhouette - contact, not a hover.
+           Everything it could have collided with was measured rather than
+           eyeballed: the right eye ends at (67,56) and the palm's lower flank is
+           at y 50 by then; the shades' right lens is 52..72 x 56..69 and the palm
+           bottoms out at 54 above it; and leaf_right - the rotated ellipse the
+           fingertips reach towards - is 12.5px from the fingertip cap's CENTRE at
+           (71.6,45.2), which needs 7. That last one was briefly recorded here as
+           a 1.5px collision, from measuring the leaf against the TIP of the cap
+           instead of its centre. Measure caps by their centres.
+
+           Screen-left hand: box (11,28), centre (28,45), fingertips at (34,41)
+           against a head outline of 31.2 there, so the same 2.6px of contact.
+           Angle -37. The left eye starts at x 31 and the flank is at y 51.5 by
+           then; the shades' left lens is 27..47 x 56..69 and this palm bottoms
+           out at 45. Not a mirror of the other box - see the arm's note.
+
+           The box is 34 square for a 20 x 14 capsule because ROTATION HAPPENS
+           INSIDE THE CLIP. At 37 degrees the capsule's bounding box is 24 x 23,
+           so a snug box would have shaved the corners off the hand. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_salute_palm_r">(([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 7 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 9 &amp;&amp; [MINUTE] &gt;= 5 &amp;&amp; 20 &gt; [MINUTE]) || ([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 6 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 16 &amp;&amp; 30 &gt; [MINUTE]) || ([DAY_OF_WEEK] == 6 &amp;&amp; [HOUR_0_23] == 15 &amp;&amp; 30 &gt; [MINUTE])) &amp;&amp; ([WEATHER.IS_AVAILABLE] &amp;&amp; ([WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 50 || ([WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY])))</Expression>
+          <Expression name="hero_salute_palm_l">([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 7 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 9 &amp;&amp; [MINUTE] &gt;= 5 &amp;&amp; 20 &gt; [MINUTE]) || ([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 6 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 16 &amp;&amp; 30 &gt; [MINUTE]) || ([DAY_OF_WEEK] == 6 &amp;&amp; [HOUR_0_23] == 15 &amp;&amp; 30 &gt; [MINUTE])</Expression>
+        </Expressions>
+        <Compare expression="hero_salute_palm_r">
+          <PartDraw name="hero_salute_palm_r" x="57" y="30" width="34" height="34"
+                    pivotX="0.5" pivotY="0.5" angle="37">
+            <RoundRectangle x="7" y="10" width="20" height="14" cornerRadiusX="7" cornerRadiusY="7">
+              <Fill color="#e9dccb" />
+            </RoundRectangle>
+            <RoundRectangle x="9" y="12" width="16" height="10" cornerRadiusX="5" cornerRadiusY="5">
+              <Fill color="#23384f" />
+            </RoundRectangle>
+          </PartDraw>
+          <!-- The bridge - see the note above. This is hero_arm_right_salute's
+               forearm core again, but run 8px LONGER so it ends INSIDE the
+               capsule's navy at (79,50.3) rather than at the wrist. That is not
+               a detail: the first attempt redrew the core exactly as the limb
+               pass has it, ending at (85,55), and changed nothing, because a
+               concentric 2px inset pulls the capsule's navy 5.6px back from
+               there. The core has to reach it. -->
+          <PartDraw name="hero_salute_wrist_r" x="0" y="0" width="106" height="132">
+            <Line startX="99" startY="66" endX="79" endY="50.3">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
+          </PartDraw>
+        </Compare>
+        <Compare expression="hero_salute_palm_l">
+          <PartDraw name="hero_salute_palm_l" x="11" y="28" width="34" height="34"
+                    pivotX="0.5" pivotY="0.5" angle="-37">
+            <RoundRectangle x="7" y="10" width="20" height="14" cornerRadiusX="7" cornerRadiusY="7">
+              <Fill color="#e9dccb" />
+            </RoundRectangle>
+            <RoundRectangle x="9" y="12" width="16" height="10" cornerRadiusX="5" cornerRadiusY="5">
+              <Fill color="#23384f" />
+            </RoundRectangle>
+          </PartDraw>
+          <!-- Same bridge on this side: the core run 8px past the wrist at
+               (17,53) to (23,48.5), which lands inside the capsule's navy. -->
+          <PartDraw name="hero_salute_wrist_l" x="0" y="0" width="106" height="132">
+            <Line startX="5" startY="62" endX="23" endY="48.5">
+              <Stroke color="#23384f" thickness="4.5" cap="ROUND" />
+            </Line>
+          </PartDraw>
+        </Compare>
+      </Condition>
+
+      <!-- COLD: the scarf. 10 degrees or below.
+
+           There are now THREE nested cold steps, as of 2026-08-06:
+             cold      TEMPERATURE &lt;= 10   scarf
+             gloves    TEMPERATURE &lt;= 5    + gloves
+             freezing  TEMPERATURE &lt;= 0    + a snowflake
+           Each is a strict subset of the one above it, so each expression stands
+           alone and nothing has to exclude anything: at 3 degrees all three
+           tests are true and the blobs wear scarf and gloves under a snowflake.
+
+           THE GLOVES USED TO BE IN HERE at the same 10-degree threshold. They
+           are now their own Condition immediately below, because 10 degrees is
+           scarf weather and 5 is glove weather - splitting the two is the whole
+           point of this change and the reason the two Conditions are adjacent
+           rather than nested: nesting them would work identically but would hide
+           that the thresholds differ.
 
            Written with "&lt;=" directly. The old comment here claimed the
            operator set has no "<" and reversed the operands as
@@ -1271,20 +2113,52 @@
               <Stroke color="#2f5d9e" thickness="1.6" cap="BUTT" />
             </Line>
           </PartDraw>
-          <!-- BOTH gloves have to land on whichever pose their arm chose, or a
-               winter night puts a mitten where a raised hand used to be and
-               leaves the resting hand bare. The right glove was fixed until
-               2026-08-04, which was correct only while the right arm itself was
-               fixed.
+        </Compare>
+      </Condition>
 
-               Each expression is repeated rather than shared - WFF Expressions
-               are scoped to their own Condition and cannot be referenced from
-               another one - so these two must be kept in step with
-               hero_arm_r_rest and hero_arm_rest by hand. -->
+      <!-- GLOVES: five degrees or below, half the scarf's threshold.
+
+           Same IS_AVAILABLE guard, and it is load-bearing for the same reason -
+           see the note on the scarf above. With no weather data TEMPERATURE
+           reads 0, and 0 &lt;= 5 is true.
+
+           BOTH gloves have to land on whichever pose their arm chose, or a
+           winter night puts a mitten where a raised hand used to be and
+           leaves the resting hand bare. The right glove was fixed until
+           2026-08-04, which was correct only while the right arm itself was
+           fixed.
+
+           Each expression is repeated rather than shared - WFF Expressions
+           are scoped to their own Condition and cannot be referenced from
+           another one - so these two must be kept in step with
+           hero_arm_r_rest and hero_arm_rest by hand. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_cold_hands">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 5</Expression>
+        </Expressions>
+        <Compare expression="hero_cold_hands">
           <Condition>
             <Expressions>
               <Expression name="hero_glove_r_rest">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+              <!-- A third pose, since 2026-08-07: the mitten has to follow the
+                   hand onto the brow, or a cold Tuesday at 09:10 puts a blue
+                   oval where the hand used to be and leaves the salute bare.
+                   Matches hero_salute_palm_r's CREAM capsule exactly, box and
+                   angle included - the same way the other two gloves match
+                   their hands' cream ellipse - so the wrist bridge stays
+                   uncovered, which is right: the wrist is not gloved either.
+                   This hand only salutes on the FALLBACK, so the test is the
+                   busy one; see hero_salute_r. -->
+              <Expression name="hero_glove_r_salute">(([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 7 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 9 &amp;&amp; [MINUTE] &gt;= 5 &amp;&amp; 20 &gt; [MINUTE]) || ([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 6 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 16 &amp;&amp; 30 &gt; [MINUTE]) || ([DAY_OF_WEEK] == 6 &amp;&amp; [HOUR_0_23] == 15 &amp;&amp; 30 &gt; [MINUTE])) &amp;&amp; ([WEATHER.IS_AVAILABLE] &amp;&amp; ([WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 50 || ([WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY])))</Expression>
             </Expressions>
+            <Compare expression="hero_glove_r_salute">
+              <PartDraw name="hero_glove_right_salute" x="57" y="30" width="34" height="34"
+                        pivotX="0.5" pivotY="0.5" angle="37">
+                <RoundRectangle x="7" y="10" width="20" height="14" cornerRadiusX="7" cornerRadiusY="7">
+                  <Fill color="#3f78c4" />
+                </RoundRectangle>
+              </PartDraw>
+            </Compare>
             <Compare expression="hero_glove_r_rest">
               <PartDraw name="hero_glove_right_down" x="0" y="0" width="106" height="132">
                 <Ellipse x="80.5" y="93" width="19" height="18">
@@ -1300,10 +2174,31 @@
               </PartDraw>
             </Default>
           </Condition>
+          <!-- Same four branches in the same order as hero_arm_left_* - busy,
+               salute, asleep, raised - because this mitten has to land on
+               whichever of the four poses that arm chose. The first branch is
+               again a copy of the Default. -->
           <Condition>
             <Expressions>
+              <Expression name="hero_glove_l_busy">(([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 7 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 9 &amp;&amp; [MINUTE] &gt;= 5 &amp;&amp; 20 &gt; [MINUTE]) || ([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 6 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 16 &amp;&amp; 30 &gt; [MINUTE]) || ([DAY_OF_WEEK] == 6 &amp;&amp; [HOUR_0_23] == 15 &amp;&amp; 30 &gt; [MINUTE])) &amp;&amp; ([WEATHER.IS_AVAILABLE] &amp;&amp; ([WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 50 || ([WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY])))</Expression>
+              <Expression name="hero_glove_l_salute">([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 7 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 9 &amp;&amp; [MINUTE] &gt;= 5 &amp;&amp; 20 &gt; [MINUTE]) || ([DAY_OF_WEEK] &gt;= 2 &amp;&amp; 6 &gt; [DAY_OF_WEEK] &amp;&amp; [HOUR_0_23] == 16 &amp;&amp; 30 &gt; [MINUTE]) || ([DAY_OF_WEEK] == 6 &amp;&amp; [HOUR_0_23] == 15 &amp;&amp; 30 &gt; [MINUTE])</Expression>
               <Expression name="hero_glove_rest">([HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]) &amp;&amp; 50 &gt; [WEATHER.CHANCE_OF_PRECIPITATION]</Expression>
             </Expressions>
+            <Compare expression="hero_glove_l_busy">
+              <PartDraw name="hero_glove_left_up_busy" x="0" y="0" width="106" height="132">
+                <Ellipse x="1" y="26" width="19" height="18">
+                  <Fill color="#3f78c4" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Compare expression="hero_glove_l_salute">
+              <PartDraw name="hero_glove_left_salute" x="11" y="28" width="34" height="34"
+                        pivotX="0.5" pivotY="0.5" angle="-37">
+                <RoundRectangle x="7" y="10" width="20" height="14" cornerRadiusX="7" cornerRadiusY="7">
+                  <Fill color="#3f78c4" />
+                </RoundRectangle>
+              </PartDraw>
+            </Compare>
             <Compare expression="hero_glove_rest">
               <PartDraw name="hero_glove_left_down" x="0" y="0" width="106" height="132">
                 <Ellipse x="0.5" y="93" width="19" height="18">
@@ -1322,17 +2217,44 @@
         </Compare>
       </Condition>
 
-      <!-- SUNNY state (was called "sunglasses" / hero_hot): shades plus a
-           cocktail. Renamed because the state is no longer just eyewear - it is
-           the blob's whole reaction to a clear warm day.
+      <!-- SUNNY, SPLIT IN TWO on 2026-08-06. The shades and the cocktail used to
+           share one Condition on "clear, daylight, 25 degrees or more". They are
+           now separate, because they answer different questions:
+
+             shades    UV_INDEX &gt;= 6 &amp;&amp; IS_DAY   - the sun is strong
+             cocktail  CONDITION == 1 &amp;&amp; IS_DAY &amp;&amp; TEMPERATURE &gt;= 25
+                                                    - it is a warm clear day
+
+           [WEATHER.UV_INDEX] is a real v5 data source (it is in sourceType.xsd
+           next to TEMPERATURE, and there are UV_INDEX entries in the hourly and
+           daily forecast patterns too) - it was simply never used here. Six is
+           the threshold because the WHO/EPA scale calls 6-7 "high", 8-10 "very
+           high" and 11+ "extreme"; 3-5 is only "moderate", which is an ordinary
+           spring afternoon and not worth eyewear.
+
+           WHY THE COCKTAIL'S TRIGGER IS UNTOUCHED: it is not a UV reaction, it
+           is a "nice day" reaction, and it was asked to stay as it was. The two
+           now overlap rather than coincide - a warm clear summer day fires both,
+           a cold bright one in March fires only the shades, and a muggy overcast
+           25 degrees fires only the cocktail.
+
+           THE IS_DAY CLAUSE ON THE SHADES IS NOT REDUNDANT. UV_INDEX should be 0
+           after dark, but IS_AVAILABLE is known to go stale rather than fall to
+           zero cleanly (see the weather notes at the top of the file), and a blob
+           in sunglasses at 2am is the sort of thing that reads as a broken watch
+           face. Cheap insurance, one term.
+
+           IS_AVAILABLE guards both, as it must: with no weather data every
+           reading is 0, and while 0 &gt;= 6 is false anyway, relying on that would
+           make this the one weather branch in the file that works by luck.
 
            Drawn after the body so the shades sit over the eye arcs, and after
            the limb pass so the glass sits over the raised hand. -->
       <Condition>
         <Expressions>
-          <Expression name="hero_sunny">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY]</Expression>
+          <Expression name="hero_uv">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.UV_INDEX] &gt;= 6 &amp;&amp; [WEATHER.IS_DAY]</Expression>
         </Expressions>
-        <Compare expression="hero_sunny">
+        <Compare expression="hero_uv">
           <PartDraw name="hero_shades" x="24" y="54" width="50" height="18">
             <RoundRectangle x="3" y="2" width="20" height="13" cornerRadiusX="6" cornerRadiusY="6">
               <Fill color="#1b2733" />
@@ -1350,6 +2272,43 @@
               <Stroke color="#5c7288" thickness="1.6" cap="ROUND" />
             </Line>
           </PartDraw>
+        </Compare>
+      </Condition>
+
+      <!-- The cocktail half of the old sunny state - see the note above. Its
+           WEATHER trigger is exactly what it always was; the second term is
+           new on 2026-08-07 and has nothing to do with the weather.
+
+           FRIDAY 15:30-16:00 IS A DRINK REGARDLESS. It is the other half of the
+           salute rule in hero_salute_r: Friday's afternoon salute runs early,
+           15:00 to 15:30, and the half hour after it is a cocktail instead. The two are written in different Conditions because
+           they are different objects, and on a Friday afternoon they are never
+           on screen together - the windows abut at 15:30, which is written in
+           both places and is not derived in either. Change one and the other
+           does not follow.
+
+           THAT ABUTTING IS ALSO WHY THE SALUTE'S "is this hand busy" TEST DOES
+           NOT MENTION THIS WINDOW. It only has to name the umbrella and the
+           WEATHER cocktail, because the Friday cocktail cannot overlap a salute
+           - see hero_salute_r. Move either window into the other and that
+           expression has to grow a term.
+
+           AND IT CARRIES THE DRY TEST, which the weather term does not need.
+           The old note here observed that the cocktail and the umbrella can
+           never coexist, because a drink needs condition code 1 and rain needs
+           50% precipitation - true, and this term breaks it: Friday at 16:45
+           says nothing about the sky. Both objects terminate in the same raised
+           fist, so a wet Friday would have put a martini and an umbrella shaft
+           through one hand. "50 &gt; CHANCE_OF_PRECIPITATION" is the same
+           threshold hero_arm_rest uses to keep the arm up in the rain, so a wet
+           Friday afternoon simply keeps the umbrella and skips the drink. The
+           weather half is left unguarded on purpose: it already implies a clear
+           sky. -->
+      <Condition>
+        <Expressions>
+          <Expression name="hero_drink">([WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY]) || ([DAY_OF_WEEK] == 6 &amp;&amp; [HOUR_0_23] == 15 &amp;&amp; [MINUTE] &gt;= 30 &amp;&amp; 50 &gt; [WEATHER.CHANCE_OF_PRECIPITATION])</Expression>
+        </Expressions>
+        <Compare expression="hero_drink">
           <!-- Cocktail, in the blob's RIGHT hand - which is the raised one on
                the screen LEFT, the same hand that holds the umbrella. The two
                never coexist: sunny needs condition code 1 and daylight, wet
@@ -1403,10 +2362,12 @@
         </Compare>
       </Condition>
 
-      <!-- Sweat beads on the forehead, above the eye line. -->
+      <!-- Sweat: a static cluster on the forehead above the eye line, plus beads
+           dripping down both cheeks whose speed and number scale with the heart
+           rate. See the long note further down, at hero_drip_a. -->
       <Condition>
         <Expressions>
-          <Expression name="hero_puffed">[HEART_RATE] &gt;= 120</Expression>
+          <Expression name="hero_puffed">[HEART_RATE] &gt;= 100</Expression>
         </Expressions>
         <Compare expression="hero_puffed">
           <!-- Centred on the head (body centre is group-local x 50, the bead
@@ -1442,17 +2403,204 @@
                group-local x 50 - the head centre. It bottoms out at local 10.5
                (absolute 50.5), clear of the eye arcs at 53.8, and starts at
                absolute 40, just under the leaf tuft. -->
-          <PartDraw name="hero_sweat" x="38" y="40" width="26" height="11">
-            <Ellipse x="0" y="3" width="6" height="7.5">
-              <Fill color="#9fd4e8" />
-            </Ellipse>
-            <Ellipse x="9" y="0" width="6" height="7.5">
-              <Fill color="#9fd4e8" />
-            </Ellipse>
-            <Ellipse x="18" y="3" width="6" height="6">
-              <Fill color="#9fd4e8" />
-            </Ellipse>
-          </PartDraw>
+          <!-- THE CLUSTER FILLS IN THREE STEPS, added 2026-08-06 on request, so
+               the forehead carries the intensity in a STILL frame the way the
+               drips carry it in motion:
+
+                   100..119bpm    the middle pearl only
+                   120..149bpm    the left and right pearls
+                   150bpm and up  all three
+
+               Read as "which pearls are lit in each band" that is 1, 2, then 3.
+               The Compares are in DESCENDING order because the first true one
+               wins: 150 has to be tested before 120, or the middle band would
+               swallow everything above it. The Default is the 100..119 case and
+               needs no test of its own - this whole block already sits inside
+               hero_puffed, which is [HEART_RATE] >= 100.
+
+               THE MIDDLE PEARL IS DELIBERATELY ABSENT FROM THE MIDDLE BAND. That
+               is what was asked for and it is what makes the count 1-2-3 rather
+               than 1-3-3, but it does mean the middle pearl switches off at 120
+               and returns at 150, so a pulse sitting on either edge will blink it.
+               That is the same class of problem the second drip bead had at 150
+               before it became a fade: thresholds flicker, ramps do not. Left as
+               specified. If the blink ever becomes a nuisance, the fix that keeps
+               a 1-2-3 count without a disappearance is to leave the middle pearl
+               lit in every band and add the right pearl at 120.
+
+               Geometry is identical in all three branches - pearls at local
+               x 0/9/18 with y offsets 3/0/3 - so no pearl ever MOVES as the bands
+               change, only its presence does. -->
+          <Condition>
+            <Expressions>
+              <Expression name="hero_sweat_all">[HEART_RATE] &gt;= 150</Expression>
+              <Expression name="hero_sweat_two">[HEART_RATE] &gt;= 120</Expression>
+            </Expressions>
+            <Compare expression="hero_sweat_all">
+              <PartDraw name="hero_sweat_three" x="38" y="40" width="26" height="11">
+                <Ellipse x="0" y="3" width="6" height="7.5">
+                  <Fill color="#9fd4e8" />
+                </Ellipse>
+                <Ellipse x="9" y="0" width="6" height="7.5">
+                  <Fill color="#9fd4e8" />
+                </Ellipse>
+                <Ellipse x="18" y="3" width="6" height="6">
+                  <Fill color="#9fd4e8" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Compare expression="hero_sweat_two">
+              <PartDraw name="hero_sweat_pair" x="38" y="40" width="26" height="11">
+                <Ellipse x="0" y="3" width="6" height="7.5">
+                  <Fill color="#9fd4e8" />
+                </Ellipse>
+                <Ellipse x="18" y="3" width="6" height="6">
+                  <Fill color="#9fd4e8" />
+                </Ellipse>
+              </PartDraw>
+            </Compare>
+            <Default>
+              <PartDraw name="hero_sweat_one" x="38" y="40" width="26" height="11">
+                <Ellipse x="9" y="0" width="6" height="7.5">
+                  <Fill color="#9fd4e8" />
+                </Ellipse>
+              </PartDraw>
+            </Default>
+          </Condition>
+
+          <!-- ==== DRIPS, added 2026-08-06 ==========================
+               The forehead cluster above stays STATIC and stays exactly where it
+               was. It is the cue that says "sweating" in a still frame - the
+               preview, the contact sheet - and its geometry was fitted to a 13px
+               band by measurement. The motion is carried by two beads that run
+               down the cheeks instead, which is also the only place they can go:
+               the forehead is 13px tall, so anything dripping out of the cluster
+               itself would be across the eye arcs within four pixels.
+
+               WHERE THE CHANNELS ARE. Two clear vertical lanes exist on the face,
+               outside the eyes and outside the mouth, measured in group-local
+               space:
+
+                   left eye arc    28.5 .. 45.5      right eye arc  52.5 .. 69.5
+                   mouth           38   .. 60        (y 74..94)
+                   body outline    x 17.7 at y 55, 15.6 at y 60, 15 at y 90
+                   shades          x 27 .. 72        (y 54..72, sunny only)
+                   right arm rim   reaches x 80 at y 74
+
+               So the lanes are x 20..25 and x 73..78.5, starting at y 55 - just
+               below the eye line - and they clear the shades by 2 and 1 pixels
+               respectively. That clearance is why the right lane is at 73 rather
+               than at the mirror of the left (74.5): the arm's rim stroke and the
+               right lens crowd that side from both directions.
+
+               HOW FAR THEY RUN IS THE HEART RATE. This is the "intensity" knob:
+
+                   g      = clamp(([HEART_RATE] - 100) / 100, 0, 1)
+                   travel = 12 + 18 * g      -> 12px at 100bpm, 30px at 200
+
+               and since the period is fixed, travel is also SPEED: a bead oozes
+               6px/s at the bottom of the ramp and 15px/s at the top. At the top a
+               bead ends at y 92, six pixels clear of the scarf's upper edge at 98,
+               so a winter run does not drip onto wool.
+
+               THE RAMP WAS REBASED FROM 120..170 TO 100..200 on 2026-08-06, on
+               request, and the whole reaction now starts at 100 rather than 120.
+               That number has history: 100 was the ORIGINAL binary threshold and
+               was raised to 120 precisely because "a brisk walk or a flight of
+               stairs reaches it, so the blobs were sweating most of the day".
+               Going back to 100 is safe now for a reason that did not exist then -
+               the reaction is no longer binary. At 100bpm g is 0 and the face
+               shows the forehead cluster with a single bead barely creeping down
+               each cheek; the old 100 meant the full sweat state, on or off. A
+               ramp that starts where "working a bit" starts and saturates at a
+               genuine sprint is what the accessory should have been.
+
+               200 is the ceiling because it is roughly the maximum human rate and
+               there is nothing above it worth resolving; clamp holds it there.
+
+               THE PERIOD IS TWO SECONDS AND THAT IS DELIBERATE, twice. The phase
+               is built with the formula the Zzz drift already uses and that is
+               already verified on this watch -
+
+                   p = (([SECOND] % N) + [SECOND_MILLISECOND] - [SECOND]) / N
+
+               - because there is no [ANIMATION_VALUE], <Animation> is a tween
+               rather than a clock, and a Transform's expression is NOT
+               keyref-checked, so anything invented in here fails SILENTLY. N=2
+               keeps 60 % N == 0, so the cycle survives the minute boundary; and
+               it puts the mock's frozen clock (SECOND 1, SECOND_MILLISECOND 1.0)
+               at p = 0.5 for the first bead, which is mid-run at full alpha -
+               i.e. the still frames actually show a drip. At N=1 or N=3 that
+               frozen instant lands on p=0 and every bead is invisible.
+
+               ALPHA IS A TRAPEZOID, not the triangle the Zzz use:
+
+                   a = clamp(4p, 0, 1) - clamp(4p - 3, 0, 1)
+
+               up over the first quarter, flat across the middle half, down over
+               the last quarter. A bead therefore swells into view at the eye
+               line and dries out at the bottom, and the snap back to the top
+               happens at alpha 0. The Zzz want a triangle because they are
+               breathing; a bead that is only briefly at full strength reads as
+               flickering rather than as sweat.
+
+               The second pair is a second bead down the same two lanes, one
+               second out of phase, and it only appears above 150bpm - so the
+               drip RATE doubles as well as the speed. Two independent cues for
+               the same variable, which is what makes the change legible at a
+               glance rather than only in a side-by-side.
+
+               The Transform lives on an inner Group, never on blob_hero itself:
+               the outer group owns the AMBIENT alpha Variant and a Variant and a
+               Transform competing for one attribute is not something the schema
+               settles. Same split as sleep_zzz. Nothing here runs in ambient. -->
+          <Group name="hero_drip_a" x="0" y="0" width="106" height="132" alpha="255">
+            <Transform target="y"
+                       value="(12 + 18 * clamp(([HEART_RATE] - 100) / 100, 0, 1)) * ((([SECOND] % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * ((([SECOND] % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2), 0, 1) - clamp(4 * ((([SECOND] % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2) - 3, 0, 1))" />
+            <PartDraw name="hero_drip_beads_a" x="0" y="0" width="106" height="132">
+              <Ellipse x="20" y="55" width="5" height="7">
+                <Fill color="#9fd4e8" />
+              </Ellipse>
+              <Ellipse x="73" y="55" width="5" height="7">
+                <Fill color="#9fd4e8" />
+              </Ellipse>
+            </PartDraw>
+          </Group>
+
+          <!-- SECOND BEAD PER LANE, one second out of phase, so from about
+               150bpm each cheek carries a steady trickle rather than one bead at a
+               time - the drip RATE doubles as well as its speed and length.
+
+               IT FADES IN ON ALPHA RATHER THAN SWITCHING ON AT A THRESHOLD. This
+               was a Condition on [HEART_RATE] >= 150 until the ramp was rebased,
+               which meant a bead POPPED into existence at 150 and out again at
+               149 - the one discontinuity in an otherwise continuous reaction, and
+               very visible while a pulse sits on the number. It is now an extra
+               factor on the alpha the bead already had:
+
+                   clamp(([HEART_RATE] - 140) / 20, 0, 1)
+
+               so it fades up across 140..160bpm, which is the middle of the
+               100..200 ramp, and costs nothing below it. Same technique as the
+               rain's per-drop precipitation thresholds - see the note at
+               rain_fall for why fading beats gating. It also removes a Condition
+               and a nesting level from this block. -->
+          <Group name="hero_drip_b" x="0" y="0" width="106" height="132" alpha="255">
+            <Transform target="y"
+                       value="(12 + 18 * clamp(([HEART_RATE] - 100) / 100, 0, 1)) * (((([SECOND] + 1) % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * (((([SECOND] + 1) % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2), 0, 1) - clamp(4 * (((([SECOND] + 1) % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2) - 3, 0, 1)) * clamp(([HEART_RATE] - 140) / 20, 0, 1)" />
+            <PartDraw name="hero_drip_beads_b" x="0" y="0" width="106" height="132">
+              <Ellipse x="20" y="55" width="5" height="7">
+                <Fill color="#9fd4e8" />
+              </Ellipse>
+              <Ellipse x="73" y="55" width="5" height="7">
+                <Fill color="#9fd4e8" />
+              </Ellipse>
+            </PartDraw>
+          </Group>
         </Compare>
       </Condition>
     </Group>
@@ -1704,11 +2852,67 @@
         <!-- Normal: body, then whichever face state applies. -->
         <Default>
           <Group name="mini_alive" x="0" y="0" width="62" height="72" alpha="255">
-            <PartDraw name="mini_body" x="8" y="20" width="44" height="42">
-              <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
-                <Fill color="#f7a23a" />
-              </RoundRectangle>
-            </PartDraw>
+            <!-- TOMORROW's colour - see the table on hero_body. The companion's
+                 mouth below is derived from THIS colour, not the hero's. -->
+            <Condition>
+              <Expressions>
+                <Expression name="mini_tue">[DAY_OF_WEEK] == 3</Expression>
+                <Expression name="mini_wed">[DAY_OF_WEEK] == 4</Expression>
+                <Expression name="mini_thu">[DAY_OF_WEEK] == 5</Expression>
+                <Expression name="mini_fri">[DAY_OF_WEEK] == 6</Expression>
+                <Expression name="mini_sat">[DAY_OF_WEEK] == 7</Expression>
+                <Expression name="mini_sun">[DAY_OF_WEEK] == 1</Expression>
+              </Expressions>
+              <Compare expression="mini_tue">
+                <PartDraw name="mini_body_tue" x="8" y="20" width="44" height="42">
+                  <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+                    <Fill color="#a5d63a" />
+                  </RoundRectangle>
+                </PartDraw>
+              </Compare>
+              <Compare expression="mini_wed">
+                <PartDraw name="mini_body_wed" x="8" y="20" width="44" height="42">
+                  <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+                    <Fill color="#6b9df2" />
+                  </RoundRectangle>
+                </PartDraw>
+              </Compare>
+              <Compare expression="mini_thu">
+                <PartDraw name="mini_body_thu" x="8" y="20" width="44" height="42">
+                  <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+                    <Fill color="#f0862f" />
+                  </RoundRectangle>
+                </PartDraw>
+              </Compare>
+              <Compare expression="mini_fri">
+                <PartDraw name="mini_body_fri" x="8" y="20" width="44" height="42">
+                  <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+                    <Fill color="#8fa3bc" />
+                  </RoundRectangle>
+                </PartDraw>
+              </Compare>
+              <Compare expression="mini_sat">
+                <PartDraw name="mini_body_sat" x="8" y="20" width="44" height="42">
+                  <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+                    <Fill color="#b07ce4" />
+                  </RoundRectangle>
+                </PartDraw>
+              </Compare>
+              <Compare expression="mini_sun">
+                <PartDraw name="mini_body_sun" x="8" y="20" width="44" height="42">
+                  <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+                    <Fill color="#ee4e43" />
+                  </RoundRectangle>
+                </PartDraw>
+              </Compare>
+              <Default>
+                <PartDraw name="mini_body_mon" x="8" y="20" width="44" height="42">
+                  <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
+                    <Fill color="#f5c92e" />
+                  </RoundRectangle>
+                </PartDraw>
+              </Default>
+            </Condition>
 
             <!-- Mouth, split out of mini_body so it can go round at night, the
                  way the hero's already does. Both variants keep the body's own
@@ -1722,11 +2926,65 @@
                 <Expression name="mini_mouth_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
               </Expressions>
               <Compare expression="mini_mouth_night">
-                <PartDraw name="mini_mouth_sleep" x="8" y="20" width="44" height="42">
-                  <Ellipse x="18.5" y="26" width="7" height="7">
-                    <Fill color="#5a2a22" />
-                  </Ellipse>
-                </PartDraw>
+                <Condition>
+                  <Expressions>
+                    <Expression name="minirmouth_tue">[DAY_OF_WEEK] == 3</Expression>
+                    <Expression name="minirmouth_wed">[DAY_OF_WEEK] == 4</Expression>
+                    <Expression name="minirmouth_thu">[DAY_OF_WEEK] == 5</Expression>
+                    <Expression name="minirmouth_fri">[DAY_OF_WEEK] == 6</Expression>
+                    <Expression name="minirmouth_sat">[DAY_OF_WEEK] == 7</Expression>
+                    <Expression name="minirmouth_sun">[DAY_OF_WEEK] == 1</Expression>
+                  </Expressions>
+                  <Compare expression="minirmouth_tue">
+                    <PartDraw name="mini_mouth_sleep_tue" x="8" y="20" width="44" height="42">
+                      <Ellipse x="18.5" y="26" width="7" height="7">
+                        <Fill color="#3f4c24" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minirmouth_wed">
+                    <PartDraw name="mini_mouth_sleep_wed" x="8" y="20" width="44" height="42">
+                      <Ellipse x="18.5" y="26" width="7" height="7">
+                        <Fill color="#273f69" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minirmouth_thu">
+                    <PartDraw name="mini_mouth_sleep_thu" x="8" y="20" width="44" height="42">
+                      <Ellipse x="18.5" y="26" width="7" height="7">
+                        <Fill color="#57381f" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minirmouth_fri">
+                    <PartDraw name="mini_mouth_sleep_fri" x="8" y="20" width="44" height="42">
+                      <Ellipse x="18.5" y="26" width="7" height="7">
+                        <Fill color="#3a434d" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minirmouth_sat">
+                    <PartDraw name="mini_mouth_sleep_sat" x="8" y="20" width="44" height="42">
+                      <Ellipse x="18.5" y="26" width="7" height="7">
+                        <Fill color="#482e62" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minirmouth_sun">
+                    <PartDraw name="mini_mouth_sleep_sun" x="8" y="20" width="44" height="42">
+                      <Ellipse x="18.5" y="26" width="7" height="7">
+                        <Fill color="#5b2622" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Default>
+                    <PartDraw name="mini_mouth_sleep_mon" x="8" y="20" width="44" height="42">
+                      <Ellipse x="18.5" y="26" width="7" height="7">
+                        <Fill color="#594c1e" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Default>
+                </Condition>
               </Compare>
               <Default>
                 <!-- Grin: dark ellipse, top half masked back out in the body
@@ -1734,14 +2992,125 @@
                      ellipse at y 24 - see the long note on the hero's mouth.
                      When they started level, a 1px sliver of the dark ellipse
                      survived the mask and read as a nose. -->
-                <PartDraw name="mini_mouth_awake" x="8" y="20" width="44" height="42">
-                  <Ellipse x="16" y="24" width="12" height="11">
-                    <Fill color="#5a2a22" />
-                  </Ellipse>
-                  <Rectangle x="15" y="21" width="14" height="8">
-                    <Fill color="#f7a23a" />
-                  </Rectangle>
-                </PartDraw>
+                <Condition>
+                  <Expressions>
+                    <Expression name="miniomouth_tue">[DAY_OF_WEEK] == 3</Expression>
+                    <Expression name="miniomouth_wed">[DAY_OF_WEEK] == 4</Expression>
+                    <Expression name="miniomouth_thu">[DAY_OF_WEEK] == 5</Expression>
+                    <Expression name="miniomouth_fri">[DAY_OF_WEEK] == 6</Expression>
+                    <Expression name="miniomouth_sat">[DAY_OF_WEEK] == 7</Expression>
+                    <Expression name="miniomouth_sun">[DAY_OF_WEEK] == 1</Expression>
+                  </Expressions>
+                  <Compare expression="miniomouth_tue">
+                    <PartDraw name="mini_mouth_open_tue" x="8" y="20" width="44" height="42">
+                      <Ellipse x="16" y="24" width="12" height="11">
+                        <Fill color="#3f4c24" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="miniomouth_wed">
+                    <PartDraw name="mini_mouth_open_wed" x="8" y="20" width="44" height="42">
+                      <Ellipse x="16" y="24" width="12" height="11">
+                        <Fill color="#273f69" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="miniomouth_thu">
+                    <PartDraw name="mini_mouth_open_thu" x="8" y="20" width="44" height="42">
+                      <Ellipse x="16" y="24" width="12" height="11">
+                        <Fill color="#57381f" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="miniomouth_fri">
+                    <PartDraw name="mini_mouth_open_fri" x="8" y="20" width="44" height="42">
+                      <Ellipse x="16" y="24" width="12" height="11">
+                        <Fill color="#3a434d" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="miniomouth_sat">
+                    <PartDraw name="mini_mouth_open_sat" x="8" y="20" width="44" height="42">
+                      <Ellipse x="16" y="24" width="12" height="11">
+                        <Fill color="#482e62" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="miniomouth_sun">
+                    <PartDraw name="mini_mouth_open_sun" x="8" y="20" width="44" height="42">
+                      <Ellipse x="16" y="24" width="12" height="11">
+                        <Fill color="#5b2622" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Default>
+                    <PartDraw name="mini_mouth_open_mon" x="8" y="20" width="44" height="42">
+                      <Ellipse x="16" y="24" width="12" height="11">
+                        <Fill color="#594c1e" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Default>
+                </Condition>
+                <!-- Mask in the companion's own body colour, i.e. tomorrow's. -->
+                <Condition>
+                  <Expressions>
+                    <Expression name="minimask_tue">[DAY_OF_WEEK] == 3</Expression>
+                    <Expression name="minimask_wed">[DAY_OF_WEEK] == 4</Expression>
+                    <Expression name="minimask_thu">[DAY_OF_WEEK] == 5</Expression>
+                    <Expression name="minimask_fri">[DAY_OF_WEEK] == 6</Expression>
+                    <Expression name="minimask_sat">[DAY_OF_WEEK] == 7</Expression>
+                    <Expression name="minimask_sun">[DAY_OF_WEEK] == 1</Expression>
+                  </Expressions>
+                  <Compare expression="minimask_tue">
+                    <PartDraw name="mini_mouth_mask_tue" x="8" y="20" width="44" height="42">
+                      <Rectangle x="15" y="21" width="14" height="8">
+                        <Fill color="#a5d63a" />
+                      </Rectangle>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minimask_wed">
+                    <PartDraw name="mini_mouth_mask_wed" x="8" y="20" width="44" height="42">
+                      <Rectangle x="15" y="21" width="14" height="8">
+                        <Fill color="#6b9df2" />
+                      </Rectangle>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minimask_thu">
+                    <PartDraw name="mini_mouth_mask_thu" x="8" y="20" width="44" height="42">
+                      <Rectangle x="15" y="21" width="14" height="8">
+                        <Fill color="#f0862f" />
+                      </Rectangle>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minimask_fri">
+                    <PartDraw name="mini_mouth_mask_fri" x="8" y="20" width="44" height="42">
+                      <Rectangle x="15" y="21" width="14" height="8">
+                        <Fill color="#8fa3bc" />
+                      </Rectangle>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minimask_sat">
+                    <PartDraw name="mini_mouth_mask_sat" x="8" y="20" width="44" height="42">
+                      <Rectangle x="15" y="21" width="14" height="8">
+                        <Fill color="#b07ce4" />
+                      </Rectangle>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="minimask_sun">
+                    <PartDraw name="mini_mouth_mask_sun" x="8" y="20" width="44" height="42">
+                      <Rectangle x="15" y="21" width="14" height="8">
+                        <Fill color="#ee4e43" />
+                      </Rectangle>
+                    </PartDraw>
+                  </Compare>
+                  <Default>
+                    <PartDraw name="mini_mouth_mask_mon" x="8" y="20" width="44" height="42">
+                      <Rectangle x="15" y="21" width="14" height="8">
+                        <Fill color="#f5c92e" />
+                      </Rectangle>
+                    </PartDraw>
+                  </Default>
+                </Condition>
               </Default>
             </Condition>
 
@@ -1772,11 +3141,16 @@
               </Default>
             </Condition>
 
+            <!-- Shades on high UV, exactly as the hero's - the two expressions
+                 must stay identical or one blob squints while the other does not.
+                 The companion holds nothing, so it has no cocktail branch and
+                 this is its whole share of the old sunny state. See the long note
+                 on hero_uv for the threshold and for why IS_DAY is in here. -->
             <Condition>
               <Expressions>
-                <Expression name="mini_sunny">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &gt;= 25 &amp;&amp; [WEATHER.CONDITION] == 1 &amp;&amp; [WEATHER.IS_DAY]</Expression>
+                <Expression name="mini_uv">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.UV_INDEX] &gt;= 6 &amp;&amp; [WEATHER.IS_DAY]</Expression>
               </Expressions>
-              <Compare expression="mini_sunny">
+              <Compare expression="mini_uv">
                 <PartDraw name="mini_shades" x="16" y="31" width="28" height="12">
                   <RoundRectangle x="2" y="2" width="10" height="8" cornerRadiusX="4" cornerRadiusY="4">
                     <Fill color="#1b2733" />
@@ -1791,10 +3165,11 @@
               </Compare>
             </Condition>
 
-            <!-- Cold: matching scarf and gloves. Its PartDraw is taller than
-                 the 42px body so the tail can hang below it. Threshold and
-                 IS_AVAILABLE guard must stay in step with hero_cold - see the
-                 long note there. -->
+            <!-- Cold: the matching scarf. Its PartDraw is taller than the 42px
+                 body so the tail can hang below it. Threshold and IS_AVAILABLE
+                 guard must stay in step with hero_cold - see the long note
+                 there, including why the gloves are now a separate Condition at
+                 half this threshold. -->
             <Condition>
               <Expressions>
                 <Expression name="mini_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 10</Expression>
@@ -1808,6 +3183,18 @@
                     <Fill color="#3f78c4" />
                   </RoundRectangle>
                 </PartDraw>
+              </Compare>
+            </Condition>
+
+            <!-- Gloves at 5 degrees, matching hero_cold_hands. Unlike the hero's
+                 these need no arm-pose branch: both of the companion's arms are
+                 fixed, so its mittens can be a single pair of ovals over the two
+                 hands the limb pass already drew. -->
+            <Condition>
+              <Expressions>
+                <Expression name="mini_cold_hands">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 5</Expression>
+              </Expressions>
+              <Compare expression="mini_cold_hands">
                 <PartDraw name="mini_gloves" x="0" y="0" width="62" height="72">
                   <Ellipse x="-2" y="32" width="13" height="12">
                     <Fill color="#3f78c4" />
@@ -1821,7 +3208,7 @@
 
             <Condition>
               <Expressions>
-                <Expression name="mini_puffed">[HEART_RATE] &gt;= 120</Expression>
+                <Expression name="mini_puffed">[HEART_RATE] &gt;= 100</Expression>
               </Expressions>
               <Compare expression="mini_puffed">
                 <!-- Same squeeze as the hero, on a 10px band: the mini leaves
@@ -1829,17 +3216,105 @@
                      the open eyes start at y 34. The cluster was at y 23 x 12
                      tall, so it clipped the leaf base by 1px and touched the
                      eyes; 25 x 8 leaves ~1px and ~2px. -->
-                <PartDraw name="mini_sweat" x="21" y="25" width="18" height="8">
-                  <Ellipse x="0" y="2" width="4" height="5">
-                    <Fill color="#9fd4e8" />
-                  </Ellipse>
-                  <Ellipse x="6" y="0" width="4" height="5">
-                    <Fill color="#9fd4e8" />
-                  </Ellipse>
-                  <Ellipse x="12" y="2" width="4" height="4">
-                    <Fill color="#9fd4e8" />
-                  </Ellipse>
-                </PartDraw>
+                <!-- Same three-step reveal as the hero, same bands, same
+                     descending Compare order - see the long note on
+                     hero_sweat_all. The two blobs must fill in at identical heart
+                     rates, or the pair reads as one of them being fitter. -->
+                <Condition>
+                  <Expressions>
+                    <Expression name="mini_sweat_all">[HEART_RATE] &gt;= 150</Expression>
+                    <Expression name="mini_sweat_two">[HEART_RATE] &gt;= 120</Expression>
+                  </Expressions>
+                  <Compare expression="mini_sweat_all">
+                    <PartDraw name="mini_sweat_three" x="21" y="25" width="18" height="8">
+                      <Ellipse x="0" y="2" width="4" height="5">
+                        <Fill color="#9fd4e8" />
+                      </Ellipse>
+                      <Ellipse x="6" y="0" width="4" height="5">
+                        <Fill color="#9fd4e8" />
+                      </Ellipse>
+                      <Ellipse x="12" y="2" width="4" height="4">
+                        <Fill color="#9fd4e8" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Compare expression="mini_sweat_two">
+                    <PartDraw name="mini_sweat_pair" x="21" y="25" width="18" height="8">
+                      <Ellipse x="0" y="2" width="4" height="5">
+                        <Fill color="#9fd4e8" />
+                      </Ellipse>
+                      <Ellipse x="12" y="2" width="4" height="4">
+                        <Fill color="#9fd4e8" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Compare>
+                  <Default>
+                    <PartDraw name="mini_sweat_one" x="21" y="25" width="18" height="8">
+                      <Ellipse x="6" y="0" width="4" height="5">
+                        <Fill color="#9fd4e8" />
+                      </Ellipse>
+                    </PartDraw>
+                  </Default>
+                </Condition>
+
+                <!-- Drips, the same mechanism as the hero's and driven by the
+                     identical phase expressions - see the long note at
+                     hero_drip_a for why the period is 2 seconds, why the alpha is
+                     a trapezoid, and why none of this can be built on
+                     <Animation>.
+
+                     Everything is scaled to the smaller head, and the room is
+                     tighter than it looks. The body is a RoundRectangle
+                     (8,20,44,42) with radii 22 x 20, so its half-width falls away
+                     fast below the centre line at y 40:
+
+                         y 41   x  8.0 .. 52.0        y 50   x 11.0 .. 49.1
+                         y 51.5 x 12.0 .. 48.0        y 53   x 13.3 .. 46.7
+
+                     and the face fills the middle: open eyes at x 20..25 and
+                     35..40, shades (when they are on) at 18..41, grin at 24..36.
+                     That leaves lanes at x 12 and x 44.5, and a bead 3.5 wide in
+                     each is flush with the outline at y 51.5 - which is therefore
+                     where the run has to stop, six pixels short of where the
+                     hero's does relative to its own head. Hence travel 4..10px
+                     against the hero's 12..30, on the same 120..170bpm ramp.
+
+                     The scarf's upper edge is at y 53, so a fully-driven drip
+                     still clears it by a pixel and a half. -->
+                <Group name="mini_drip_a" x="0" y="0" width="62" height="72" alpha="255">
+                  <Transform target="y"
+                             value="(4 + 6 * clamp(([HEART_RATE] - 100) / 100, 0, 1)) * ((([SECOND] % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2)" />
+                  <Transform target="alpha"
+                             value="255 * (clamp(4 * ((([SECOND] % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2), 0, 1) - clamp(4 * ((([SECOND] % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2) - 3, 0, 1))" />
+                  <PartDraw name="mini_drip_beads_a" x="0" y="0" width="62" height="72">
+                    <Ellipse x="12" y="37" width="3.5" height="4.5">
+                      <Fill color="#9fd4e8" />
+                    </Ellipse>
+                    <Ellipse x="44.5" y="37" width="3.5" height="4.5">
+                      <Fill color="#9fd4e8" />
+                    </Ellipse>
+                  </PartDraw>
+                </Group>
+
+                <!-- Second bead per lane, one second out of phase, fading in
+                     across 140..160bpm on alpha rather than popping in at a
+                     threshold - see the note on hero_drip_b. The two blobs must
+                     gain their extra drips over the same range, or the pair looks
+                     like one of them is fitter than the other. -->
+                <Group name="mini_drip_b" x="0" y="0" width="62" height="72" alpha="255">
+                  <Transform target="y"
+                             value="(4 + 6 * clamp(([HEART_RATE] - 100) / 100, 0, 1)) * (((([SECOND] + 1) % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2)" />
+                  <Transform target="alpha"
+                             value="255 * (clamp(4 * (((([SECOND] + 1) % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2), 0, 1) - clamp(4 * (((([SECOND] + 1) % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2) - 3, 0, 1)) * clamp(([HEART_RATE] - 140) / 20, 0, 1)" />
+                  <PartDraw name="mini_drip_beads_b" x="0" y="0" width="62" height="72">
+                    <Ellipse x="12" y="37" width="3.5" height="4.5">
+                      <Fill color="#9fd4e8" />
+                    </Ellipse>
+                    <Ellipse x="44.5" y="37" width="3.5" height="4.5">
+                      <Fill color="#9fd4e8" />
+                    </Ellipse>
+                  </PartDraw>
+                </Group>
               </Compare>
             </Condition>
           </Group>
@@ -1856,6 +3331,468 @@
          its shaft passes through the hero's raised fist, centred (217.5, 297).
          (This said "(291, 298)" until 2026-08-03 - a pre-mirror leftover.)
          ============================================================ -->
+
+    <!-- ============================================================
+         FALLING RAIN. Same trigger as the umbrella, so it serves BOTH wet
+         states, and its density, drop size and speed are all driven by
+         CHANCE_OF_PRECIPITATION - so 50% is a drizzle and 100% is a downpour
+         without a second set of elements anywhere.
+
+         FIFTH PASS, 2026-08-06. Every pass was corrected on the wrist, and the
+         verdicts are kept because not one was predictable from the XML:
+
+           pass 1  narrow curtains at the bezel, 30px/s, 3-second waves.
+                   "faster, and you can use much more space by getting closer to
+                   the blobs."
+           pass 2  wide columns bracketing the canopy, 144px/s, 30 drops.
+                   "space is right. Too quick, and it looks symmetrical and in
+                   order."
+           pass 3  12 drops, three waves at three speeds, ~70px/s.
+                   "should not come in waves, but continuously randomly - and the
+                   count should scale with the chance of precipitation."
+           pass 4  16 independent drops, count scaled by precipitation.
+                   "at 100% there should be more drops, a bit bigger, falling a
+                   bit faster."
+           pass 5  this one: 24 drops, and size and speed scale with
+                   precipitation as well as count.
+
+         THREE THINGS SCALE WITH THE CHANCE OF PRECIPITATION, all off one term:
+
+             g = clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)
+
+         which is 0 at the 50% gate and 1 at 100%.
+
+             count   each drop has its OWN threshold (20, 25, ... 92) folded into
+                     its alpha: clamp((precip - thr) / 8, 0, 1). Below its
+                     threshold a drop is invisible and costs nothing; it fades in
+                     over the next 8 points. ~7 drops at 50%, ~20 at 90%, 24 at
+                     100%.
+             size    width and height scale by 1.30 and 1.35 via Transform, so
+                     heavy rain is visibly fatter, not just denser.
+             speed   travel scales by 1.35, so 66-73px/s at 50% becomes 89-98 at
+                     100%.
+
+         SPEED SCALES THROUGH TRAVEL, NEVER THROUGH RATE, and that is not a
+         stylistic choice. [SECOND_MILLISECOND] wraps 59.999 -> 0, so a cycle only
+         survives the minute boundary if 60 * rate is a whole number. Every rate
+         here is fixed and checked (0.6/0.65/0.7/0.75/0.8/0.85/0.9 give
+         36/39/42/45/48/51/54). A rate multiplied by a live weather reading would
+         be a non-integer almost always, and the result is a hiccup once a minute -
+         the sort of thing noticed a week later and blamed on the sensor. Travel
+         has no such constraint, and speed = rate * travel either way.
+
+         THE AUTHORED width/height ARE THE 100% CASE, not the 50% one, matching
+         the battery fill: any renderer that ignores a Transform falls back to the
+         literal attribute, so the failure mode is fat drops rather than
+         invisible ones. The PartDraw boxes are sized for the 100% drop too, since
+         a box is also a clip and a growing shape must not hit its own edge.
+
+         THERE ARE NO WAVES, which was pass 4's structural change and still the
+         most important thing in here. Passes 1-3 grouped drops into waves because
+         whole-second phase offsets (([SECOND] + k) % N) were the only ones
+         available, so drops HAD to share a phase to be staggered - and sharing a
+         phase means sharing an alpha, which is what made them visibly breathe in
+         unison. fract() removes the constraint: an offset can be any constant, so
+         EVERY DROP GETS ITS OWN. Twenty-four drops, twenty-four independent
+         falls, nothing shared between any two - track, start height, fall length,
+         rate, phase, size and threshold are all per-drop, and the field's period
+         is the lcm of twenty-four different cycles.
+
+         ON "RANDOMLY": there IS a rand(,) in the v5 function enumeration and it is
+         a trap. A Transform expression is re-evaluated every frame, so a rand() in
+         one would give a drop a NEW POSITION 30 times a second - a cloud of
+         flicker, not rain. Nothing in WFF can hold state between frames, so
+         randomness is faked with irregular hand-picked constants. That is also
+         what makes the numbers auditable.
+
+         WHERE IT FALLS - unchanged since pass 2, which was the part that worked.
+         Two columns BRACKETING THE UMBRELLA CANOPY: it spans x 137..297, and no
+         drop ends after 137 on the left or starts before 297 on the right, so the
+         wet strips are exactly what the canopy does not cover and the dry band
+         between them is its shadow.
+
+         THE ONE LINE HELD: no drop crosses either blob's BODY (companion
+         151..195, hero 221..293). They are the characters. Everything else is
+         deliberately crossed - the raised hand, the step-goal flag, both Zzz
+         chains at night, the burst's outer spokes in a storm - all at the correct
+         depth, since the rain is declared after the blobs and before the umbrella:
+         in front of the props, behind the canopy.
+
+         The bezel is the real bound, it is PER DROP, and it is now evaluated
+         against the 100% case: the outer tracks sit lowest in the display's taper,
+         so a drop at x 82 has 159px of headroom below the centre line while one at
+         x 302 has 197. Any drop whose fall would leave the bezel at full
+         precipitation has its travel CLAMPED to fit, which is why a few speeds sit
+         slightly below their neighbours. Worst drop in the set reaches radius 214
+         of 225 at 100%. All twenty-four are asserted, not eyeballed - the
+         generator refuses to emit a drop that leaves the bezel, crosses a body,
+         sits under the canopy or breaks the minute wrap.
+
+         fract() IS VERIFIED ON THIS WATCH (2026-08-06). It is in the v5 function
+         enumeration but had never been tried, and an unimplemented function in a
+         Transform fails SILENTLY while still passing the validator - which is how
+         an animation built on a non-existent [ANIMATION_VALUE] once shipped. It
+         was settled by measuring a frozen-mock frame against a prediction rather
+         than by looking at it: all 30 drops of pass 2 landed within 1px of where a
+         live fract() had to put them, and nowhere near where a dead one would.
+         See TODO.md.
+
+         Alpha is the same clamp trapezoid as the sweat drips - up over the first
+         quarter of the fall, flat, down over the last - so drops fade in at the
+         top and out at the bottom and the restart happens at alpha 0.
+
+         NO <Gyro>, on purpose, for the reason spelled out on freeze_mark: rain is
+         not held by either blob, so there is no join to come apart.
+         ============================================================ -->
+    <Condition>
+      <Expressions>
+        <Expression name="prop_rain">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 50</Expression>
+      </Expressions>
+      <Compare expression="prop_rain">
+        <Group name="rain_fall" x="0" y="0" width="450" height="450" alpha="255">
+          <!-- The AMBIENT Variant lives out here and the animation lives on the
+               inner groups, so a Variant and a Transform never compete for the
+               same attribute. Same split as sleep_zzz. -->
+          <Variant mode="AMBIENT" target="alpha" value="0" />
+
+          <!-- x 82, in from 20%: 13-17.6px tall, 77.8-105.0px of fall at 0.9/s = 70-94px/s. -->
+          <Group name="rain_drop_01" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(77.8 + 27.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.07)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.07), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.07) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 20) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_01" x="82" y="256" width="6" height="19">
+              <RoundRectangle x="0" y="0" width="4.42" height="17.6" cornerRadiusX="2.21" cornerRadiusY="2.21">
+                <Transform target="width" value="3.4 + 1.02 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="13 + 4.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 302, in from 25%: 14-18.9px tall, 80.0-108.0px of fall at 0.9/s = 72-97px/s. -->
+          <Group name="rain_drop_02" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(80.0 + 28.0 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.31)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.31), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.31) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 25) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_02" x="302" y="262" width="6" height="20">
+              <RoundRectangle x="0" y="0" width="4.68" height="18.9" cornerRadiusX="2.34" cornerRadiusY="2.34">
+                <Transform target="width" value="3.6 + 1.08 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="14 + 4.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 111, in from 30%: 15-20.2px tall, 74.4-100.5px of fall at 0.9/s = 67-90px/s. -->
+          <Group name="rain_drop_03" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(74.4 + 26.1 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.23)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.23), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.23) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 30) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_03" x="111" y="268" width="6" height="22">
+              <RoundRectangle x="0" y="0" width="4.94" height="20.2" cornerRadiusX="2.47" cornerRadiusY="2.47">
+                <Transform target="width" value="3.8 + 1.14 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="15 + 5.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 320, in from 34%: 15-20.2px tall, 75.6-102.0px of fall at 0.9/s = 68-92px/s. -->
+          <Group name="rain_drop_04" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(75.6 + 26.4 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.79)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.79), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.79) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 34) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_04" x="320" y="266" width="6" height="22">
+              <RoundRectangle x="0" y="0" width="4.94" height="20.2" cornerRadiusX="2.47" cornerRadiusY="2.47">
+                <Transform target="width" value="3.8 + 1.14 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="15 + 5.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 350, in from 38%: 12-16.2px tall, 77.9-105.2px of fall at 0.95/s = 74-100px/s. -->
+          <Group name="rain_drop_05" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(77.9 + 27.3 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.95 + 0.66)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.95 + 0.66), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.95 + 0.66) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 38) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_05" x="350" y="258" width="5" height="18">
+              <RoundRectangle x="0" y="0" width="3.9" height="16.2" cornerRadiusX="1.95" cornerRadiusY="1.95">
+                <Transform target="width" value="3.0 + 0.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="12 + 4.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 87, in from 42%: 13-17.6px tall, 75.8-102.3px of fall at 0.95/s = 72-97px/s. -->
+          <Group name="rain_drop_06" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(75.8 + 26.5 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.95 + 0.44)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.95 + 0.44), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.95 + 0.44) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 42) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_06" x="87" y="264" width="6" height="19">
+              <RoundRectangle x="0" y="0" width="4.42" height="17.6" cornerRadiusX="2.21" cornerRadiusY="2.21">
+                <Transform target="width" value="3.4 + 1.02 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="13 + 4.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 332, in from 46%: 13-17.6px tall, 81.1-109.5px of fall at 0.9/s = 73-99px/s. -->
+          <Group name="rain_drop_07" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(81.1 + 28.4 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.11)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.11), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.11) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 46) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_07" x="332" y="262" width="6" height="19">
+              <RoundRectangle x="0" y="0" width="4.16" height="17.6" cornerRadiusX="2.08" cornerRadiusY="2.08">
+                <Transform target="width" value="3.2 + 0.96 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="13 + 4.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 99, in from 50%: 13-17.6px tall, 73.3-99.0px of fall at 0.9/s = 66-89px/s. -->
+          <Group name="rain_drop_08" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(73.3 + 25.7 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.61)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.61), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.61) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_08" x="99" y="258" width="5" height="19">
+              <RoundRectangle x="0" y="0" width="3.9" height="17.6" cornerRadiusX="1.95" cornerRadiusY="1.95">
+                <Transform target="width" value="3.0 + 0.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="13 + 4.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 308, in from 54%: 14-18.9px tall, 70.0-94.5px of fall at 1.0/s = 70-94px/s. -->
+          <Group name="rain_drop_09" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(70.0 + 24.5 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 1.0 + 0.48)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.48), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.48) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 54) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_09" x="308" y="290" width="6" height="20">
+              <RoundRectangle x="0" y="0" width="4.68" height="18.9" cornerRadiusX="2.34" cornerRadiusY="2.34">
+                <Transform target="width" value="3.6 + 1.08 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="14 + 4.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 129, in from 57%: 13-17.6px tall, 80.0-108.0px of fall at 0.9/s = 72-97px/s. -->
+          <Group name="rain_drop_10" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(80.0 + 28.0 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.88)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.88), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.88) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 57) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_10" x="129" y="256" width="6" height="19">
+              <RoundRectangle x="0" y="0" width="4.16" height="17.6" cornerRadiusX="2.08" cornerRadiusY="2.08">
+                <Transform target="width" value="3.2 + 0.96 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="13 + 4.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 344, in from 60%: 12-16.2px tall, 77.8-105.0px of fall at 0.9/s = 70-94px/s. -->
+          <Group name="rain_drop_11" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(77.8 + 27.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.27)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.27), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.27) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 60) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_11" x="344" y="266" width="5" height="18">
+              <RoundRectangle x="0" y="0" width="3.9" height="16.2" cornerRadiusX="1.95" cornerRadiusY="1.95">
+                <Transform target="width" value="3.0 + 0.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="12 + 4.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 123, in from 63%: 14-18.9px tall, 64.5-87.1px of fall at 1.1/s = 71-96px/s. -->
+          <Group name="rain_drop_12" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(64.5 + 22.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 1.1 + 0.72)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 1.1 + 0.72), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 1.1 + 0.72) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 63) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_12" x="123" y="300" width="6" height="20">
+              <RoundRectangle x="0" y="0" width="4.68" height="18.9" cornerRadiusX="2.34" cornerRadiusY="2.34">
+                <Transform target="width" value="3.6 + 1.08 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="14 + 4.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 93, in from 66%: 12-16.2px tall, 75.6-102.0px of fall at 0.9/s = 68-92px/s. -->
+          <Group name="rain_drop_13" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(75.6 + 26.4 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.84)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.84), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.84) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 66) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_13" x="93" y="272" width="5" height="18">
+              <RoundRectangle x="0" y="0" width="3.9" height="16.2" cornerRadiusX="1.95" cornerRadiusY="1.95">
+                <Transform target="width" value="3.0 + 0.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="12 + 4.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 105, in from 69%: 12-16.2px tall, 70.0-94.5px of fall at 1.0/s = 70-94px/s. -->
+          <Group name="rain_drop_14" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(70.0 + 24.5 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 1.0 + 0.15)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.15), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.15) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 69) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_14" x="105" y="288" width="5" height="18">
+              <RoundRectangle x="0" y="0" width="3.9" height="16.2" cornerRadiusX="1.95" cornerRadiusY="1.95">
+                <Transform target="width" value="3.0 + 0.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="12 + 4.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 326, in from 72%: 13-17.6px tall, 70.0-94.5px of fall at 1.0/s = 70-94px/s. -->
+          <Group name="rain_drop_15" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(70.0 + 24.5 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 1.0 + 0.92)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.92), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.92) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 72) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_15" x="326" y="294" width="6" height="19">
+              <RoundRectangle x="0" y="0" width="4.42" height="17.6" cornerRadiusX="2.21" cornerRadiusY="2.21">
+                <Transform target="width" value="3.4 + 1.02 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="13 + 4.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 308, in from 75%: 11-14.9px tall, 78.9-106.5px of fall at 0.9/s = 71-96px/s. -->
+          <Group name="rain_drop_16" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(78.9 + 27.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.53)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.53), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.53) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 75) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_16" x="308" y="252" width="5" height="16">
+              <RoundRectangle x="0" y="0" width="3.9" height="14.9" cornerRadiusX="1.95" cornerRadiusY="1.95">
+                <Transform target="width" value="3.0 + 0.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="11 + 3.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 314, in from 78%: 14-18.9px tall, 76.7-103.5px of fall at 0.9/s = 69-93px/s. -->
+          <Group name="rain_drop_17" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(76.7 + 26.8 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.19)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.19), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.19) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 78) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_17" x="314" y="272" width="6" height="20">
+              <RoundRectangle x="0" y="0" width="4.68" height="18.9" cornerRadiusX="2.34" cornerRadiusY="2.34">
+                <Transform target="width" value="3.6 + 1.08 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="14 + 4.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 117, in from 81%: 13-17.6px tall, 66.7-90.0px of fall at 1.05/s = 70-94px/s. -->
+          <Group name="rain_drop_18" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(66.7 + 23.3 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 1.05 + 0.37)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 1.05 + 0.37), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 1.05 + 0.37) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 81) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_18" x="117" y="296" width="6" height="19">
+              <RoundRectangle x="0" y="0" width="4.16" height="17.6" cornerRadiusX="2.08" cornerRadiusY="2.08">
+                <Transform target="width" value="3.2 + 0.96 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="13 + 4.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 338, in from 84%: 12-16.2px tall, 69.0-93.2px of fall at 1.0/s = 69-93px/s. -->
+          <Group name="rain_drop_19" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(69.0 + 24.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 1.0 + 0.58)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.58), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.58) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 84) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_19" x="338" y="292" width="5" height="18">
+              <RoundRectangle x="0" y="0" width="3.9" height="16.2" cornerRadiusX="1.95" cornerRadiusY="1.95">
+                <Transform target="width" value="3.0 + 0.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="12 + 4.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 99, in from 86%: 13-17.6px tall, 72.0-97.2px of fall at 1.0/s = 72-97px/s. -->
+          <Group name="rain_drop_20" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(72.0 + 25.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 1.0 + 0.96)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.96), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.96) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 86) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_20" x="99" y="280" width="6" height="19">
+              <RoundRectangle x="0" y="0" width="4.42" height="17.6" cornerRadiusX="2.21" cornerRadiusY="2.21">
+                <Transform target="width" value="3.4 + 1.02 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="13 + 4.6 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 320, in from 88%: 12-16.2px tall, 67.0-90.5px of fall at 1.0/s = 67-90px/s. -->
+          <Group name="rain_drop_21" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(67.0 + 23.5 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 1.0 + 0.03)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.03), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.03) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 88) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_21" x="320" y="302" width="6" height="18">
+              <RoundRectangle x="0" y="0" width="4.16" height="16.2" cornerRadiusX="2.08" cornerRadiusY="2.08">
+                <Transform target="width" value="3.2 + 0.96 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="12 + 4.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 129, in from 90%: 14-18.9px tall, 70.0-94.5px of fall at 1.0/s = 70-94px/s. -->
+          <Group name="rain_drop_22" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(70.0 + 24.5 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 1.0 + 0.41)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.41), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 1.0 + 0.41) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 90) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_22" x="129" y="290" width="6" height="20">
+              <RoundRectangle x="0" y="0" width="4.68" height="18.9" cornerRadiusX="2.34" cornerRadiusY="2.34">
+                <Transform target="width" value="3.6 + 1.08 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="14 + 4.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 87, in from 91%: 12-16.2px tall, 75.6-102.0px of fall at 0.9/s = 68-92px/s. -->
+          <Group name="rain_drop_23" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(75.6 + 26.4 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.9 + 0.68)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.68), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.9 + 0.68) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 91) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_23" x="87" y="252" width="5" height="18">
+              <RoundRectangle x="0" y="0" width="3.9" height="16.2" cornerRadiusX="1.95" cornerRadiusY="1.95">
+                <Transform target="width" value="3.0 + 0.9 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="12 + 4.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+
+          <!-- x 302, in from 92%: 12-16.2px tall, 73.7-99.5px of fall at 0.95/s = 70-95px/s. -->
+          <Group name="rain_drop_24" x="0" y="0" width="450" height="450" alpha="255">
+            <Transform target="y" value="(73.7 + 25.8 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)) * fract([SECOND_MILLISECOND] * 0.95 + 0.87)" />
+            <Transform target="alpha"
+                       value="255 * (clamp(4 * fract([SECOND_MILLISECOND] * 0.95 + 0.87), 0, 1) - clamp(4 * fract([SECOND_MILLISECOND] * 0.95 + 0.87) - 3, 0, 1)) * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 92) / 8, 0, 1)" />
+            <PartDraw name="rain_shape_24" x="302" y="252" width="6" height="18">
+              <RoundRectangle x="0" y="0" width="4.16" height="16.2" cornerRadiusX="2.08" cornerRadiusY="2.08">
+                <Transform target="width" value="3.2 + 0.96 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Transform target="height" value="12 + 4.2 * clamp(([WEATHER.CHANCE_OF_PRECIPITATION] - 50) / 50, 0, 1)" />
+                <Fill color="#7fb6d9" />
+              </RoundRectangle>
+            </PartDraw>
+          </Group>
+        </Group>
+      </Compare>
+    </Condition>
 
     <!-- Umbrella, held up by the hero's waving arm when it is wet. -->
     <Condition>
@@ -1946,9 +3883,13 @@
                a dome would otherwise need a background-coloured shape to
                bite the bottom off, and that would erase the leaves behind.
 
-               Teal, not coral: coral is within a few percent of the hero's
-               body red, so a coral canopy read as a second floating blob
-               head rather than as an object. The two seam lines matter for
+               Teal, not coral: coral was within a few percent of the hero's
+               body red, so a coral canopy read as a second floating blob head
+               rather than as an object. That reasoning is now STRONGER, not
+               weaker - the body cycles through seven hues, so any canopy colour
+               close to one of them would collide one day a week. Teal sits
+               between Thursday's blue and Sunday's purple and clashes with
+               neither. The two seam lines matter for
                the same reason - without them the silhouette is just a
                cloud. -->
           <!-- 160 wide, absolute x 137 to 297, and CENTRED on the shaft.
@@ -2272,8 +4213,8 @@
 
          The 36px of red body between the mouth and the first z is unavoidable -
          the mouth is at the body's centre, not its edge, and running the z's
-         across the body would put #93a3b4 on #ee4e43, which has almost no
-         contrast. Pointing the chain back at the mouth is the available cue.
+         across the body would put #93a3b4 on the body colour, which on several
+         weekdays has almost no contrast against it. Pointing the chain back at the mouth is the available cue.
 
          The companion's chain goes the other way, up-LEFT, for two reasons: the
          gap between the two blobs is only 26px wide and the hero fills

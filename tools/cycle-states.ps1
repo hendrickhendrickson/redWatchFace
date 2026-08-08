@@ -4,9 +4,10 @@
 # WHY THIS EXISTS
 #
 # capture-states.ps1 photographs states; this one *shows* them. Anything that
-# moves - the Gyro parallax, the Zzz drift, the ambient crossfade - is invisible
-# in a screenshot, so the only way to judge it is to put each state on a wrist
-# and tilt. Doing that by hand is a mock/build/install cycle per state.
+# moves - the Gyro parallax, the Zzz drift, the falling rain, the sweat drips,
+# the ambient crossfade - is invisible in a screenshot, so the only way to judge
+# it is to put each state on a wrist and tilt. Doing that by hand is a
+# mock/build/install cycle per state.
 #
 # EVERY STATE IS MOCKED WITH --live, which is the whole point: a plain mock pins
 # ACCELEROMETER_ANGLE_* and the clock sources to constants, so the parallax and
@@ -45,7 +46,19 @@ $stateFile = Join-Path $PSScriptRoot 'cycle-states.state'
 
 # Ambient is excluded: both blob groups are alpha 0 there, so there is no
 # parallax to see and nothing to hold on screen.
-$order = @('baseline', 'night', 'sunny', 'cold', 'freezing', 'rainy', 'thunderstorm', 'sweating', 'goal')
+# The states that MUST be looked at here rather than in a screenshot are the two
+# animated ramps, and both are included at more than one point along their range:
+# rainy/thunderstorm/downpour are 50/90/100% precipitation, which drives the
+# rain's drop count, size and speed; sweating/puffing/drenched are 100/135/200bpm,
+# which drives the drip speed and the forehead pearl count. A still frame shows
+# one arbitrary phase of each and says nothing about how either ramp reads.
+# 'salute' and 'salutebusy' are the exception to that: they animate nothing, but
+# the salute is the only pose where a limb crosses the head, and whether a flat
+# hand at 37 degrees reads as a salute or as a smudge is a question about real size
+# on a real screen. Both are here because the two arms are NOT mirror images - the
+# box is 106 wide with the body at 14..86, so the far arm has 20px of room and the
+# near one 14, and the near elbow is folded tighter to fit.
+$order = @('baseline', 'night', 'sunny', 'uv', 'cold', 'gloves', 'freezing', 'rainy', 'thunderstorm', 'downpour', 'sweating', 'puffing', 'drenched', 'goal', 'salute', 'salutebusy')
 if ($Only) {
     $order = @($order | Where-Object { $_ -in $Only })
     if (-not $order) { throw "-Only matched nothing. Valid: $($order -join ', ')" }

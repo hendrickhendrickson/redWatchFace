@@ -2,7 +2,200 @@
 
 Ordered so that nothing blocks on the watch until the face already works in an emulator.
 
-## Start here (as of 2026-08-04, design pass 3 — motion)
+## Start here (as of 2026-08-07, design passes 4–6 — reactions, colour, the salute)
+
+**Nine changes went in across three passes.**
+Items 1–7 (reaction split and animation) and item 8 (the weekday colour scheme) went
+in on 2026-08-06; item 9, the salute, on 2026-08-07. `docs/states/` is current, the
+contact sheet is in reading order, the watch is back on a build whose md5 matches a
+clean tree, and the XML validates against v5 / assembles / passes the memory
+footprint check.
+
+THE SALUTE WAS REVISED AFTER ITS FIRST SHOOT and the four frames it needs -
+`10-salute`, `10b-salute-blocked`, `10c-friday-salute`, `10d-friday-drink` - are NOT
+yet on disk; `all-states.png` still shows the first version's windows and only one
+arm. Nothing else is stale. The sweep is two commands once a device answers:
+
+```powershell
+powershell -Command "& tools/capture-states.ps1 -Only 10-salute,10b-salute-blocked,10c-friday-salute,10d-friday-drink"
+powershell -Command "& tools/capture-states.ps1 -SheetOnly"
+```
+
+What HAS been checked on the revision: the validator, the assemble, the memory
+footprint, all four mock states round-tripping, the geometry in the offline
+rasteriser at 9x on both arms, and - the useful one - the windows and the arm choice
+evaluated straight out of the XML at every boundary minute and against six weather
+variants, including that all five copies of the expression pair agree. What has NOT:
+a wrist. `salute` and `salutebusy` are both in `cycle-states.ps1` for that.
+
+TWO CAPTURE TRAPS BIT DURING THAT SWEEP, both now documented in the README, and
+neither is about the face:
+
+- **A dimmed frame passed the guard.** `Test-IsFace` tested `max luminance >= 240`,
+  and the watch draws a small pure-white system indicator near the bottom of the
+  screen that pins `max` at 255 however dark the face is. The test is now the
+  FRACTION of pixels over luminance 200 - 3.7-5.3% good, 0.3% dimmed. It was caught
+  by probing the hero's body pixel against another frame, (122,40,34) against
+  (238,78,67), i.e. 51%. Probe a pixel; do not trust the guard.
+- **A notification chip landed on the face** - an ongoing Fitbit "Morning Brief",
+  rendered over the bottom of the watch face in all three frames. No check can tell
+  that from the face. `cmd notification snooze --for <ms> '<key>'` parks it for a
+  sweep and `unsnooze` restores it. Do not confuse it with the small white dot in
+  most frames, which is the unread indicator and is in the older frames too.
+
+Passes 4 and 5 were iterated ON HARDWARE rather than designed and shipped: the rain
+took five passes and the sweat three, each corrected by looking at it. The verdicts
+are recorded in the XML next to the code they changed, because none of them was
+predictable from the markup. If you read one thing about this pass, read the
+`fract()` finding below — it is the reusable part.
+
+What changed:
+
+1. **Sunny split in two.** Sunglasses now answer `[WEATHER.UV_INDEX] >= 6`
+   (`&& IS_DAY`) — 6 is where the WHO/EPA scale calls the index "high". The
+   cocktail keeps its original clear-and-25-degrees trigger, untouched as asked.
+   `UV_INDEX` was in `sourceType.xsd` all along; it had just never been read.
+   **Only the branch is proven, not the provider**: the sweep mocks the source to a
+   literal, so no live UV reading has been seen. If the shades never appear on a
+   bright day, print the raw value before touching the threshold.
+2. **Wind: re-checked, still impossible.** No speed, no direction, no gust, and
+   nothing in the hourly or daily patterns either. Second time asked; the answer
+   will not change without a new format version.
+3. **Cold split in two.** Scarf stays at `<= 10`, gloves moved to `<= 5`. Each step
+   is a strict subset of the one above it (scarf ⊃ gloves ⊃ snowflake), so no
+   branch excludes another.
+4. **Animated rain, five passes.** Now 24 fully independent drops in two columns
+   that bracket the umbrella canopy, with **drop count, size and speed all scaled by
+   `CHANCE_OF_PRECIPITATION`** — ~7 drops at the 50% gate, 24 at 100%, off one
+   `clamp` term. No waves, no shared phases. The long note at `rain_fall` carries
+   the whole history; the short version is that every instinct about this was wrong
+   in a way only the wrist exposed.
+5. **Animated sweat, three passes.** Beads run down both cheeks with speed and
+   length ramped **linearly from 100bpm to 200**, a second bead per cheek fading in
+   across 140..160, and the forehead cluster filling in three steps (middle pearl at
+   100, outer pair at 120, all three at 150).
+6. **The step-goal flag faces right and is gripped, not balanced.** The pole runs
+   through the hand's centre line and the arm is drawn *after* it, so the fist
+   occludes the middle. It had to shrink from 14 to 12 wide: the PartDraw box is the
+   group's own 106 and content is clipped to it.
+7. **Snow: not directly queryable.** There is no `IS_SNOWING`. `CONDITION` is an
+   undocumented integer with two values ever observed here, and `CONDITION_NAME` is
+   a string, which WFF's arithmetic-only expressions cannot compare — only print.
+   See the open list.
+
+8. **The weekday colour scheme.** `[DAY_OF_WEEK]` picks the hero's body colour;
+   everything else is DERIVED from it by ratios measured off the colours the face
+   already had — each blob's mouth is its own body hue at S×0.55 / L×0.41, and the
+   date row is the body hue at the retired ice-blue and slate's exact S/L, so only
+   its hue moves. The companion wears TOMORROW's hero colour, so the pair never
+   share a hue and the small blob previews the next day. Seven `w-<weekday>` frames
+   in `docs/states/`. **`[DAY_OF_WEEK]` is 1 = Sunday**, measured on the watch with
+   a throwaway `PartText`, not ISO 8601 — assuming ISO would have shifted every
+   colour by a day, which looks correct six days out of seven. See the README
+   section and the note on `hero_body`.
+
+9. **The salute**, 2026-08-07, revised twice the same day. Weekdays 09:05-09:20
+   and 16:00-16:30; on Friday the afternoon window is 15:00-15:30 and a cocktail
+   takes 15:30-16:00. The two Friday windows ABUT at 15:30, written in both
+   Conditions and derived in neither.
+
+   IT PREFERS THE BLOB'S RIGHT ARM (screen LEFT) and falls back to the other one
+   when that hand is holding an umbrella or a cocktail - both of which terminate
+   at a fixed point in that fist. "Busy" is the umbrella's trigger OR the
+   cocktail's WEATHER trigger; the Friday drink is not in it, because that window
+   cannot overlap a salute. NO NEGATION anywhere: the schema selects the FIRST
+   true Compare, so a "salute AND busy" branch above a "salute" branch gives the
+   second one "salute AND NOT busy" for free. The cost is that the raised pose and
+   the raised mitten are each written twice, once as the busy branch and once as
+   the Default.
+
+   TWO Conditions draw each arm - limbs before the body so the shoulder reads as
+   a joint, hand after the face so it sits ON the brow - and the hand is attached
+   by redrawing the forearm's core over the capsule, 8px LONGER than the limb
+   pass draws it. The step-goal flag only stands down on the FALLBACK now.
+   Frames `10-salute`, `10b-salute-blocked`, `10c-friday-salute`,
+   `10d-friday-drink`.
+
+Three things that change how you work on this:
+
+- **`fract()` is verified** (see the finding below). Phase offsets are no longer
+  locked to whole seconds, which is what made per-drop rain possible. The Zzz drift
+  is still on the old whole-second formula and could lose its 3-second period the
+  same way.
+- **`mock-state.mjs` takes `--set=KEY=VALUE`.** Both new reactions are continuous
+  functions of a reading, so judging them means looking at points BETWEEN the named
+  states — `--set=HEART_RATE=150`, `--set=WEATHER.CHANCE_OF_PRECIPITATION=70`.
+  Adding a named state per value you want to eyeball once turns `STATES` into a junk
+  drawer. Unknown keys abort rather than silently leaving the source live.
+- **Fading beats gating for anything driven by a live reading.** Both reactions
+  originally switched sub-parts on at thresholds, and a real pulse or precipitation
+  figure sitting on the number makes that flicker. Where a threshold survives it is
+  because it was asked for (see the forehead pearls).
+
+**Whether to generate `watchface.xml` instead of editing it was analysed on 2026-08-08:
+[docs/authoring-strategy.md](docs/authoring-strategy.md).** The answer is no, for now, with a
+written trigger for reversing it. Two findings there bear on the list below: items 1 and 2 are
+both "a tool that would check this was written and left in a scratchpad", and the date row's
+ambient crossfade runs the timing the clock's own note records as rejected.
+
+Still open, most important first:
+
+1. **The salute's window is written out FIVE times, in two forms** - plain in
+   the near arm, the hand and the near mitten, and AND-ed with the busy test in
+   the far arm, the hand and the far mitten - plus the Friday half inside
+   `hero_drink`. Expressions cannot be referenced across Conditions. Disagreement
+   shows up as two left arms at once, a floating cocktail, a mitten beside a bare
+   hand, or half an hour with nothing in either hand. The cheap defence is in the
+   session scratchpad and worth keeping: pull the `<Expression>` bodies out of the
+   XML with a regex, unescape them, evaluate them in Python over 7 days x 24 hours
+   x the boundary minutes x three weather variants, and assert that all copies of
+   each form agree. It found nothing this time, which is the point - it is what
+   makes "I copied it correctly five times" a checked claim rather than a hope.
+2. **The seven-colour table is written out NINE times** — hero body, hero round
+   mouth, hero open mouth, hero mouth mask, companion body, companion round mouth,
+   companion open mouth, companion mouth mask, date row — because WFF has no
+   variables. The masks are the dangerous ones: an open mouth is a dark ellipse
+   whose top half is repainted in the body colour, so a body/mask mismatch shows up
+   as a dark bar across a face on exactly one weekday. Change a hue and grep the old
+   value first. The generator that produced all nine lives in the session scratchpad
+   rather than the repo; if the palette is ever revised, deriving the mouth and date
+   colours by hand is the error-prone part, not the XML.
+
+   Promoting that generator to the repo — or going further and generating the whole
+   file from TypeScript — was evaluated on 2026-08-08 and declined for now; see
+   [docs/authoring-strategy.md](docs/authoring-strategy.md) for the trigger that would
+   reverse it. Two things measured there are worth having here. **It is eleven `Part*`
+   sites, not nine** - the date row is three of them (`date_chip`, `date_weekday`,
+   `date_day`), and the companion's four are `mini_body`, `mini_mouth_sleep`,
+   `mini_mouth_open`, `mini_mouth_mask`. And **all of them agree today**:
+   both masks match their bodies on all seven days, `mini_body[d] == hero_body[d+1]`,
+   and all 21 derived hexes reproduce byte-for-byte from the seven body colours at the
+   documented ratios. So the scheme is intact and the derivation is cheap to rebuild -
+   which is what this note was actually worried about losing.
+3. **The forehead pearls flicker by construction.** The middle pearl is lit from
+   100..119, off from 120..149 and on again from 150, exactly as requested, so a
+   pulse hovering on 119 or 149 blinks it. Thresholds flicker and ramps do not. The
+   fix that keeps the 1-2-3 count without a disappearance is to leave the middle
+   pearl lit in every band and add the right pearl at 120 — one branch, no geometry.
+4. **Nothing has been seen with LIVE weather or a live pulse.** Every reaction was
+   judged against mocked literals. The two that could still surprise are the UV
+   branch (does the provider publish a usable index?) and the rain, whose density
+   now depends on a `CHANCE_OF_PRECIPITATION` that has only ever been read as 0 here.
+5. **Consider the snow proxy.** `TEMPERATURE <= 0 && CHANCE_OF_PRECIPITATION >= 50`
+   is precipitation at freezing, which in practice means snow or sleet. Two
+   expressions away from swapping blue drops for white flakes on a freezing wet day —
+   currently such a day gets rain, and the snowflake already on screen makes it read
+   as *deliberately* wrong. Not built: it was asked as a question, not a request.
+6. **`PartDraw` clipping is still unsettled**, and three existing shapes quietly
+   depend on the answer while the step-goal flag's 12px width depends on it being
+   real. See the finding below; one throwaway build settles it.
+7. Everything from pass 3 that is still open: the ambient transition by eye, the
+   thunderstorm condition code, the moon's mirrored limb, and the ~15 `Variant`
+   elements on default timing.
+
+## Superseded — start here (as of 2026-08-04, design pass 3 — motion)
+
+> Kept for history; the current list is at the top of this file.
 
 **The design backlog is empty and the motion is signed off on the wrist.**
 Parallax, the Zzz drift and every accessory that tracks a blob were checked by
@@ -22,7 +215,7 @@ Three things that change how you work on this:
   `--live` so the accelerometer and clock stay real. Nothing about motion can
   be judged from a screenshot or from the validator.
 - **There is no wind data source in WFF.** See the finding below before
-  planning anything else weather-driven.
+  planning anything else weather-driven. (Re-verified 2026-08-06.)
 
 Still open:
 
@@ -51,6 +244,21 @@ different bugs in the watch face. The pattern behind all of them:
 The check that actually settles it: **compare the installed APK's md5 against
 the clean build** (`cycle-states.ps1 -Restore` does this), and **look at the
 watch** for anything that moves.
+
+**Pass 4 adds a fifth row to that table: an offline rasteriser.** With no watch
+connected, the 2026-08-06 geometry was checked by a throwaway ~250-line Python
+script that reads the real `watchface.xml`, substitutes the sources the way
+`mock-state.mjs` does, evaluates the actual `Condition`s and `Transform`s, draws
+the primitives with PIL and reports any shape outside its `PartDraw` box or
+outside the round bezel. It caught nothing wrong in the end but it *proved* the
+placement — including combinations no mock state covers, like rain plus night plus
+the step goal, which is where the collisions would have been. It is deliberately
+NOT in the repo: `tools/generate-preview.mjs` was deleted for drifting away from
+the face it claimed to draw, and the only reason this one cannot drift is that it
+parses the XML rather than reimplementing it. What it proves is **geometry at one
+instant** — it knows nothing about `Variant`, `Gyro`, font metrics, antialiasing,
+or whether the watch implements a given expression at all. It is not a substitute
+for the wrist for any of the four rows above.
 
 ## Superseded — start here (as of 2026-08-04, design pass 1)
 
@@ -768,6 +976,23 @@ Three things worth knowing that are not obvious from the diff:
   overlapping heights. They now miss by 1.5px. Both hands are also hard against
   their own group's edge, and PartDraw content is clipped to its box, so pulling
   a hand inward is not available either. See the note on `blob_companion`.
+- **`PartDraw` clipping is believed real but has never been isolated, and three
+  existing shapes quietly depend on the answer.** The rotation finding above is
+  direct evidence *for* it — the steps icon's taper measurably vanished — but
+  `mini_limbs` puts a hand ellipse at local x −2 and another reaching local x 63
+  in a 62-wide box, and `mini_scarf`'s tail runs to local y 51 in a 40-tall box.
+  If clipping is real, all three are losing a slice: 2px off one mitten, 1px off
+  the other, and 11px off the scarf tail. That is small enough that nobody has
+  ever noticed either way, and small enough that the notes in the XML claiming
+  those hands "reach 141" and that the tail "hangs below the body" may be off by
+  exactly that slice. **It matters now** because the step-goal flag is 12 wide
+  rather than 14 specifically to stay inside the box, and because the tempting
+  way to build seamless falling rain is to move shapes inside a *static* box and
+  let the clip hide the wrap — which is a silent catastrophe if the box does not
+  clip, since drops would then appear up the canvas in the stat row. The rain
+  therefore moves whole groups with a bounded travel and fades at both ends
+  instead, and it depends on no clipping at all. Settling this needs one throwaway
+  build with a shape deliberately hanging out of its box.
 
 ### A new machine cannot update the watch's existing install
 
@@ -824,11 +1049,16 @@ the right size.
 
 ### The complete data source list — and what is NOT in it
 
-`sourceType.xsd` in the v5 tree enumerates **116** sources. Worth reading the
-list before designing a feature, because two obvious ones are missing and
+`sourceType.xsd` in the v5 tree enumerates **116** sources — 100 plain
+enumerations plus 16 patterns for the hourly and daily forecasts. Worth reading
+the list before designing a feature, because two obvious ones are missing and
 several useful ones are easy to overlook.
 
-**THERE IS NO WIND.** Not speed, not direction, not gust. The whole weather
+Re-extracted and re-counted on 2026-08-06, when wind was asked about a second
+time. Nothing has changed: it is not there, and neither is snow.
+
+**THERE IS NO WIND.** Not speed, not direction, not gust, and not in the
+`WEATHER.HOURS.n.*` / `WEATHER.DAYS.n.*` patterns either. The whole weather
 bundle is:
 
 ```
@@ -840,6 +1070,22 @@ plus hourly (`WEATHER.HOURS.n.*`) and daily (`WEATHER.DAYS.n.*`) forecasts of
 the same. There is also no humidity, no pressure, no air quality, no sunrise or
 sunset time.
 
+**AND THERE IS NO PRECIPITATION TYPE**, which is what "can we tell whether it is
+snowing" comes down to. The only handles are:
+
+- `CONDITION` — an undocumented integer. Two values have ever been observed on
+  this watch (1 = clear, 14 = partly cloudy), so a snow code cannot be written
+  down, only guessed. Reading one off requires it to actually snow while a
+  `PartText` printing the raw code is on the wrist.
+- `CONDITION_NAME` — a string, and therefore useless to a `Condition`:
+  expressions are arithmetic only, so a name can be *printed* but not compared.
+  (`subText()` and `textLength()` exist and are string-ish, but they produce
+  strings, not booleans, and `Compare` needs a number.)
+
+The usable proxy is `TEMPERATURE <= 0 && CHANCE_OF_PRECIPITATION >= 50` —
+precipitation at or below freezing. Both terms are already used elsewhere in the
+face, so it costs one expression. Not built; see the open list at the top.
+
 Sources that ARE there and were not being used:
 
 | source | note |
@@ -849,7 +1095,7 @@ Sources that ARE there and were not being used:
 | `MOON_PHASE_TYPE` | integer, 0..7 |
 | `ACCELEROMETER_*` | X/Y/Z plus `ANGLE_X/Y/Z/XY`, in degrees — this is what `<Gyro>` reads |
 | `UNREAD_NOTIFICATION_COUNT` | untouched so far |
-| `WEATHER.UV_INDEX` | untouched so far |
+| `WEATHER.UV_INDEX` | **in use since 2026-08-06** — drives the sunglasses at `>= 6`. Integer, standard 0–11+ scale. Its own value has not been read off hardware yet, so if the shades never appear that is the first thing to print. |
 | `BATTERY_TEMPERATURE_CELSIUS` | untouched so far |
 | `HOURS_SINCE_EPOCH`, `MINUTES_SINCE_EPOCH` | monotonic counters, useful for slow cycles |
 
@@ -907,6 +1153,59 @@ budget. The details that are not obvious from the names:
   `2p - clamp(4p - 2, 0, 2)` is 0 at p=0, 1 at p=0.5, 0 at p=1. The Zzz alpha
   uses it so the sawtooth reset in `y` happens while they are transparent; the
   moon mask uses the same trick.
+- **A trapezoid falls out of two clamps** and is the better envelope when the
+  thing should be *fully* visible for most of its cycle rather than only at the
+  peak: `clamp(4p, 0, 1) - clamp(4p - 3, 0, 1)` rises over the first quarter,
+  holds at 1 across the middle half and falls over the last quarter. The rain and
+  the sweat drips use it — with a triangle the drops read as flickering, because
+  they are only ever briefly at full strength.
+- **The function enumeration in `arithmeticExpressionType.xsd` is longer than you
+  would guess.** It lists `round floor ceil fract sin cos tan asin acos atan abs
+  clamp rand log log2 log10 sqrt cbrt exp expm1 deg rad pow numberFormat icuText
+  icuBestText subText textLength colorArgb colorRgb extractColorFromColors
+  extractColorFromWeightedColors`. Notably **there is no `min` or `max`**, which
+  is why `clamp` does all the work above. Of the set, only `clamp` and **`fract`**
+  have actually been exercised on this watch. Anything else is still unproven, and
+  an unimplemented function inside a `Transform` fails *silently* while passing the
+  validator — exactly like the non-existent `[ANIMATION_VALUE]` did.
+
+### `fract()` works, and it is worth more than it looks
+
+**Verified on the Pixel Watch 4 on 2026-08-06**, and it removes the single biggest
+constraint on animation in this face.
+
+The problem it solves: with only the proven `(([SECOND] % N) + [SECOND_MILLISECOND]
+- [SECOND]) / N` formula, **phase offsets are only available in whole seconds**, via
+`([SECOND] + k) % N`. That couples the number of distinct phases to the period — so
+three staggered things force a 3-second cycle, and a 3-second cycle cannot be fast
+without a travel too long to fit the screen. The first rain attempt crawled at
+30px/s for exactly this reason, and its drops had to be grouped into "waves" that
+shared a phase, which meant sharing an alpha, which is what made them visibly
+breathe in unison.
+
+With `fract()` a phase offset is any constant you like:
+
+```
+p = fract([SECOND_MILLISECOND] * rate + offset)
+```
+
+so every element can have its own phase and its own rate. The rain went from three
+waves of identical drops to 24 fully independent ones.
+
+**`60 * rate` must be a whole number.** `[SECOND_MILLISECOND]` wraps 59.999 → 0, so
+a rate that does not divide evenly into the minute produces a visible hiccup once a
+minute — the sort of thing noticed a week later and blamed on the sensor. 0.6, 0.75
+and 0.9 are fine (36, 45, 54); 0.7 is fine (42); anything derived from a live
+reading is almost never fine, which is why **the rain scales its speed through
+travel and never through rate**.
+
+**How it was verified, because "it looked right" would not have been enough.** A
+dead `Transform` leaves its shapes at their authored positions, so the two cases are
+distinguishable by measurement rather than by eye. With the mock's frozen clock the
+three rain waves had to land at y +48, +80 and +16; a dead `fract()` would have
+stacked all thirty drops at +0 in one opaque row. Every drop measured within 1px of
+the live prediction, on all three phase offsets and in both columns. That is the
+standard any new function should be held to here.
 - **Do not put an animated `Transform` and an AMBIENT `Variant` on the same
   attribute of the same element.** Which wins in ambient is not something the
   schema settles. Put the animation on an inner Group instead; the outer one
@@ -947,6 +1246,41 @@ value for 'integer'`. Only the primitives inside — `Ellipse`, `Rectangle`,
 `Line`, `Arc`, `RoundRectangle` — take floats. So sub-pixel placement has to be
 done by moving the shapes within the box, not by moving the box. Cost one
 build to discover.
+
+### `PartDraw` rotation: `angle` is clockwise-positive, and it clips the rotated result
+
+Two facts about `pivotX`/`pivotY`/`angle` that the schema does not state, both needed by
+the saluting palm and neither guessable:
+
+* **Positive is clockwise.** `leaf_left` has carried `angle="-36"` since the first pass
+  and leans *left*, which settles it: a vector pointing up, rotated by a positive angle,
+  goes up-and-right.
+* **The box has to be sized for the diagonal.** A 20 x 14 capsule at 37 degrees occupies
+  24 x 23, so its box is 34 square. A snug box shaves the corners off the shape.
+
+Both were checked in the offline rasteriser first. That tool is faithful about the
+rotation, but do not trust it for single pixels: it supersamples 4x and downsamples with
+Lanczos, and the ringing at a cream-on-red edge produces the occasional fully saturated
+pixel that does not exist on the device.
+
+### Two hands are cheap to draw and expensive to attach
+
+The salute took four attempts and every failure was about ATTACHMENT rather than the hand:
+
+1. A 22 x 11 palm against an 8px arm read as a dart. A hand has to be about twice the
+   limb it hangs off - the round fists are 19 wide against the same arm.
+2. An elbow at (97,64) gave the two limbs equal lengths and mirrored slopes, which reads
+   as an arrowhead pointing away from the blob. The fix was asymmetry, not size: 2px out
+   and 2px down flattens the upper arm to 28 degrees against the forearm's 38.
+3. Running the palm's navy flush with its cream, and then 2px past it, both merged hand
+   and forearm into one tapered paddle - a spoon held to the head. The pale seam that a
+   closed 2px rim leaves across the wrist is what makes the hand read as a hand.
+4. The pose cannot be drawn in one pass at all. Limbs draw before the body so shoulders
+   read as joints, so anything touching the FACE has to be drawn a second time after it.
+
+None of that is visible in the markup; it is four renders. Render a new pose before
+believing the arithmetic - and note that the arithmetic was wrong once here too, when a
+leaf collision was computed against the TIP of a round cap instead of its centre.
 
 ### Memory footprint: the whole budget is the font
 

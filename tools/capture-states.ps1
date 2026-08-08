@@ -2,7 +2,7 @@
     Captures one screenshot per state into docs/states/, with fixed values.
 
         powershell -File tools/capture-states.ps1
-        powershell -Command "& tools/capture-states.ps1 -Only 4-cold,5-freezing"
+        powershell -Command "& tools/capture-states.ps1 -Only 4-cold,4b-gloves"
 
     USE -Command, NOT -File, WHEN PASSING -Only MORE THAN ONE STATE. Under
     -File every argument arrives as a separate string, so "-Only a,b" becomes
@@ -22,8 +22,8 @@
 
     Now tools/mock-state.mjs patches the DATA instead - temperature, heart rate,
     hour, and so on - and the real Conditions evaluate normally, so nesting
-    takes care of itself. The cost is one BUILD PER STATE, about three minutes
-    for the set. Correctness is worth more than the two minutes saved.
+    takes care of itself. The cost is one BUILD PER STATE, about nine minutes
+    for the set of twenty-five. Correctness is worth more than the two minutes saved.
 
     There is no battery override any more, so none of the old warnings about
     leaving the watch reporting a fake level apply.
@@ -43,8 +43,8 @@ param(
     # Rebuild all-states.png from the PNGs already on disk, touching no device
     # and building nothing. -Only deliberately leaves the sheet alone, so after
     # re-shooting a single state the sheet is stale; without this the only way
-    # to refresh it was a full nine-build sweep to recapture eight images that
-    # had not changed.
+    # to refresh it was a full twenty-one-build sweep to recapture twenty images
+    # that had not changed.
     [switch]$SheetOnly
 )
 
@@ -52,33 +52,96 @@ $ErrorActionPreference = 'Continue'
 
 $adb = Join-Path $env:LOCALAPPDATA 'Android\Sdk\platform-tools\adb.exe'
 if (-not (Test-Path $adb)) { throw "adb not found at $adb" }
+# Same defence cycle-states.ps1 has always had, and it was missing here until
+# 2026-08-06. `java` on PATH is JDK 8 on this machine, and Gradle 8.11.1's
+# embedded Kotlin compiler dies on anything that is not 21 - so without this a
+# sweep launched from a shell with no JAVA_HOME fails EVERY state's install,
+# reports "install failed for <state>" thirteen times, and leaves the run to
+# limp to the end capturing whatever was already on the watch.
+if (-not $env:JAVA_HOME) { $env:JAVA_HOME = "$env:USERPROFILE\.jdks\jdk-21.0.12+8" }
 $repo = Split-Path -Parent $PSScriptRoot
 $dir = Join-Path $repo $OutDir
 New-Item -ItemType Directory -Force $dir | Out-Null
 
 # file name -> mock-state.mjs state name
+# SUB-STATES USE A LETTER SUFFIX rather than their own number, so that inserting
+# one does not renumber every file after it, and so the set never needs two-digit
+# names where '10-x' would sort before '2-x'.
+#
+# THE SHEET'S ORDER DOES NOT COME FROM THESE NAMES. This comment used to claim
+# '3b-uv' sorts between '3-sunny' and '4-cold' because '-' is 0x2D and 'b' is
+# 0x62 - true of an ordinal comparison, and false of the one PowerShell actually
+# uses. See the note in Write-ContactSheet; the order comes from $sheetOrder.
 $states = @(
     @{ file = '1-baseline';     mock = 'baseline';     label = 'baseline' },
     @{ file = '2-night';        mock = 'night';        label = '23:00 to 07:00' },
-    @{ file = '3-sunny';        mock = 'sunny';        label = 'sunny 25 deg: shades + cocktail' },
-    @{ file = '4-cold';         mock = 'cold';         label = 'cold 10 deg: scarf + gloves' },
+    @{ file = '3-sunny';        mock = 'sunny';        label = 'sunny 25 deg, UV 8: shades + cocktail' },
+    @{ file = '3b-uv';          mock = 'uv';           label = 'UV 8 at 14 deg: shades only' },
+    @{ file = '4-cold';         mock = 'cold';         label = 'cold 10 deg: scarf' },
+    @{ file = '4b-gloves';      mock = 'gloves';       label = 'cold 5 deg: + gloves' },
     @{ file = '5-freezing';     mock = 'freezing';     label = 'freezing 0 deg: + snowflake' },
-    @{ file = '6-rainy';        mock = 'rainy';        label = 'rain 50%: umbrella up' },
+    @{ file = '6-rainy';        mock = 'rainy';        label = 'rain 50%: umbrella + falling rain' },
     @{ file = '7-thunderstorm'; mock = 'thunderstorm'; label = 'storm 90%: bolt + startled' },
-    @{ file = '8-sweating';     mock = 'sweating';     label = 'heart rate 120' },
+    @{ file = '8-sweating';     mock = 'sweating';     label = 'heart rate 100: one pearl, drip starts' },
+    @{ file = '8b-puffing';     mock = 'puffing';      label = 'heart rate 135: outer pair of pearls' },
+    @{ file = '8c-drenched';    mock = 'drenched';     label = 'heart rate 200: three pearls, full ramp' },
     # Strictly a mark rather than a state, like the snowflake and the moon - but
     # unlike those two it appears in NO other snapshot, so leaving it out of the
     # sweep meant the only record that it exists was the XML. If a reaction
     # cannot be seen in docs/states, assume it will be believed missing.
-    @{ file = '9-step-goal';    mock = 'goal';         label = 'step goal met: flag' }
+    @{ file = '9-step-goal';    mock = 'goal';         label = 'step goal met: flag' },
+    # THE SALUTE - a clock reaction like 2-night, so it keeps its place in the
+    # numbered set. It is the first state to need TWO DIGITS, which the note above
+    # was written to avoid; that clause is now only about how the folder lists, since
+    # the sheet's order comes from $sheetOrder and not from the filenames.
+    @{ file = '10-salute';         mock = 'salute';     label = 'weekday 09:05-09:20: salute, near arm' },
+    @{ file = '10b-salute-blocked'; mock = 'salutebusy'; label = 'salute 16:00-16:30, hand full: far arm' },
+    @{ file = '10c-friday-salute'; mock = 'salutefri';  label = 'Fri 15:00-15:30: afternoon salute, early' },
+    @{ file = '10d-friday-drink';  mock = 'fridrink';   label = 'Fri 15:30-16:00: cocktail replaces it' },
+    # THE WEEKDAY COLOUR SCHEME - seven frames, prefixed 'w-' so they sort after
+    # the reaction states rather than among them. These are a THEME dimension, not
+    # reactions: every one of them is the baseline face, differing only in the hue
+    # that [DAY_OF_WEEK] selects for the hero, the companion and the date row.
+    # Worth all seven rather than a sample, because the pairing is the point - the
+    # companion wears tomorrow's colour, so a reader can only check the cycle
+    # closes by seeing Sunday's companion match Monday's hero.
+    @{ file = 'w-monday'; mock = 'monday'; label = 'Mon: red hero, yellow companion' },
+    @{ file = 'w-tuesday'; mock = 'tuesday'; label = 'Tue: yellow hero, lime green companion' },
+    @{ file = 'w-wednesday'; mock = 'wednesday'; label = 'Wed: lime green hero, medium blue companion' },
+    @{ file = 'w-thursday'; mock = 'thursday'; label = 'Thu: medium blue hero, orange companion' },
+    @{ file = 'w-friday'; mock = 'friday'; label = 'Fri: orange hero, blueish grey companion' },
+    @{ file = 'w-saturday'; mock = 'saturday'; label = 'Sat: blueish grey hero, purple companion' },
+    @{ file = 'w-sunday'; mock = 'sunday'; label = 'Sun: purple hero, red companion' }
 )
 $expected = @($states | ForEach-Object { "$($_.file).png" }) + @('0-ambient.png', 'all-states.png')
+# The canonical sheet order, captured BEFORE -Only filters $states. Ambient is
+# shot last but belongs first, and the sub-states have to land next to their
+# parents - see the long note in Write-ContactSheet for why this is a rank table
+# and not a sort.
+$sheetOrder = @('0-ambient') + @($states | ForEach-Object { $_.file })
 
 function Write-ContactSheet($written) {
     Add-Type -AssemblyName System.Drawing
-    # Sort by filename, not capture order: ambient is captured last but numbered
-    # 0, so without this the sheet ends with the state it should start with.
-    $written = @($written | Sort-Object { [System.IO.Path]::GetFileName($_.path) })
+    # ORDER BY THE DECLARED ORDER, NOT BY FILENAME.
+    #
+    # This was `Sort-Object { GetFileName($_.path) }` - needed because ambient is
+    # captured last but numbered 0 - and it broke the moment sub-states arrived on
+    # 2026-08-06: the first sheet came out ambient, baseline, night, 3b-uv,
+    # 3-sunny, 4b-gloves, 4-cold, ... with every letter suffix jumping ahead of
+    # its own parent.
+    #
+    # The cause is that PowerShell's Sort-Object is CULTURE-AWARE, not ordinal: it
+    # gives punctuation almost no weight, so "3b-uv" collates as "3buv" against
+    # "3sunny", and 'b' < 's' puts it first. Reasoning about the ASCII codes says
+    # the opposite ('-' is 0x2D, 'b' is 0x62) and is what made the naming scheme
+    # look safe on paper. Ranking against the order the states are declared in
+    # needs no collation assumption at all, which is the point.
+    $rank = @{}
+    for ($i = 0; $i -lt $script:sheetOrder.Count; $i++) { $rank[$script:sheetOrder[$i]] = $i }
+    $written = @($written | Sort-Object {
+        $n = [System.IO.Path]::GetFileNameWithoutExtension($_.path)
+        if ($rank.ContainsKey($n)) { $rank[$n] } else { 999 }
+    })
     $cols = [Math]::Min(3, $written.Count)
     $cell = 220
     $labelH = 24
@@ -163,22 +226,35 @@ function Get-Watch {
 #   - a frame caught MID ambient crossfade, which is neither.
 #
 # Thresholds are measured, not guessed. Across a full sweep:
-#     good states      max 247   lit 10-12%   sat 4.3-6.0%
-#     mid-transition   max 217   lit 3.7%     sat 1.5%
-#     dimmed           max 255   lit 7.3%     sat 3.0%
-#     true ambient     max 217   lit 2.4%     sat 0.00%
-# max is the sharp one: undimmed cream #fff6e8 is luminance 247 exactly.
+#     good states      bright 3.7-5.3%   lit 9-12%   sat 4.3-6.0%
+#     dimmed           bright 0.3%       lit 5.4%    sat 3.7%
+#     true ambient     bright 1.3%       lit 2.0%    sat 0.00%
+#
+# BRIGHT - the fraction of sampled pixels over luminance 200 - IS THE SHARP ONE,
+# and it replaced a `max >= 240` test on 2026-08-07 because that test does not
+# work. It let a half-brightness capture of 10-salute through: the watch draws a
+# small PURE WHITE system indicator near the bottom of the screen (measured at
+# x 179..236, y 387..416), about 376 pixels of 255, so `max` reads 255 no matter
+# how dark the face itself is. Only the count of bright pixels notices, and it
+# notices by more than a factor of ten.
+#
+# The dimmed frame also passed on lit and sat, so neither is a backstop: dimming
+# scales every channel, so it moves saturation only slightly. It was caught by
+# comparing the hero's body pixel against another frame - (122,40,34) where every
+# good frame reads (238,78,67), i.e. 51%. If a state ever looks off again, probe a
+# body pixel rather than trusting these three numbers.
 # sat separates the face from ambient, which is strictly greyscale.
 function Get-FrameStats($path) {
     Add-Type -AssemblyName System.Drawing
     try {
         $bmp = [System.Drawing.Bitmap]::FromFile($path)
-        $max = 0; $lit = 0; $sat = 0; $n = 0
+        $max = 0; $bright = 0; $lit = 0; $sat = 0; $n = 0
         for ($y = 0; $y -lt $bmp.Height; $y += 6) {
             for ($x = 0; $x -lt $bmp.Width; $x += 6) {
                 $c = $bmp.GetPixel($x, $y)
                 $l = 0.299 * $c.R + 0.587 * $c.G + 0.114 * $c.B
                 if ($l -gt $max) { $max = $l }
+                if ($l -gt 200) { $bright++ }
                 if ($l -gt 60) { $lit++ }
                 $hi = [Math]::Max($c.R, [Math]::Max($c.G, $c.B))
                 $lo = [Math]::Min($c.R, [Math]::Min($c.G, $c.B))
@@ -187,7 +263,8 @@ function Get-FrameStats($path) {
             }
         }
         $bmp.Dispose()
-        return @{ max = $max; litFraction = ($lit / [double]$n); satFraction = ($sat / [double]$n) }
+        return @{ max = $max; brightFraction = ($bright / [double]$n)
+                  litFraction = ($lit / [double]$n); satFraction = ($sat / [double]$n) }
     }
     catch { return $null }
 }
@@ -195,7 +272,11 @@ function Get-FrameStats($path) {
 function Test-IsFace($path) {
     $s = Get-FrameStats $path
     if (-not $s) { return $false }
-    return ($s.max -ge 240 -and $s.litFraction -lt 0.14 -and $s.satFraction -gt 0.035)
+    # 0.02 sits an order of magnitude clear of a dimmed frame's 0.003 and well
+    # under the 0.037 the darkest good frame manages. It is also above settled
+    # ambient's 0.013, which is deliberate: this asks "is the interactive face on
+    # screen", and ambient is not.
+    return ($s.brightFraction -ge 0.02 -and $s.litFraction -lt 0.14 -and $s.satFraction -gt 0.035)
 }
 
 function Test-IsAmbient($path) {

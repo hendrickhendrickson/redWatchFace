@@ -55,7 +55,16 @@ const BASE = {
   time: '19:12',
   weekday: 'Mon',
   DAY: 19,
+  // Monday, so the base "good day" is the brand red and every non-weekday frame
+  // keeps the colour the face has always had. 1 = SUNDAY, measured on the watch -
+  // see the note on hero_body in watchface.xml.
+  DAY_OF_WEEK: 2,
   HOUR_0_23: 19,
+  // Only the salute windows read minutes (see hero_salute in watchface.xml), but
+  // it has to be in BASE regardless: the leftover scan at the bottom of this file
+  // treats any source it cannot substitute as a live one, which is exactly the
+  // failure it exists to catch.
+  MINUTE: 12,
   HEART_RATE: 88,
   STEP_COUNT: 1912,
   STEP_PERCENT: 19,
@@ -67,6 +76,9 @@ const BASE = {
   'WEATHER.CONDITION': 1,
   'WEATHER.IS_DAY': 1,
   'WEATHER.CHANCE_OF_PRECIPITATION': 0,
+  // Moderate (3-5 on the WHO scale), i.e. deliberately BELOW the >= 6 the
+  // shades fire at, so the base "good day" is not wearing sunglasses.
+  'WEATHER.UV_INDEX': 4,
   MOON_PHASE_POSITION: 19.79,
   // Flat wrist, so parallax sits at rest and does not blur the comparison
   // between snapshots.
@@ -102,13 +114,49 @@ const LIVE_SOURCES = ['ACCELEROMETER_ANGLE_X', 'ACCELEROMETER_ANGLE_Y', 'SECOND'
 const STATES = {
   ambient: {},
   baseline: {},
-  night: { time: '23:12', HOUR_0_23: 23, 'WEATHER.IS_DAY': 0 },
-  sunny: { 'WEATHER.TEMPERATURE': 25 },
+  night: { time: '23:12', HOUR_0_23: 23, 'WEATHER.IS_DAY': 0, 'WEATHER.UV_INDEX': 0 },
+  // The full summer day: warm, clear AND strong sun, so both halves of the old
+  // sunny state fire - shades and cocktail together, which is what a real 25
+  // degree cloudless afternoon looks like.
+  sunny: { 'WEATHER.TEMPERATURE': 25, 'WEATHER.UV_INDEX': 8 },
+  // High UV WITHOUT the warm clear day: 14 degrees, partly cloudy (code 14,
+  // the one non-clear code confirmed on hardware). Shades, no drink. This is
+  // the frame that proves the split - a bright cold spring afternoon.
+  uv: { 'WEATHER.UV_INDEX': 8, 'WEATHER.TEMPERATURE': 14, 'WEATHER.CONDITION': 14 },
+  // Scarf weather. Exactly ON the threshold, and now deliberately ABOVE the
+  // glove threshold, so this frame shows the scarf alone.
   cold: { 'WEATHER.TEMPERATURE': 10 },
+  gloves: { 'WEATHER.TEMPERATURE': 5 },
   freezing: { 'WEATHER.TEMPERATURE': 0 },
+  // 50 is exactly ON the umbrella/rain gate, and since the rain's density, drop
+  // size and speed all scale with CHANCE_OF_PRECIPITATION, this is the LIGHTEST
+  // rain the face can show - about 7 of the 24 drops. That is deliberate: it is
+  // the bottom of the ramp, and 7-thunderstorm at 90% is near the top.
   rainy: { 'WEATHER.CHANCE_OF_PRECIPITATION': 50, 'WEATHER.CONDITION': 12 },
   thunderstorm: { 'WEATHER.CHANCE_OF_PRECIPITATION': 90, 'WEATHER.CONDITION': 12 },
-  sweating: { HEART_RATE: 120 },
+  // The top of the rain ramp: all 24 drops, at their largest and fastest. No
+  // docs frame of its own - 6-rainy and 7-thunderstorm already bracket the
+  // range - but it is in cycle-states.ps1, because the whole point of the ramp
+  // is how it looks in motion.
+  downpour: { 'WEATHER.CHANCE_OF_PRECIPITATION': 100, 'WEATHER.CONDITION': 12 },
+  // The two sweat frames now BRACKET THE RAMP rather than sampling the middle
+  // of it, the same way rainy/thunderstorm bracket precipitation: 100 is exactly
+  // on the gate, where the drip is at its shortest and slowest and there is one
+  // bead per cheek, and 200 is the ceiling, where it is longest and fastest with
+  // a second bead fully faded in. Anything between the two is a linear blend, so
+  // two frames document the whole reaction.
+  //
+  // To look at a point inside the ramp, override rather than adding a state:
+  //   node tools/mock-state.mjs on sweating --set=HEART_RATE=150 --live
+  //
+  // THREE frames, not two, because the forehead cluster fills in three discrete
+  // steps and the middle one is only reachable between 120 and 149. The drips are
+  // a continuous ramp and would be documented by the ends alone; the pearls are
+  // not. 135 sits in the middle of that band rather than on either edge, so the
+  // frame cannot be mistaken for a boundary case.
+  sweating: { HEART_RATE: 100 },
+  puffing: { HEART_RATE: 135 },
+  drenched: { HEART_RATE: 200 },
   // The step-goal flag. STEP_PERCENT is what the trigger reads, against the
   // wearer's own STEP_GOAL, so 100 means "goal met" regardless of what that
   // goal is; STEP_COUNT is only there so the digits on screen agree with it.
@@ -119,6 +167,52 @@ const STATES = {
   // Landing exactly ON the threshold also tests the >= boundary rather than
   // sailing past it.
   goal: { STEP_COUNT: 10000, STEP_PERCENT: 100 },
+
+  // ---- the salute --------------------------------------------------------
+  //
+  //   Mon-Thu   09:05-09:20  and  16:00-16:30
+  //   Friday    09:05-09:20  and  15:00-15:30, then a cocktail until 16:00
+  //
+  // THE POSE IS THE SAME IN BOTH WINDOWS, so `salute` documents it once, in the
+  // morning one, on the base Monday. The two Friday states are not repeats of it:
+  // one shows the afternoon salute at a time when Mon-Thu are not saluting yet,
+  // and the other shows the drink that replaces it half an hour later. Friday's
+  // orange hero is a side effect of the day, not the point.
+  //
+  // Times sit INSIDE each window rather than on its edge, so no frame can be read
+  // as a boundary case. The edges are tested by the expression, not by a
+  // screenshot.
+  //
+  // `salutebusy` is the fourth frame and the only one that is about the MECHANISM
+  // rather than the schedule: the salute prefers the blob's right arm - screen
+  // left - and falls back to the other one when that hand is holding something.
+  // Rain at 70% puts an umbrella in it, so this frame is the fallback pose, and
+  // it is also the only state where the step-goal flag would be suppressed. The
+  // hour is inside the Mon-Thu afternoon window.
+  salute: { time: '09:12', HOUR_0_23: 9, MINUTE: 12 },
+  salutebusy: { time: '16:10', HOUR_0_23: 16, MINUTE: 10,
+                'WEATHER.CHANCE_OF_PRECIPITATION': 70, 'WEATHER.CONDITION': 12 },
+  salutefri: { DAY_OF_WEEK: 6, weekday: 'Fri', DAY: 21, time: '15:15', HOUR_0_23: 15, MINUTE: 15 },
+  fridrink: { DAY_OF_WEEK: 6, weekday: 'Fri', DAY: 21, time: '15:45', HOUR_0_23: 15, MINUTE: 45 },
+
+  // ---- the weekday colour scheme -----------------------------------------
+  //
+  // One state per day, because the hero's body colour, the companion's body
+  // colour and the whole date row all key off [DAY_OF_WEEK] - see hero_body in
+  // watchface.xml. The companion always wears TOMORROW's hero colour, so these
+  // seven frames also document the pairing.
+  //
+  // Each sets DAY_OF_WEEK *and* the weekday string *and* a matching day-of-month,
+  // so nothing on screen contradicts anything else: a frame reading "Tue 18" in
+  // yellow is internally consistent, where DAY_OF_WEEK=3 with the base "Mon 19"
+  // would show a yellow blob next to the word Monday.
+  monday: { DAY_OF_WEEK: 2, weekday: 'Mon', DAY: 17 },   // red hero, yellow companion
+  tuesday: { DAY_OF_WEEK: 3, weekday: 'Tue', DAY: 18 },   // yellow hero, lime green companion
+  wednesday: { DAY_OF_WEEK: 4, weekday: 'Wed', DAY: 19 },   // lime green hero, medium blue companion
+  thursday: { DAY_OF_WEEK: 5, weekday: 'Thu', DAY: 20 },   // medium blue hero, orange companion
+  friday: { DAY_OF_WEEK: 6, weekday: 'Fri', DAY: 21 },   // orange hero, blueish grey companion
+  saturday: { DAY_OF_WEEK: 7, weekday: 'Sat', DAY: 22 },   // blueish grey hero, purple companion
+  sunday: { DAY_OF_WEEK: 1, weekday: 'Sun', DAY: 23 },   // purple hero, red companion
 }
 
 /**
@@ -195,6 +289,37 @@ const positional = args.filter((a) => !a.startsWith('--'))
 const cmd = positional[0] ?? 'status'
 const stateName = positional[1]
 
+/**
+ * Ad-hoc overrides:  --set=WEATHER.CHANCE_OF_PRECIPITATION=70
+ *
+ * Repeatable. Exists because the rain's density, drop size and speed are all
+ * continuous functions of CHANCE_OF_PRECIPITATION, so judging it means looking
+ * at points BETWEEN the named states - and adding a named state per value you
+ * want to eyeball once turns STATES into a junk drawer. Same for heart rate
+ * against the sweat ramp.
+ *
+ * ONE TOKEN, not "--set KEY=VALUE": a bare KEY=VALUE would land in `positional`
+ * above and be read as the state name.
+ *
+ * The key must already exist in BASE. A typo would otherwise be accepted here,
+ * substitute nothing, and leave the source LIVE - which is the exact failure the
+ * leftover scan at the bottom of this file exists to prevent.
+ */
+const overrides = {}
+for (const a of args.filter((x) => x.startsWith('--set='))) {
+  const [k, v] = a.slice('--set='.length).split('=')
+  if (!(k in BASE)) {
+    console.error(`ABORT: --set key "${k}" is not a known source. One of:`)
+    console.error(`  ${Object.keys(BASE).filter((n) => n !== 'time' && n !== 'weekday').join(', ')}`)
+    process.exit(1)
+  }
+  if (v === undefined || v === '' || Number.isNaN(Number(v))) {
+    console.error(`ABORT: --set ${k} needs a numeric value, got "${v}"`)
+    process.exit(1)
+  }
+  overrides[k] = Number(v)
+}
+
 if (cmd === 'list') {
   console.log('States:')
   for (const [n, o] of Object.entries(STATES)) {
@@ -247,7 +372,7 @@ if (existsSync(backup)) {
   process.exit(1)
 }
 
-const values = { ...BASE, ...STATES[stateName] }
+const values = { ...BASE, ...STATES[stateName], ...overrides }
 let s = readFileSync(face, 'utf8')
 const fail = (msg) => {
   console.error(`ABORT: ${msg}`)
@@ -290,9 +415,9 @@ mkdirSync(dirname(backup), { recursive: true })
 writeFileSync(backup, readFileSync(face))
 writeFileSync(face, s)
 
-console.log(`Mocked as "${stateName}":`)
+console.log(`Mocked as "${stateName}"${Object.keys(overrides).length ? ' + ' + Object.entries(overrides).map(([k, v]) => `${k}=${v}`).join(' ') : ''}:`)
 console.log(`   ${values.time}  ${values.weekday} ${values.DAY}`)
-console.log(`   ${values['WEATHER.TEMPERATURE']}°  cond=${values['WEATHER.CONDITION']}  day=${values['WEATHER.IS_DAY']}  precip=${values['WEATHER.CHANCE_OF_PRECIPITATION']}%`)
+console.log(`   ${values['WEATHER.TEMPERATURE']}°  cond=${values['WEATHER.CONDITION']}  day=${values['WEATHER.IS_DAY']}  precip=${values['WEATHER.CHANCE_OF_PRECIPITATION']}%  uv=${values['WEATHER.UV_INDEX']}`)
 console.log(`   ${values.HEART_RATE} bpm · ${values.STEP_COUNT} steps (${values.STEP_PERCENT}%) · ${values.BATTERY_PERCENT}%`)
 console.log(
   live

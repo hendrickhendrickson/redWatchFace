@@ -7,6 +7,7 @@
  *   node tools/gen/build.ts --snapshot      accept the current rendering as the baseline
  *   node tools/gen/build.ts --selftest      prove the differ can still fail
  *   node tools/gen/build.ts --audit         report remaining duplication
+ *   node tools/gen/build.ts --equiv A B     do two expressions compute the same?
  *
  * HOW THE TWO CHECKS DIFFER, because it matters.
  *
@@ -20,6 +21,15 @@
  * changed colour or an altered expression is not. When a change to the
  * rendering is intended, --snapshot accepts it and the new baseline lands in
  * the same commit as the change that caused it.
+ *
+ * WHY --equiv IS A THIRD THING. Both checks above compare expression STRINGS.
+ * That is right for detecting a changed rendering and wrong for reviewing a
+ * refactor: rewriting a hand-typed expression through expr.ts can add a
+ * parenthesis without changing the arithmetic, and --diff correctly calls that a
+ * difference. --equiv answers the other question - "is this the same
+ * computation?" - by EVALUATING both over a grid of source values. It is not a
+ * gate; it is what makes an intended expression change reviewable before
+ * --snapshot is reached for.
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
@@ -31,6 +41,8 @@ import { face } from './face.ts'
 import { modelOf, diff, report, type ModelEntry } from './model.ts'
 import { verifyDerivation } from './palette.ts'
 import { extract, summarise } from './extract.ts'
+import { diverges, selfCheck } from './eval.ts'
+import { EVAL_GRID } from './fixtures.ts'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const facePath = resolve(repo, 'watchface/src/main/res/raw/watchface.xml')
@@ -167,6 +179,34 @@ const selftest = () => {
   const base = modelOf(generated)
   let failures = 0
 
+  // The evaluator first, because everything below is about trusting a checker and
+  // it is the checker with the most to lose from being wrong: --equiv and the
+  // preview share it, so a bad answer is wrong twice and agrees with itself both
+  // times. Every expectation in selfCheck() was computed by hand.
+  const ev = selfCheck()
+  if (ev.problems.length === 0) {
+    console.log(`  ok    the expression evaluator agrees with ${ev.checks} hand-computed cases`)
+  } else {
+    for (const p of ev.problems) console.log(`  FAIL  evaluator: ${p}`)
+    failures += ev.problems.length
+  }
+
+  // The GRID has to be able to fail too, and specifically on a COMBINATION.
+  // `a || b && c` and `(a || b) && c` differ only where `a` is true and `c` is
+  // false - two sources at once - so a grid built from one-factor sweeps calls
+  // them equivalent. The first version of EVAL_GRID did, for this exact pair,
+  // which would have waved through the documented mis-binding that put headsets
+  // on at every hour. This is the guard on the grid, not on the evaluator.
+  const grid = EVAL_GRID()
+  const flat = '[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23] &amp;&amp; [WEATHER.IS_AVAILABLE]'
+  const grouped = '([HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]) &amp;&amp; [WEATHER.IS_AVAILABLE]'
+  if (diverges(flat, grouped, grid)) {
+    console.log(`  ok    the ${grid.length}-row grid catches an or()/and() mis-binding`)
+  } else {
+    console.log('  FAIL  the grid does not vary two sources at once - combinations uncovered')
+    failures++
+  }
+
   // Mutate MARKUP, never prose. The first version of this replaced '#ee4e43'
   // and '- 50) / 50', both of which occurred first inside comments, so the
   // mutations landed in prose, the differ correctly ignored them, and the test
@@ -237,6 +277,40 @@ const audit = () => {
   console.log()
 }
 
+/**
+ * Do two expressions compute the same thing?
+ *
+ * The grid comes from fixtures.ts, which derives it from the same named states
+ * docs/states/ is shot on plus the boundaries no named state sits on. So "these
+ * agree" means "they agree on every state the face is ever looked at, and on both
+ * sides of every threshold" - not "they agree on the good day I typed them for".
+ */
+const equiv = (a: string | undefined, b: string | undefined) => {
+  if (a === undefined || b === undefined) {
+    fail('usage: build.ts --equiv "<expression>" "<expression>"')
+    return
+  }
+  const grid = EVAL_GRID()
+  let d
+  try {
+    d = diverges(a, b, grid)
+  } catch (e) {
+    return fail(`could not evaluate: ${(e as Error).message}`)
+  }
+  if (d) {
+    const shown = Object.entries(d.values)
+      .filter(([k]) => a.includes(`[${k}]`) || b.includes(`[${k}]`))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('  ')
+    fail(
+      `NOT EQUIVALENT over ${grid.length} value sets.\n\n` +
+        `    first divergence at ${shown || '(no shared sources)'}\n` +
+        `      A = ${d.a}\n      B = ${d.b}`,
+    )
+  }
+  console.log(`  OK  equivalent over ${grid.length} value sets\n`)
+}
+
 const generate = (checkOnly: boolean) => {
   refuseIfMocked()
   const src = readFace()
@@ -269,8 +343,9 @@ if (arg === '--selftest') selftest()
 else if (arg === '--diff') semanticDiff()
 else if (arg === '--snapshot') snapshot()
 else if (arg === '--audit') audit()
+else if (arg === '--equiv') equiv(process.argv[3], process.argv[4])
 else if (arg === '--check') generate(true)
 else if (arg === undefined) generate(false)
-else fail(`unknown argument: ${arg}\n  usage: build.ts [--check|--diff|--snapshot|--selftest|--audit]`)
+else fail(`unknown argument: ${arg}\n  usage: build.ts [--check|--diff|--snapshot|--selftest|--audit|--equiv A B]`)
 
 

@@ -28,243 +28,30 @@
  * cannot be fooled by what the author meant. Every substitution asserts
  * something, so an edit to the face fails here loudly instead of silently
  * producing a wrong snapshot.
+ *
+ * THE STATE TABLE ITSELF LIVES IN gen/fixtures.ts. It used to live here, when
+ * this was the only thing that needed it; build.ts --equiv and tools/preview now
+ * read the same table, so the three cannot disagree about what "cold" means. What
+ * stayed in this file is everything that knows about MARKUP - the Template swaps,
+ * the clock block, the leftover scan.
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { Source } from './gen/expr.ts'
-import { DAY_OF_WEEK, WEEKDAYS, type Weekday } from './gen/palette.ts'
+import {
+  BASE,
+  BASE_DISPLAY,
+  LIVE_SOURCES,
+  NOT_A_VALUE,
+  STATES,
+  type NumericSource,
+} from './gen/fixtures.ts'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const face = resolve(repo, 'watchface/src/main/res/raw/watchface.xml')
 // Under build/ because aapt rejects a resource filename containing a dot.
 const backup = resolve(repo, 'watchface/build/mock-state-backup.xml')
-
-/**
- * Every source that gets a numeric literal.
- *
- * TYPED AGAINST THE FACE'S OWN SOURCE UNION. `Source` is the closed list in
- * tools/gen/expr.ts that the generator builds expressions from, so adding a
- * source there without adding a mock value here is a COMPILE error, and mocking
- * something the face cannot read is too. That used to be a runtime discovery:
- * the leftover scan would catch it, but only on the next capture run, and only
- * if someone read the abort message.
- *
- * DAY_OF_WEEK_S is excluded because it is a string - see TEMPLATE_SWAPS.
- */
-export type NumericSource = Exclude<Source, 'DAY_OF_WEEK_S'>
-
-/** Values shared by every state - the "good day" the preview is shot on. */
-const BASE: Record<NumericSource, number> = {
-  DAY: 19,
-  // Monday, so the base "good day" is the brand red and every non-weekday frame
-  // keeps the colour the face has always had. 1 = SUNDAY, measured on the watch.
-  DAY_OF_WEEK: DAY_OF_WEEK.mon,
-  HOUR_0_23: 19,
-  // Only the meeting windows in meetings.ts read minutes, but it has to be here
-  // regardless: the leftover scan treats any source it cannot substitute as a
-  // live one, which is exactly the failure it exists to catch.
-  MINUTE: 12,
-  HEART_RATE: 88,
-  STEP_COUNT: 1912,
-  STEP_PERCENT: 19,
-  STEP_GOAL: 10000,
-  BATTERY_PERCENT: 88,
-  BATTERY_IS_LOW: 0,
-  'WEATHER.IS_AVAILABLE': 1,
-  'WEATHER.TEMPERATURE': 19,
-  'WEATHER.CONDITION': 1,
-  'WEATHER.IS_DAY': 1,
-  'WEATHER.CHANCE_OF_PRECIPITATION': 0,
-  // Moderate (3-5 on the WHO scale), deliberately BELOW the >= 6 the shades fire
-  // at, so the base "good day" is not wearing sunglasses.
-  'WEATHER.UV_INDEX': 4,
-  MOON_PHASE_POSITION: 19.79,
-  // Flat wrist, so parallax sits at rest and does not blur the comparison
-  // between snapshots.
-  ACCELEROMETER_ANGLE_X: 0,
-  ACCELEROMETER_ANGLE_Y: 0,
-  // Freezes the Zzz drift. NOT arbitrary: the drift phase is
-  // p = (([SECOND] % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3, and alpha is a
-  // triangle over p that is ZERO at both ends. Second 1.0 puts the hero at
-  // p = 1/3 and the companion - a second out of phase - at p = 2/3, the same
-  // height on the way down. Both land on alpha 170, so the z's are equally
-  // legible in a still. Second 0 would render them invisible.
-  SECOND: 1,
-  SECOND_MILLISECOND: 1.0,
-}
-
-/** What the mocked clock and date read. Not sources - they replace Templates. */
-interface Display {
-  time: string
-  weekday: string
-}
-
-const BASE_DISPLAY: Display = { time: '19:12', weekday: 'Mon' }
-
-type StateDelta = Partial<Record<NumericSource, number>> & Partial<Display>
-
-/**
- * Sources left LIVE by `on <state> --live`.
- *
- * A frozen accelerometer means no parallax and a frozen clock means no drift,
- * which is right for a snapshot and wrong when the build is going on a wrist to
- * be looked at. Both features were once reported as broken purely because they
- * were judged on a mock build that had pinned their inputs to constants.
- */
-const LIVE_SOURCES: NumericSource[] = [
-  'ACCELEROMETER_ANGLE_X',
-  'ACCELEROMETER_ANGLE_Y',
-  'SECOND',
-  'SECOND_MILLISECOND',
-]
-
-/** Short weekday label, matching what [DAY_OF_WEEK_S] renders on the watch. */
-const LABEL: Record<Weekday, string> = {
-  mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
-}
-
-/**
- * One state per weekday.
- *
- * DERIVED FROM THE FACE'S OWN DAY_OF_WEEK MAP rather than restating 1..7 here.
- * The mapping is 1 = Sunday (Java/ICU, measured on the watch, not ISO 8601), and
- * getting it wrong shifts every colour by a day - which looks exactly like a
- * correct implementation six days out of seven. It is now impossible for these
- * frames and the face to disagree about which number Tuesday is.
- *
- * Each also sets the weekday string and a matching day-of-month so nothing on
- * screen contradicts anything else: a frame reading "Tue 18" in yellow is
- * internally consistent, where DAY_OF_WEEK=3 with the base "Mon 19" would show a
- * yellow blob next to the word Monday.
- */
-const weekdayStates = (): Record<string, StateDelta> => {
-  const out: Record<string, StateDelta> = {}
-  const dayOfMonth: Record<Weekday, number> = {
-    mon: 17, tue: 18, wed: 19, thu: 20, fri: 21, sat: 22, sun: 23,
-  }
-  const longName: Record<Weekday, string> = {
-    mon: 'monday', tue: 'tuesday', wed: 'wednesday', thu: 'thursday',
-    fri: 'friday', sat: 'saturday', sun: 'sunday',
-  }
-  for (const d of WEEKDAYS) {
-    out[longName[d]] = { DAY_OF_WEEK: DAY_OF_WEEK[d], weekday: LABEL[d], DAY: dayOfMonth[d] }
-  }
-  return out
-}
-
-/**
- * Per state, ONLY the values that state is about. Everything else stays at BASE,
- * which is the point: the snapshots differ by exactly one idea each.
- *
- * Ordering matches docs/states/ numbering.
- */
-const STATES: Record<string, StateDelta> = {
-  ambient: {},
-  baseline: {},
-  night: { time: '23:12', HOUR_0_23: 23, 'WEATHER.IS_DAY': 0, 'WEATHER.UV_INDEX': 0 },
-  // The full summer day: warm, clear AND strong sun, so both halves of the old
-  // sunny state fire - shades and cocktail together, which is what a real 25
-  // degree cloudless afternoon looks like.
-  sunny: { 'WEATHER.TEMPERATURE': 25, 'WEATHER.UV_INDEX': 8 },
-  // High UV WITHOUT the warm clear day: 14 degrees, partly cloudy (code 14, the
-  // one non-clear code confirmed on hardware). Shades, no drink. This frame is
-  // what proves the split - a bright cold spring afternoon.
-  uv: { 'WEATHER.UV_INDEX': 8, 'WEATHER.TEMPERATURE': 14, 'WEATHER.CONDITION': 14 },
-  // Scarf weather. Exactly ON the threshold, and deliberately ABOVE the glove
-  // threshold, so this frame shows the scarf alone.
-  cold: { 'WEATHER.TEMPERATURE': 10 },
-  gloves: { 'WEATHER.TEMPERATURE': 5 },
-  freezing: { 'WEATHER.TEMPERATURE': 0 },
-  // 50 is exactly ON the umbrella/rain gate, and since density, drop size and
-  // speed all scale with CHANCE_OF_PRECIPITATION, this is the LIGHTEST rain the
-  // face can show - about 7 of the 24 drops. Deliberate: it is the bottom of the
-  // ramp, and thunderstorm at 90% is near the top.
-  rainy: { 'WEATHER.CHANCE_OF_PRECIPITATION': 50, 'WEATHER.CONDITION': 12 },
-  thunderstorm: { 'WEATHER.CHANCE_OF_PRECIPITATION': 90, 'WEATHER.CONDITION': 12 },
-  // The top of the rain ramp: all 24 drops, largest and fastest. No docs frame
-  // of its own - rainy and thunderstorm bracket the range - but it is in
-  // cycle-states.ps1, because the whole point of the ramp is how it moves.
-  downpour: { 'WEATHER.CHANCE_OF_PRECIPITATION': 100, 'WEATHER.CONDITION': 12 },
-  // The sweat frames BRACKET the ramp rather than sampling its middle: 100 is
-  // exactly on the gate, where the drip is shortest and slowest with one bead
-  // per cheek, and 200 is the ceiling. Anything between is a linear blend.
-  //
-  // THREE frames, not two, because the forehead cluster fills in three discrete
-  // steps and the middle one is only reachable between 120 and 149. The drips
-  // are continuous and would be documented by the ends alone; the pearls are
-  // not. 135 sits mid-band so the frame cannot be read as a boundary case.
-  //
-  // To look at a point inside the ramp, override rather than adding a state:
-  //   node tools/mock-state.ts on sweating --set=HEART_RATE=150 --live
-  sweating: { HEART_RATE: 100 },
-  puffing: { HEART_RATE: 135 },
-  drenched: { HEART_RATE: 200 },
-  // STEP_PERCENT is what the trigger reads, against the wearer's own STEP_GOAL,
-  // so 100 means "goal met" regardless of what that goal is; STEP_COUNT is only
-  // there so the digits on screen agree with it. Ten thousand exactly, not
-  // 10240 - and landing ON the threshold tests the >= boundary.
-  goal: { STEP_COUNT: 10000, STEP_PERCENT: 100 },
-
-  // ---- the meeting schedule -----------------------------------------------
-  //
-  //   Mon, Tue, Thu, Fri   09:05-09:20  digital standup       - headset
-  //   Mon, Tue, Thu        16:00-16:30  digital standup       - headset
-  //   Wednesday            10:30-10:45  IN-PERSON standup     - coffee cup
-  //   Friday               15:00-16:00  digital "game time"   - headset,
-  //                                     controller from 15:30
-  //
-  // Replaces the old salute/salutebusy/salutefri/fridrink block. The salute
-  // itself is gone - see meetings.ts - so there is no pose left that needs a
-  // "which arm" mechanism, and no `busy` state to demonstrate one with.
-  //
-  // THE HEADSET LOOKS THE SAME in the morning and afternoon windows, so
-  // `headset` documents it once, on the base Monday morning, exactly the way
-  // `salute` used to. The Friday states are not repeats of that: one shows
-  // game time before the controller appears, the other after.
-  //
-  // Times sit INSIDE each window, so no frame can be read as a boundary case.
-  headset: { time: '09:12', HOUR_0_23: 9, MINUTE: 12 },
-  headsetfri: {
-    DAY_OF_WEEK: DAY_OF_WEEK.fri, weekday: 'Fri', DAY: 21,
-    time: '15:15', HOUR_0_23: 15, MINUTE: 15,
-  },
-  fricontroller: {
-    DAY_OF_WEEK: DAY_OF_WEEK.fri, weekday: 'Fri', DAY: 21,
-    time: '15:45', HOUR_0_23: 15, MINUTE: 45,
-  },
-  wedcoffee: {
-    DAY_OF_WEEK: DAY_OF_WEEK.wed, weekday: 'Wed', DAY: 19,
-    time: '10:35', HOUR_0_23: 10, MINUTE: 35,
-  },
-  // The one remaining "mechanism" state, in the same spirit `salutebusy` used
-  // to be: proves the coffee cup wins the same fist a hot, sunny cocktail
-  // trigger would otherwise want, because its Compare is listed first. No
-  // docs frame of its own - same call as `downpour` - since the point is the
-  // priority order, not a new pose.
-  wedcoffeehot: {
-    DAY_OF_WEEK: DAY_OF_WEEK.wed, weekday: 'Wed', DAY: 19,
-    time: '10:35', HOUR_0_23: 10, MINUTE: 35,
-    'WEATHER.TEMPERATURE': 25,
-  },
-
-  ...weekdayStates(),
-}
-
-/**
- * Sources that are NOT substituted.
- *
- * DAY_OF_WEEK_S is a string, so it cannot become a numeric literal; its whole
- * Template is swapped for static text instead.
- *
- * This used to also list ANIMATION_VALUE, on the belief that <Animation> fed it
- * a 0..1 ramp at render time. No such source exists. Exempting it here is what
- * let an invented source survive the leftover scan - the one check that could
- * have caught it, switched off by hand. Nothing goes in this set unless it is a
- * real source that genuinely cannot be expressed as a numeric literal.
- */
-const NOT_A_VALUE = new Set<string>(['DAY_OF_WEEK_S'])
 
 type Values = Record<string, number | string>
 

@@ -21,7 +21,7 @@
  */
 
 import { parse } from './parse.ts'
-import type { Element, Node } from './xml.ts'
+import type { Node } from './xml.ts'
 
 export interface ModelEntry {
   /** Structural path, for locating a difference in either file. */

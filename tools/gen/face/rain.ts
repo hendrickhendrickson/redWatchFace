@@ -19,7 +19,10 @@
 import { el, type Node } from '../xml.ts'
 import { C } from '../palette.ts'
 import * as G from '../geometry.ts'
-import { PRECIP, precipGate, phase, triangleAlpha, grow, src, gte, and } from '../expr.ts'
+import { AMBIENT_HIDE } from '../crossfade.ts'
+import { when } from '../condition.ts'
+import { RAIN_LIKELY } from '../states.ts'
+import { PRECIP, precipGate, phase, triangleAlpha, grow } from '../expr.ts'
 
 interface Drop {
   /** Where the drop sits. Part boxes are xs:integer in WFF. */
@@ -109,18 +112,18 @@ const drop = (d: Drop, i: number): Node => {
   ])
 }
 
-/** The field only exists above a 50% forecast; below that there is no rain. */
-const RAIN_LIKELY = and(src('WEATHER.IS_AVAILABLE'), gte(src('WEATHER.CHANCE_OF_PRECIPITATION'), 50))
-
+/**
+ * The field only exists above a 50% forecast; below that there is no rain.
+ *
+ * THE SAME PREDICATE THE UMBRELLA USES, and it used to be composed separately
+ * here - identically, by luck rather than by construction. It is one fact, so it
+ * now comes from states.ts, where a build-time proof also holds it below the storm
+ * gate: the bolt cannot strike with the umbrella down.
+ */
 export const rain = (): Node =>
-  el('Condition', {}, [
-    el('Expressions', {}, [
-      el('Expression', { name: 'prop_rain' }, [{ k: 'text', text: RAIN_LIKELY }]),
-    ]),
-    el('Compare', { expression: 'prop_rain' }, [
-      el('Group', { ...G.CANVAS, name: 'rain_fall', alpha: 255 }, [
-        el('Variant', { mode: 'AMBIENT', target: 'alpha', value: 0 }),
-        ...DROPS.map(drop),
-      ]),
+  when('prop_rain', RAIN_LIKELY, [
+    el('Group', { ...G.CANVAS, name: 'rain_fall', alpha: 255 }, [
+      el('Variant', AMBIENT_HIDE),
+      ...DROPS.map(drop),
     ]),
   ])

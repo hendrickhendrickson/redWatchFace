@@ -1,11 +1,26 @@
-// GENERATED SCAFFOLD from the pre-migration watchface.xml.
-// Safe to hand-edit: build.ts --diff is the guard.
-import { el, text, cdata, type Node } from '../xml.ts'
+/**
+ * The heart-rate chip: a heart, and a number.
+ *
+ * THE HEART IS TWO LOBES AND A ROTATED SQUARE, not a path. WFF has no path
+ * primitive, so the point is a 45-degree square whose upper corners are hidden
+ * behind the two lobe circles.
+ *
+ * A ZERO READING IS NOT A HEART RATE. The sensor reports 0 when it has no
+ * contact, so a bare number would show "0 bpm" on a wrist that simply is not
+ * being read. HEART_RATE_VALID gates that into a dimmed placeholder.
+ */
+
+import { el, cdata, type Node } from '../xml.ts'
 import { C } from '../palette.ts'
 import * as G from '../geometry.ts'
+import { AMBIENT_HIDE } from '../crossfade.ts'
+import { whenElse } from '../condition.ts'
+import { HEART_RATE_VALID } from '../states.ts'
+import { SIZE, font } from '../type.ts'
+
 export const chipHeartRate = (): Node =>
-  el('Group', { name: 'chip_heart_rate', x: 92, y: 216, width: 70, height: 36, alpha: 255 }, [
-    el('Variant', { mode: 'AMBIENT', target: 'alpha', value: 0 }),
+  el('Group', { name: 'chip_heart_rate', ...G.ANCHORS.CHIP_HEART_RATE, alpha: 255 }, [
+    el('Variant', AMBIENT_HIDE),
     el('PartDraw', { name: 'hr_icon_lobes', x: 0, y: 8, width: 22, height: 13 }, [
       el('Ellipse', { x: 0, y: 0, width: 13, height: 13 }, [
         el('Fill', { color: C.CORAL }),
@@ -19,16 +34,13 @@ export const chipHeartRate = (): Node =>
         el('Fill', { color: C.CORAL }),
       ]),
     ]),
-    el('Condition', {}, [
-      el('Expressions', {}, [
-        el('Expression', { name: 'hr_valid' }, [
-          text('[HEART_RATE] &gt; 0'),
-        ]),
-      ]),
-      el('Compare', { expression: 'hr_valid' }, [
+    whenElse(
+      'hr_valid',
+      HEART_RATE_VALID,
+      [
         el('PartText', { name: 'hr_value', x: 28, y: 0, width: 42, height: 36 }, [
           el('Text', { align: 'START' }, [
-            el('Font', { family: 'SYNC_TO_DEVICE', size: 25, weight: 'BOLD', slant: 'NORMAL', color: C.CREAM }, [
+            el('Font', font(SIZE.CHIP, 'BOLD', C.CREAM), [
               el('Template', {}, [
                 cdata('%.0f'),
                 el('Parameter', { expression: '[HEART_RATE]' }),
@@ -36,15 +48,15 @@ export const chipHeartRate = (): Node =>
             ]),
           ]),
         ]),
-      ]),
-      el('Default', {}, [
+      ],
+      [
         el('PartText', { name: 'hr_placeholder', x: 28, y: 0, width: 42, height: 36 }, [
           el('Text', { align: 'START' }, [
-            el('Font', { family: 'SYNC_TO_DEVICE', size: 25, weight: 'BOLD', slant: 'NORMAL', color: C.HR_PLACEHOLDER }, [
+            el('Font', font(SIZE.CHIP, 'BOLD', C.HR_PLACEHOLDER), [
               cdata('--'),
             ]),
           ]),
         ]),
-      ]),
-    ]),
+      ],
+    ),
   ])

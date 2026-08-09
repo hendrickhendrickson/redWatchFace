@@ -12,13 +12,20 @@
  */
 
 import { el, cdata, type Node } from '../xml.ts'
+import { FONT_FAMILY, SIZE } from '../type.ts'
 import * as G from '../geometry.ts'
 
 /** The row's group box. Both copies, so the fade is over the same area. */
 export const DATE_GROUP = { x: 0, y: 0, width: 450, height: 80 }
 
-/** Same family and size in both modes; only the weight moves. */
-export const DATE_FONT = { family: 'SYNC_TO_DEVICE', size: 26, slant: 'NORMAL' } as const
+/**
+ * Same family and size in both modes; only the weight moves.
+ *
+ * A local bag rather than type.ts's font(), for the same reason clock.ts keeps
+ * one: the two date copies spread it as `{ ...DATE_FONT, weight, color }`, which
+ * puts slant before weight. See the note on font() in type.ts.
+ */
+export const DATE_FONT = { family: FONT_FAMILY, size: SIZE.DATE, slant: 'NORMAL' } as const
 
 /**
  * The chip's corners. Filled interactive, outlined ambient - so both copies

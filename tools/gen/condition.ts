@@ -41,26 +41,46 @@ export interface Case {
 /**
  * A Condition with any number of ordered cases and an optional fallback.
  *
- * Emits exactly the shape all 25 hand-written copies had: every Expression first,
- * in case order, then every Compare in the same order, then the Default. That
- * ordering is why adopting this builder changed no bytes.
+ * Emits the shape all 25 hand-written copies had: the Expressions block, then one
+ * Compare per case in case order, then the Default.
+ *
+ * `declare` GIVES THE EXPRESSIONS THEIR OWN ORDER, because WFF separates
+ * declaration from dispatch and one section uses that. chip-weather declares
+ * wet, sun, moon, partly and then dispatches wet, partly, sun, moon - the
+ * dispatch order is semantics (first true Compare wins, so "partly cloudy" has to
+ * be tested before plain "clear"), while the declaration order is not. Collapsing
+ * them to one list was this builder's first version and it silently reordered four
+ * declarations, which the semantic differ correctly reports as a change because it
+ * compares document order and cannot know that Expression order is arbitrary.
+ *
+ * Omit it unless you have that situation; case order is the sane default.
  */
-export const switchOn = (cases: Case[], fallback?: Node[]): Node => {
+export const switchOn = (cases: Case[], fallback?: Node[], declare?: string[]): Node => {
   if (cases.length === 0) throw new Error('switchOn needs at least one case')
 
-  const names = new Set<string>()
+  const byName = new Map<string, Case>()
   for (const c of cases) {
     // A duplicate name inside one Condition makes the second Compare unreachable,
     // silently. build.ts's audit cannot catch this: Expression names are a
     // separate namespace from part names and are excluded there on purpose.
-    if (names.has(c.name)) {
+    if (byName.has(c.name)) {
       throw new Error(`duplicate expression name "${c.name}" in one Condition`)
     }
-    names.add(c.name)
+    byName.set(c.name, c)
   }
 
+  const declared = declare ?? cases.map((c) => c.name)
+  if (declared.length !== cases.length) {
+    throw new Error(`declare lists ${declared.length} names for ${cases.length} cases`)
+  }
+  const expressions = declared.map((name) => {
+    const c = byName.get(name)
+    if (c === undefined) throw new Error(`declare names "${name}", which is not a case`)
+    return el('Expression', { name }, [text(c.when)])
+  })
+
   return el('Condition', {}, [
-    el('Expressions', {}, cases.map((c) => el('Expression', { name: c.name }, [text(c.when)]))),
+    el('Expressions', {}, expressions),
     ...cases.map((c) => el('Compare', { expression: c.name }, c.then)),
     ...(fallback ? [el('Default', {}, fallback)] : []),
   ])

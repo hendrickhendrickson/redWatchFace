@@ -1,11 +1,24 @@
-// GENERATED SCAFFOLD from the pre-migration watchface.xml.
-// Safe to hand-edit: build.ts --diff is the guard.
-import { el, text, cdata, type Node } from '../xml.ts'
+/**
+ * The step chip: a footprint, and a count.
+ *
+ * THE FOOTPRINT IS FIVE SHAPES tilted 25 degrees as a whole - a sole built from an
+ * ellipse, a narrower ellipse, two rectangles and a heel - rather than one outline,
+ * because WFF has no path primitive. The tilt is on the Part, so the five stay
+ * registered to each other whatever it changes to.
+ *
+ * NO Condition HERE. A step count of zero is a true and useful reading, unlike a
+ * heart rate of zero, so there is nothing to gate.
+ */
+
+import { el, cdata, type Node } from '../xml.ts'
 import { C } from '../palette.ts'
 import * as G from '../geometry.ts'
+import { AMBIENT_HIDE } from '../crossfade.ts'
+import { SIZE, font } from '../type.ts'
+
 export const chipSteps = (): Node =>
-  el('Group', { name: 'chip_steps', x: 172, y: 216, width: 98, height: 36, alpha: 255 }, [
-    el('Variant', { mode: 'AMBIENT', target: 'alpha', value: 0 }),
+  el('Group', { name: 'chip_steps', ...G.ANCHORS.CHIP_STEPS, alpha: 255 }, [
+    el('Variant', AMBIENT_HIDE),
     el('PartDraw', { name: 'steps_icon', x: 0, y: 1, width: 28, height: 34, pivotX: 0.5, pivotY: 0.5, angle: -25 }, [
       el('Ellipse', { x: 7.5, y: 4.5, width: 11, height: 13 }, [
         el('Fill', { color: C.LIMB }),
@@ -25,7 +38,7 @@ export const chipSteps = (): Node =>
     ]),
     el('PartText', { name: 'steps_value', x: 28, y: 0, width: 70, height: 36 }, [
       el('Text', { align: 'START' }, [
-        el('Font', { family: 'SYNC_TO_DEVICE', size: 25, weight: 'BOLD', slant: 'NORMAL', color: C.CREAM }, [
+        el('Font', font(SIZE.CHIP, 'BOLD', C.CREAM), [
           el('Template', {}, [
             cdata('%d'),
             el('Parameter', { expression: '[STEP_COUNT]' }),

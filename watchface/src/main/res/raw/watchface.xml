@@ -492,7 +492,6 @@
       <Condition>
         <Expressions>
           <Expression name="hero_goal">[STEP_PERCENT] &gt;= 100 &amp;&amp; 23 &gt; [HOUR_0_23] &amp;&amp; [HOUR_0_23] &gt;= 7</Expression>
-          <Expression name="hero_arm_r_rest">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
         </Expressions>
         <Compare expression="hero_goal">
           <PartDraw x="0" y="0" width="106" height="132" name="hero_flag">
@@ -504,6 +503,11 @@
             </RoundRectangle>
           </PartDraw>
         </Compare>
+      </Condition>
+      <Condition>
+        <Expressions>
+          <Expression name="hero_arm_r_rest">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+        </Expressions>
         <Compare expression="hero_arm_r_rest">
           <PartDraw x="0" y="0" width="106" height="132" name="hero_arm_right_down">
             <Line startX="76" startY="78" endX="88" endY="96">

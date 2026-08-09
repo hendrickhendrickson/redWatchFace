@@ -519,7 +519,32 @@ attribute insertion order — `xml.ts` emits attributes in insertion order, so `
 `{ name, ...box }` differ in bytes and not in meaning. That moved **7 lines, all `name` sliding
 after the box**, with `--diff` green and no `--snapshot`.
 
-`--snapshot` was authorised for this pass and never used.
+`--snapshot` was authorised for this pass and used **once**, at the end and not for a refactor
+step: reshooting the states showed the step-goal flag floating with no arm to hold it. See below.
+
+### What the gate cannot see
+
+The flag's pole is authored to be gripped — it runs down x93, the exact centre of `rightOut`'s
+cream cap, and spans y19..74, bracketing that cap's centre at y60.5. Until 1.1.0 the flag and the
+right arm were **two independent `<Condition>` elements**, so both drew and the hero held it.
+Removing the salute merged them into one dispatch, which made the flag *exclusive* with the arm —
+so from 1.2.0 the goal state drew a pole in mid-air, and on a cold day a mitten floating beside it
+with no arm to sit on.
+
+**Every check in this repo passed throughout, and none of them could have caught it.** `--check`
+compares bytes to the committed file, `--diff` compares to `face.model.json`, and both baselines
+were taken *after* the merge. The gate's question is "did the output change", and the answer was
+correctly "no" — it has no way to ask "was it already wrong". The screenshot that would have shown
+it was committed in the same commit as the merge, having been shot before it.
+
+Two things follow, and both are now in place. The pole is recorded in `data/blobs.ts` next to the
+arm row it depends on, with an assertion that it passes through the fist — which fires in all three
+directions, including when the *arm* moves rather than the pole, the direction that actually caused
+this. And the path-based differ is worth distrusting on structural change: inserting one
+`<Condition>` shifts every sibling index and it reported 1176 differences for what was a four-element
+change. The verification that worked was behavioural — render all 29 states before and after and
+diff the set of shapes each one draws, which reported exactly 3 states changed by exactly the four
+elements of `hero_arm_right_out`.
 
 ### Assertions, not comments
 

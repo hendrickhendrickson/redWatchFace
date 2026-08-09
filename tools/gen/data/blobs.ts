@@ -166,6 +166,38 @@ export const MINI_LIMBS: Limb[] = [
   },
 ]
 
+/**
+ * The step-goal flag's pole, and the hand that holds it.
+ *
+ * THIS EXISTS BECAUSE THE GRIP WAS LOST ONCE. The pole was authored to be held by
+ * `rightOut`'s fist - it runs down x93, the exact centre of that cap, and spans
+ * y19..74, bracketing the cap's centre at y60.5 - but nothing said so, so when the
+ * salute was removed and the flag became a *branch* of the right-arm switch instead
+ * of its own Condition, the arm stopped being drawn in the goal state and the pole
+ * floated. Three releases, and the committed screenshot still showed the old grip.
+ *
+ * Recording the pole here, next to the arm row it depends on, is what makes the
+ * relationship checkable. face/blob-hero.ts draws it.
+ */
+export const GOAL_POLE = { x: 93, top: 19, bottom: 74, thickness: 2.5 }
+
+{
+  const cap = HERO_ARMS.rightOut.cream
+  const fist = { x: cap.x + cap.width / 2, y: cap.y + cap.height / 2 }
+  const problems: string[] = []
+  // Half a pixel either way: the pole has to pass through the fist, not near it.
+  if (Math.abs(GOAL_POLE.x - fist.x) > 0.5) {
+    problems.push(`the pole is at x${GOAL_POLE.x} and the fist at x${fist.x} - it would be held beside the hand`)
+  }
+  if (fist.y < GOAL_POLE.top || fist.y > GOAL_POLE.bottom) {
+    problems.push(
+      `the fist is at y${fist.y}, outside the pole's ${GOAL_POLE.top}..${GOAL_POLE.bottom} - ` +
+        'the hand would grip empty air',
+    )
+  }
+  if (problems.length) throw new Error(`the step-goal flag is no longer held:\n  ${problems.join('\n  ')}`)
+}
+
 /** Which limbs are hands, and so get mittens when it is cold enough. */
 export const MINI_HAND_LIMBS = [0, 1] as const
 

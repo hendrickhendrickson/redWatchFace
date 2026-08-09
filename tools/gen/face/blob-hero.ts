@@ -21,7 +21,7 @@ import {
 import { byWeekday } from '../weekday.ts'
 import { HEADSET_WINDOW } from '../meetings.ts'
 import {
-  HERO_ARMS, HERO_DRIP, HERO_LEAVES, HERO_LEGS, HERO_STROKE, HERO_SWEAT,
+  GOAL_POLE, HERO_ARMS, HERO_DRIP, HERO_LEAVES, HERO_LEGS, HERO_STROKE, HERO_SWEAT,
 } from '../data/blobs.ts'
 import {
   HERO_GEOMETRY, beadPart, bodyPart, dripGroups, glovePart, heroGyro, leafPart, limbPart,
@@ -31,24 +31,45 @@ import {
 const LIMB = G.HERO_LIMB_BOX
 
 /**
- * The step-goal flag. Not a limb - a pole and a pennant, replacing the whole right
- * arm rather than decorating it.
+ * The step-goal flag: a pole and a pennant, HELD BY THE RIGHT HAND.
+ *
+ * THE POLE IS AUTHORED TO BE GRIPPED, and that is not a guess - it runs down x93,
+ * which is exactly the centre of `rightOut`'s cream cap, and spans y19..74, which
+ * brackets that cap's centre at y60.5. Asserted in data/blobs.ts. A pole that
+ * happens to pass through a fist to within half a pixel was drawn to be in it.
+ *
+ * IT IS A SEPARATE, ADDITIVE Condition rather than a branch of the arm switch, and
+ * that is a fix. Until 1.1.0 the flag and the arm were two independent Conditions,
+ * so both drew and the hero held the pole. Removing the salute merged them into one
+ * dispatch, which made the flag EXCLUSIVE with the arm - so from 1.2.0 the goal
+ * state showed a pole floating in mid-air, and on a cold day a mitten floating
+ * beside it with no arm to be on. Nothing reported it: the gate proves the output
+ * has not changed, and cannot notice that it was already wrong.
+ *
+ * DRAWN BEFORE THE ARM, so the hand paints over the pole and reads as gripping it
+ * rather than as sitting behind it. That was the pre-1.1.0 order too.
  */
 const flag = (): Node =>
-  el('PartDraw', { ...LIMB, name: 'hero_flag' }, [
-    el('Line', { startX: 93, startY: 19, endX: 93, endY: 74 }, [
-      el('Stroke', { color: C.BONE, thickness: 2.5, cap: 'ROUND' }),
-    ]),
-    el('RoundRectangle', { x: 93, y: 21, width: 12, height: 9, cornerRadiusX: 2, cornerRadiusY: 2 }, [
-      el('Fill', { color: C.GREEN }),
+  when('hero_goal', GOAL_MET, [
+    el('PartDraw', { ...LIMB, name: 'hero_flag' }, [
+      el('Line', {
+        startX: GOAL_POLE.x, startY: GOAL_POLE.top, endX: GOAL_POLE.x, endY: GOAL_POLE.bottom,
+      }, [
+        el('Stroke', { color: C.BONE, thickness: GOAL_POLE.thickness, cap: 'ROUND' }),
+      ]),
+      el('RoundRectangle', { x: 93, y: 21, width: 12, height: 9, cornerRadiusX: 2, cornerRadiusY: 2 }, [
+        el('Fill', { color: C.GREEN }),
+      ]),
     ]),
   ])
 
 /**
- * The right arm: goal flag, night rest, or the daytime "out" pose.
+ * The right arm: night rest, or the daytime "out" pose.
  *
- * THE FLAG IS TESTED AHEAD OF NIGHT REST, so a goal met at 22:58 still shows until
- * the rest branch takes over at 23:00. Ordering does that; there is no negation.
+ * TWO WAYS, NOT THREE. The goal flag used to be a third branch here; it is its own
+ * Condition now, above. Since GOAL_MET requires DAYTIME and DAYTIME is exactly
+ * NIGHT's complement, the flag can only ever appear alongside the "out" pose - which
+ * is the one whose hand the pole passes through. states.ts proves that partition.
  *
  * USED TO BE TWO NESTED Conditions, the outer one testing SALUTE_BUSY and
  * defaulting into this pair. The salute never fires any more - see meetings.ts - so
@@ -56,15 +77,10 @@ const flag = (): Node =>
  * its own Default.
  */
 const rightArm = (): Node =>
-  switchOn(
-    [
-      { name: 'hero_goal', when: GOAL_MET, then: [flag()] },
-      {
-        name: 'hero_arm_r_rest',
-        when: NIGHT,
-        then: [limbPart(LIMB, 'hero_arm_right_down', [HERO_ARMS.rightDown], HERO_STROKE)],
-      },
-    ],
+  whenElse(
+    'hero_arm_r_rest',
+    NIGHT,
+    [limbPart(LIMB, 'hero_arm_right_down', [HERO_ARMS.rightDown], HERO_STROKE)],
     [limbPart(LIMB, 'hero_arm_right_out', [HERO_ARMS.rightOut], HERO_STROKE)],
   )
 
@@ -342,6 +358,7 @@ export const blobHero = (): Node =>
     el('Variant', AMBIENT_HIDE),
     ...HERO_LEAVES.map((leaf) => leafPart(G.LEAF_BOX, leaf)),
     limbPart(LIMB, 'hero_limbs', HERO_LEGS, HERO_STROKE),
+    flag(),
     rightArm(),
     leftArm(),
     byWeekday('body', 'hero', (day, body) => [

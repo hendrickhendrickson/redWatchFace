@@ -1,6 +1,15 @@
-// GENERATED SCAFFOLD. Section order is DRAW ORDER: WFF paints in document
-// order and has no z-index, so moving an entry here moves it in front of or
-// behind its neighbours.
+/**
+ * The section list. SECTION ORDER IS DRAW ORDER: WFF paints in document order and
+ * has no z-index, so moving an entry here moves it in front of or behind its
+ * neighbours - which is load-bearing in at least three places. hero_props sits
+ * immediately after blobHero so a held object paints over the hero; both blobs sit
+ * before the rain so it falls in front of them; and companion_burst sits before
+ * blobCompanion so the flash is behind the blob it lights.
+ *
+ * This was the last file still carrying the migration's `GENERATED SCAFFOLD`
+ * header. It is not a scaffold - it is the one place the stacking order is stated -
+ * and the header was the reason nobody had said so.
+ */
 import { dateInteractive } from './date-interactive.ts'
 import { dateAmbient } from './date-ambient.ts'
 import { clock } from './clock.ts'

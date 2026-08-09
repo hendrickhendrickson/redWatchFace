@@ -330,10 +330,14 @@ Still open, most important first:
 
    The scratchpad Python checker this entry asked for is no longer needed for
    *this* problem: it evaluated all copies over 7 days x 24 hours x boundary
-   minutes and asserted they agreed, which is now structural. A general
-   expression evaluator is still worth having for the question it alone answers -
-   do the 24 mock states actually exercise every branch - see the open item
-   below.
+   minutes and asserted they agreed, which is now structural.
+
+   **The general evaluator is now committed** as `tools/gen/eval.ts`, and it went
+   further than this entry imagined: besides `--equiv` and the grid-coverage
+   check, it is the engine of the SVG backend, so it evaluates the geometry and
+   the compositing too, not only the predicates. See the data-driven-pass section
+   in `docs/authoring-strategy.md` - including the two ways the first grid was
+   vacuous, both of which are now asserted against in `--selftest`.
 2. **The seven-colour table is written out NINE times** — hero body, hero round
    mouth, hero open mouth, hero mouth mask, companion body, companion round mouth,
    companion open mouth, companion mouth mask, date row — because WFF has no

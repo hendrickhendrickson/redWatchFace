@@ -272,8 +272,8 @@ Every commit boundary is a working repo.
 ### Status — migrated
 
 `watchface.xml` is now generated in full from `tools/gen/*.ts`. 4381 hand-authored lines became
-2228 generated ones plus ~1700 lines of TypeScript, and the semantic differ reports zero
-differences against the pre-migration face.
+**2189** generated ones plus TypeScript, and the semantic differ reports zero differences against
+the pre-migration face.
 
 | Module | What it holds |
 |---|---|
@@ -306,24 +306,35 @@ to skip, and because the collision recurs by design: the salute's two are gone b
 **The generator must not read the file it writes.** The first version of `--check` did, and it was
 therefore vacuous: output equalled input by construction, so appending a newline to `watchface.xml`
 passed. The safety net had reintroduced this project's signature failure — silently wrong, with a
-green result. The fix is `tools/gen/face.ts`, which reads a frozen
-`tools/gen/legacy/watchface.original.xml`; `watchface.xml` is then a genuine output and a hand edit
-to it fails:
+green result. The face is now built entirely from TypeScript, so `watchface.xml` is a genuine
+output and a hand edit to it fails:
 
 ```
 $ printf '\n' >> watchface/src/main/res/raw/watchface.xml
 $ node tools/gen/build.ts --check
   watchface.xml is out of date with tools/gen.
-    first difference at byte 259310 (line 4382)
-    original: "...</Scene>\r\n</WatchFace>\r\n\n"
-    emitted:  "...</Scene>\r\n</WatchFace>\r\n"
+    first difference at byte 116318 (line 2190)
+    original: "...</Scene>\n</WatchFace>\n\n"
+    emitted:  "...</Scene>\n</WatchFace>\n"
   exit=1
 ```
 
-`face.ts` no longer reads the frozen copy at all — the face is built entirely from TypeScript. The
-copy survives as the semantic differ's reference, which is the only thing that can still answer
-"does this render the same as what shipped". Deleting it retires that question permanently, so keep
-it until the generated face has been on a wrist long enough to trust.
+**The frozen `tools/gen/legacy/watchface.original.xml` is gone**, and this section used to say to
+keep it. `tools/gen/face.model.json` is the sole baseline now — it is the flattened semantic model
+of the same tree, which is what the differ actually compares against, so the raw copy answered
+nothing the model does not. Retiring it did retire one question permanently: "does this render the
+same as the *hand-authored* file" is no longer askable, only "does it render the same as the last
+accepted baseline". That trade was made deliberately, and every `--snapshot` since is the audit
+trail.
+
+**`--check` was itself broken for three releases**, which is worth recording because it is the same
+failure mode the paragraph above is about. Every committed blob is pure LF (`core.autocrlf=input`)
+while the serialiser emitted CRLF, so it passed between a `generate` and the next git operation and
+failed on every fresh clone — at byte 38, before reaching anything meaningful. It took
+`validateWatchFaceXml` with it, since that `dependsOn` the staleness check, and regenerating
+"fixed" it while re-arming it for the next person. The defect was that the line ending was defined
+**twice**: `xml.ts` had `EOL` and `face.ts` hard-coded `"\r\n"` five times. One definition now. Net
+content change: zero.
 
 **Wired in.** `:watchface:checkWatchFaceXmlUpToDate` runs before `validateWatchFaceXml`, and unlike
 the two jar-gated tasks it **throws rather than skips** when the generator is missing — those skip
@@ -435,6 +446,184 @@ confirm."
 
 ---
 
+## The data-driven pass, and the second compilation target
+
+The migration got the magic numbers out of the **output** and stopped there. It transliterated the
+XML into `el()` calls, so the numbers moved into TypeScript without ever becoming *data* — six
+section modules still carried the literal header `// GENERATED SCAFFOLD`, the night window
+`[HOUR_0_23] >= 23 || 7 > [HOUR_0_23]` was written out **nine times** as a pre-escaped string
+literal that bypassed `expr.ts`'s closed `Source` union entirely, and the twelve canvas anchors that
+place every section existed nowhere but inline.
+
+### What a magic number was taken to mean
+
+**Literal count is not the defect. A literal with no name, repeated or derivable, is.** `rain.ts`
+had 260 numeric literals and was second on the census — and nobody would call it a problem, because
+every one of them sits in a named field of a typed row with a comment saying why it is tabulated
+rather than derived. It came out of this pass essentially untouched (260 → 257). The goal was to
+make the other eighteen modules read like that one.
+
+So three things were done, and a fourth deliberately was not:
+
+- **Named** — a value with one meaning gets one binding (`T.NIGHT_FROM`, `GYRO_CLAMP`, `MOON.synodicDays`).
+- **Tabulated** — a list of things becomes rows in `data/*.ts`, read by a builder.
+- **Derived** — a value that *follows* from another is computed, and the derivation is asserted.
+- **Not** collapsed into parameterised mega-builders. `blob.ts` argues at length that the companion
+  is not the hero scaled down, and that argument still holds; the two blobs get two row sets and two
+  call sequences. A helper has to remove a repetition or a hazard to earn its place. One I wrote —
+  a `cloud()` for `chip-weather` — was removed again on that rule: it had a single caller and the
+  three clouds have genuinely different geometry.
+
+### Source-side result
+
+Greps over `tools/gen/face/*.ts`, before (`ab278a9`) and after. Literal counts strip `//` comments
+and block-comment body lines, then count numeric tokens not part of an identifier.
+
+| grep | before | after |
+|---|---|---|
+| `el('Condition'` scaffolds | 32 | **0** |
+| `text('` pre-escaped expression literals | 37 | **0** |
+| `&gt;` / `&lt;` / `&amp;` in source | 96 | **0** |
+| `mode: 'AMBIENT'` bags | 15 | **0** |
+| `family: 'SYNC_TO_DEVICE'` | 15 | **0** |
+| hand-written `value: '...'` transforms | 15 | **0** |
+| `// GENERATED SCAFFOLD` headers | 11 | **0** |
+| numeric literals, all 19 section modules | 1806 | **596** |
+| &nbsp;&nbsp;`hero-props.ts` | 173 | 3 |
+| &nbsp;&nbsp;`freeze-mark.ts` | 86 | 3 |
+| &nbsp;&nbsp;`companion-burst.ts` | 75 | 3 |
+| &nbsp;&nbsp;`sleep-zzz.ts` | 85 | 2 |
+| &nbsp;&nbsp;`blob-hero.ts` | 410 | 133 |
+| &nbsp;&nbsp;`blob-companion.ts` | 309 | 88 |
+| &nbsp;&nbsp;`chip-weather.ts` | 138 | 72 |
+| &nbsp;&nbsp;`rain.ts` — *already right* | 260 | 257 |
+
+`blob-hero`, `blob-companion` and `chip-weather` are the three that did not reach the plan's rough
+targets. What is left in them is the shapes that are genuinely one-of-a-kind: the X-ray skeleton,
+the eyes, the shades, the scarves, and the four weather icons whose clouds are three different
+sizes because each is composed against different neighbours. Those are candidates for another pass,
+not evidence one is owed.
+
+**`--audit`'s output-side numbers did not improve, and must not.** WFF has no variables, so the
+emitted duplication — 31 copies of `HERO_BOX`, 2562 literals, 35 repeated expressions — is
+unavoidable and is *supposed* to stay exactly where it is. An improving `--audit` would mean the
+output had changed.
+
+### The gate: byte-identity, not just semantics
+
+Every step of this pass was held to `node tools/gen/build.ts --check` passing **without
+regenerating**, which is a stronger claim than `--diff`: it proves the file cannot have changed,
+so the screenshots cannot differ and no wrist run is needed to know it. Six of the seven commits
+cleared it outright. The one exception was the blobs, where sharing a builder forced a different
+attribute insertion order — `xml.ts` emits attributes in insertion order, so `{ ...box, name }` and
+`{ name, ...box }` differ in bytes and not in meaning. That moved **7 lines, all `name` sliding
+after the box**, with `--diff` green and no `--snapshot`.
+
+`--snapshot` was authorised for this pass and never used.
+
+### Assertions, not comments
+
+The repo's existing idiom — `crossfade.ts` proving its window invariant at module load, `palette.ts`
+reproducing all 21 derived colours — was applied to every new table. The rule that emerged is
+narrower than "assert things": **assert the property that makes the shape read as what it is**, and
+then go and watch it fail.
+
+- The heart is two lobes and a rotated square, and the square's upper corners must stay *hidden
+  behind the lobes* — that is what makes three shapes read as one heart instead of a diamond parked
+  under two circles.
+- The snowflake's three axes must span all six arms exactly once; getting it wrong draws one axis
+  twice and leaves a gap.
+- The controller's ABXY diamond carries a 1.5px nudge, and the assertion checks **both** that the
+  shipped position clears the shell edge **and** that the un-nudged position does not — so the nudge
+  cannot be mistaken for an unexplained fudge and removed.
+- The battery bar's housing must sit inside the shell's stroke, because WFF centres a stroke on its
+  path and a bar flush to the shell's bounds paints over its own outline.
+
+Every assertion was mutation-tested by breaking the input and watching the message. Two of those
+probes were **too weak to breach the invariant they targeted** — dropping the heart's point by 12px
+still tucks it under the lobes, and a bar at 2..20 exactly meets the shell's inner edge — and both
+passed, which proved nothing until they were re-run at values that actually cross the line. A probe
+that passes is not evidence about the assertion.
+
+### Recorded, not fixed
+
+Deriving shapes surfaced five places where the shipped drawing is not what a clean derivation would
+produce. All five are the shape the watch has been drawing, so all five are recorded next to the
+constant with the measurement, and none was quietly corrected — growing a box or nudging a
+coordinate is a design decision, not a tidy-up.
+
+| what | measured |
+|---|---|
+| companion's scarf tail | runs 11px past its part box, clipped |
+| companion's first limb cap | starts at local x-2, arrives flat-sided |
+| coffee cup's tallest steam wisp | round cap overshoots the box top by 0.2px |
+| storm burst's four longest spokes | SQUARE caps reach 54.5 in a box whose half-width is 52 |
+| step icon's heel | centres on 14 where the ball and arch centre on 13 |
+
+Two documented facts also turned out to be wrong once the arithmetic was actually done. The
+controller's comment claimed the ABXY diamond and right stick were "pulled 1.5px apart" because the
+enlarged buttons would collide with the enlarged stick — computing both placements gives a clearance
+of 0.51px traced and 0.49px shipped, so nothing was gained there; what the nudge buys is the shell
+edge. And the Zzz drift was described as rising over the first half and snapping out, where it is a
+symmetric triangle peaking at the midpoint (0/64/128/191/255/191/128/64/0) — which is why it is
+`driftAlpha` and not `triangleAlpha`, with the measured comparison table in `expr.ts`.
+
+### The second compilation target
+
+The seam needed no invention. `face()` returns `Node[]` and `serialize()` is a pure function of it,
+so a second pure function of the same tree is a second target:
+
+```
+                              /-> serialize()  -> watchface.xml   (WFF, ships)
+   face()  ->  Node[]  ------<
+                              \-> renderSvg()  -> SVG             (tools/preview)
+```
+
+**No new intermediate representation.** `model.ts` has been flattening the same tree to
+`{path, tag, attrs, text}` since the migration, so the neutral scene representation this would
+otherwise need already existed. Everything above the seam is shared: every constant, every table,
+every predicate, every section builder. The split is the last function call, and
+`tools/preview/check.ts` asserts that the app renders byte-identical output to `renderSvg` fed the
+same values — so the preview is a *view* of the backend, not a third implementation of WFF
+semantics.
+
+`svg.ts` lives in `gen/` rather than under `tools/preview/` on purpose: it is a peer of `xml.ts`,
+and putting it in the app would make `build.ts` import from the thing it must stay independent of.
+`npm run verify` passes with `tools/preview/node_modules` moved out of the repo entirely — verified,
+after a first attempt at that test renamed the directory instead and merely proved that `tsc` globs
+into anything not called `node_modules`.
+
+**The preview is not pixel truth**, and three things guarantee it:
+
+- **Text.** The family is `SYNC_TO_DEVICE`, so glyph advance belongs to the device. WFF exposes no
+  text-width source either, which is why `geometry.ts` records that the date row is centred by
+  *estimate*. Anything text-shaped in the preview is indicative.
+- **Easing.** WFF names its interpolation curves and does not specify them. The preview honours the
+  *windows* faithfully and approximates the ramp inside each one.
+- **Scale.** The design canvas is 450×450, hardware reports 426, the emulator 454. This adds a
+  fourth geometry rather than settling the question.
+
+What it *is* good for is the thing screenshots cannot show. `crossfade.ts` argues that one pair of
+`<Variant>` windows serves both directions, so going ambient leaves a 0.05 gap with neither clock
+copy drawn and coming back leaves an overlap with both, and that no timing avoids both. That was an
+argument until the scrubber; counting visible copies across the transition gives
+
+```
+    t                0.2   0.46   0.48   0.55   0.7
+    going ambient      1      0      0      1     1
+    coming back        2      2      2      2     2
+```
+
+Clipping is implemented for the same reason and is not optional: `mini_limbs` draws a cap from local
+x-2 inside a box starting at 0, and a preview that drew it round would hide the exact bug class
+that produced the whole `hero_props` restructuring.
+
+**The wrist stays the arbiter.** `tools/cycle-states.ps1` is still the final word — a green check
+proves nothing until you have watched it fail, and this document is emphatic about that everywhere
+else.
+
+---
+
 ## Toolchain
 
 **TypeScript with `package.json`.** Node 22.21.1 executes type-annotated TS with no flag
@@ -470,19 +659,27 @@ Gradle pre-step is just this plan in a worse language.
 1. **Make the missing verification jars fail rather than skip** (0.5 h). Highest value-per-hour item
    in the repo, unrelated to codegen. A `-Pwff.tools.required` property makes "I chose not to verify"
    explicit instead of silent.
-2. **Commit the expression-agreement evaluator.** Still worth having, though not for the reason it
-   was listed: the generator closed the "do the copies agree" question structurally, since every
-   copy is emitted from one binding. The grammar is tiny — `clamp` ×185, `fract` ×75, `rand` ×2,
-   `sqrt` ×1, `textLength` ×1 — so a Pratt parser is ~150 lines. It answers what the generator
-   cannot: *do the mock states in `mock-state.ts` exercise every branch?*, and it finds
-   non-monotonic predicates without a watch. Predicates only — no geometry, no compositing, no
-   drawing.
+2. ~~**Commit the expression-agreement evaluator.**~~ **Closed** — `tools/gen/eval.ts`, built first
+   in the data-driven pass because it was the instrument the rest of it was measured with.
 
-   **A throwaway version of this has now paid for itself twice**, both times on work built *on* the
-   generator rather than by it. Evaluating `HEADSET_WINDOW` straight out of the emitted text caught
-   an operator-precedence bug that reading the expression could not (§"After the migration"), and a
-   second script asserting 30 geometry claims before a build ended a three-round cycle of
-   shoot-and-eyeball. Neither script was kept, which is the argument for committing one that is.
+   The reasoning that put it on this list still reads correctly, and one part of it was wrong: it
+   said "predicates only — no geometry, no compositing, no drawing." The evaluator is now the engine
+   of the SVG backend, so it does all three. Building it properly rather than minimally was worth it
+   for exactly that reason, and it is why `--selftest` carries 36 hand-computed cases: an evaluator
+   that is subtly wrong would be wrong *identically* in `--equiv` and in the preview, which is the
+   one failure mode that could mislead both at once.
+
+   `node tools/gen/build.ts --equiv "<a>" "<b>"` answers whether two expressions agree over a
+   783-row grid, and reports where they first diverge. **The first version of that grid was
+   vacuous**, in this project's signature way: it varied one source at a time, and
+   `a || b && c` differs from `(a || b) && c` only when `a` is true *and* `c` is false — so it
+   pronounced the documented `or()`/`and()` mis-binding EQUIVALENT. The grid is now named states,
+   plus one-factor sweeps over every threshold's boundary values, plus 600 seeded combinations, and
+   `--selftest` asserts it still catches that mis-binding so it cannot regress.
+
+   The same lesson landed a second time on a *negative* control: `>= 7` and `> 7` disagree on
+   exactly one integer, and a grid holding 3 and 9 "proves" a changed operator harmless. Every
+   threshold in `fixtures.ts` now appears with its neighbour.
 3. ~~**The date crossfade disagrees with its own documentation.**~~ **Closed 2026-08-08**, judged on
    the wrist — the only way it was ever visible, since the transition lasts ~200 ms and every mock
    state is steady-state. The finding: a `<Variant>` window is used in **both** directions, so a gap

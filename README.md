@@ -58,9 +58,26 @@ until the next `node tools/gen/build.ts` and then vanishes.
 ```bash
 npm ci                              # once: typescript + @types/node, nothing else
 node tools/gen/build.ts             # regenerate watchface.xml
+npm run verify                      # typecheck + selftest + diff + check, the whole gate
 node tools/gen/build.ts --diff      # prove it still renders the same as before the migration
 node tools/gen/build.ts --selftest  # prove the differ can still fail
+node tools/gen/build.ts --equiv "<a>" "<b>"   # do two expressions agree over a 783-row grid?
 npx tsc --noEmit                    # type-check the generator
+```
+
+**`watchface.xml` is not the only compilation target.** `face()` returns `Node[]` and
+`serialize()` is a pure function of it, so a second pure function of the same tree renders
+it to SVG instead — `tools/gen/svg.ts`. `npm run preview` puts that behind a Svelte app
+with a state picker, a scrubbable clock, an ambient transition scrubber and a tilt pad, so
+a change can be seen in a browser instead of costing a Gradle build, an install, a
+broadcast and a wake. It is **not pixel truth** — text metrics belong to the device and
+the easing curves are approximated — and the wrist stays the arbiter.
+
+```bash
+cd tools/preview && npm install     # once, isolated: the generator stays dependency-free
+npm run preview                     # the authoring loop
+npm run preview:check               # prove the preview animates, clamps, clips and crossfades
+node tools/gen/build.ts --svg       # the same renderer, straight to a file
 ```
 
 `:watchface:validateWatchFaceXml` depends on `checkWatchFaceXmlUpToDate`, so a stale
@@ -73,19 +90,34 @@ Where things live:
 | File | Holds |
 |---|---|
 | `tools/gen/palette.ts` | the 7 chosen weekday hexes; the other 21 are derived by HSL ratio |
-| `tools/gen/geometry.ts` | every named box — `HERO_BOX` alone was 31 literal copies |
+| `tools/gen/geometry.ts` | every named box, plus `ANCHORS` — where each section sits on the canvas |
 | `tools/gen/expr.ts` | the closed `Source` union and the ramp / phase / triangle idioms |
+| `tools/gen/states.ts` | the 24 named predicates and the `T` threshold table — the night window alone was written out 9 times |
+| `tools/gen/condition.ts` | `when()` / `whenElse()` / `switchOn()`, replacing 25 hand-written `Condition` scaffolds |
+| `tools/gen/type.ts` | `FONT_FAMILY`, the type scale, and `font()` — 15 inline `<Font>` blocks |
+| `tools/gen/crossfade.ts` | `AMBIENT_HIDE` and the two fade windows, with the asymmetry argument |
 | `tools/gen/weekday.ts` | `byWeekday()`, the seven-way fan-out that was written 11 times |
-| `tools/gen/blob.ts` | shared blob primitives; the two blobs stay separate call sequences |
-| `tools/gen/face/*.ts` | 17 section modules, one per Scene child, **in draw order** |
+| `tools/gen/blob.ts`, `chip.ts` | shared primitives; the two blobs stay separate call sequences |
+| `tools/gen/data/*.ts` | the row tables — blobs, props, weather, chips, zzz |
+| `tools/gen/face/*.ts` | 17 section modules, one per Scene child, **in draw order**. Builders only |
+| `tools/gen/eval.ts` | a WFF expression interpreter, shared by `--equiv` and the preview |
+| `tools/gen/fixtures.ts` | `BASE` + the 27 named states, shared by `mock-state.ts` and the preview |
+| `tools/gen/svg.ts` | the second backend: the same `Node[]`, rendered to SVG |
+| `tools/preview/` | the Svelte app around it. Its own `package.json`; `npm run verify` never touches it |
 
 **The gate is a semantic differ, not a byte comparison.** `tools/gen/model.ts` compares draw
 order, tags, attributes and text against the committed baseline `tools/gen/face.model.json`,
 normalising away comments, whitespace and `1.0` vs `1`. When a rendering change is intended,
 `node tools/gen/build.ts --snapshot` accepts it and the new baseline lands in the same commit
 as the change that caused it. The generated file looks nothing like
-the hand-authored one — 4381 lines became 2228, and the design notes moved onto the constants
+the hand-authored one — 4381 lines became **2189**, and the design notes moved onto the constants
 they explain — but it must render identically. See `docs/authoring-strategy.md`.
+
+There is also a **byte** check, `node tools/gen/build.ts --check`, which the semantic differ
+does not replace: `--check` passing *without* regenerating is proof that a refactor changed
+nothing at all, which is a stronger claim than "renders the same" and the one the data-driven
+pass was held to. Note that it was quietly broken for three releases by a line-ending
+mismatch — see the emitter note in `tools/gen/xml.ts`.
 
 The design prose that used to sit in the XML is now TSDoc in those modules. That was the
 point: the palette table in the old XML header had already drifted, still listing the retired

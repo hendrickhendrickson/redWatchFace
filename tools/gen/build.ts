@@ -8,6 +8,7 @@
  *   node tools/gen/build.ts --selftest      prove the differ can still fail
  *   node tools/gen/build.ts --audit         report remaining duplication
  *   node tools/gen/build.ts --equiv A B     do two expressions compute the same?
+ *   node tools/gen/build.ts --svg STATE     render a state to SVG, for looking at
  *
  * HOW THE TWO CHECKS DIFFER, because it matters.
  *
@@ -32,7 +33,7 @@
  * --snapshot is reached for.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse, walk } from './parse.ts'
@@ -42,8 +43,9 @@ import { modelOf, diff, report, type ModelEntry } from './model.ts'
 import { verifyDerivation } from './palette.ts'
 import { extract, summarise } from './extract.ts'
 import { diverges, selfCheck } from './eval.ts'
-import { EVAL_GRID } from './fixtures.ts'
+import { BASE_DISPLAY, EVAL_GRID, STATES, valuesFor } from './fixtures.ts'
 import { PREDICATE_COUNT, verifyPredicates } from './states.ts'
+import { renderSvg } from './svg.ts'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const facePath = resolve(repo, 'watchface/src/main/res/raw/watchface.xml')
@@ -330,6 +332,40 @@ const equiv = (a: string | undefined, b: string | undefined) => {
   console.log(`  OK  equivalent over ${grid.length} value sets\n`)
 }
 
+/**
+ * Render one state to an SVG file, for looking at.
+ *
+ * THE OTHER COMPILATION TARGET, on the command line. tools/preview wraps the same
+ * renderSvg() in a Svelte app with controls; this is the thin version, and it
+ * exists first because the renderer is the risky part and a UI would only hide it.
+ * It needs no dependencies and no dev server, so it also works on a clone that has
+ * never run npm install.
+ *
+ *   node tools/gen/build.ts --svg baseline
+ *   node tools/gen/build.ts --svg night --ambient
+ */
+const svg = (stateArg: string | undefined) => {
+  const state = stateArg ?? 'baseline'
+  if (!(state in STATES)) {
+    fail(`unknown state "${state}"\n  one of: ${Object.keys(STATES).join(', ')}`)
+  }
+  const ambient = process.argv.includes('--ambient')
+  const delta = STATES[state] ?? {}
+  const out = renderSvg(face(), {
+    values: valuesFor(state),
+    ambient,
+    display: {
+      time: delta.time ?? BASE_DISPLAY.time,
+      weekday: delta.weekday ?? BASE_DISPLAY.weekday,
+    },
+  })
+  const dest = resolve(repo, `watchface/build/preview-${state}${ambient ? '-ambient' : ''}.svg`)
+  mkdirSync(dirname(dest), { recursive: true })
+  writeFileSync(dest, out, 'utf8')
+  console.log(`  wrote ${dest}  (${(out.length / 1024).toFixed(1)} KB)`)
+  console.log('  NOT pixel truth - text metrics belong to the device. The wrist decides.\n')
+}
+
 const generate = (checkOnly: boolean) => {
   refuseIfMocked()
   const src = readFace()
@@ -363,8 +399,14 @@ else if (arg === '--diff') semanticDiff()
 else if (arg === '--snapshot') snapshot()
 else if (arg === '--audit') audit()
 else if (arg === '--equiv') equiv(process.argv[3], process.argv[4])
+else if (arg === '--svg') svg(process.argv[3])
 else if (arg === '--check') generate(true)
 else if (arg === undefined) generate(false)
-else fail(`unknown argument: ${arg}\n  usage: build.ts [--check|--diff|--snapshot|--selftest|--audit|--equiv A B]`)
+else {
+  fail(
+    `unknown argument: ${arg}\n  usage: build.ts ` +
+      '[--check|--diff|--snapshot|--selftest|--audit|--equiv A B|--svg STATE [--ambient]]',
+  )
+}
 
 

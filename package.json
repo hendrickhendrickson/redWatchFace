@@ -11,6 +11,8 @@
     "snapshot": "node tools/gen/build.ts --snapshot",
     "selftest": "node tools/gen/build.ts --selftest",
     "audit": "node tools/gen/build.ts --audit",
+    "equiv": "node tools/gen/build.ts --equiv",
+    "svg": "node tools/gen/build.ts --svg",
     "typecheck": "tsc --noEmit",
     "verify": "npm run typecheck && npm run selftest && npm run diff && npm run check"
   },

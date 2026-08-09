@@ -860,7 +860,7 @@
           <Expression name="hero_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 10</Expression>
         </Expressions>
         <Compare expression="hero_cold">
-          <PartDraw name="hero_scarf" x="14" y="36" width="72" height="96">
+          <PartDraw x="14" y="36" width="72" height="96" name="hero_scarf">
             <RoundRectangle x="3" y="62" width="66" height="13" cornerRadiusX="6" cornerRadiusY="6">
               <Fill color="#3f78c4" />
             </RoundRectangle>
@@ -923,7 +923,7 @@
           <Expression name="hero_uv">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.UV_INDEX] &gt;= 6 &amp;&amp; [WEATHER.IS_DAY]</Expression>
         </Expressions>
         <Compare expression="hero_uv">
-          <PartDraw name="hero_shades" x="24" y="54" width="50" height="18">
+          <PartDraw x="24" y="54" width="50" height="18" name="hero_shades">
             <RoundRectangle x="3" y="2" width="20" height="13" cornerRadiusX="6" cornerRadiusY="6">
               <Fill color="#1b2733" />
             </RoundRectangle>
@@ -1223,12 +1223,12 @@
     <Group name="blob_companion" x="143" y="322" width="62" height="72" alpha="255">
       <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.157" y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.1" />
       <Variant mode="AMBIENT" target="alpha" value="0" />
-      <PartDraw name="mini_leaf_left" x="6" y="0" width="48" height="48" pivotX="0.5" pivotY="0.5" angle="-26">
+      <PartDraw x="6" y="0" width="48" height="48" name="mini_leaf_left" pivotX="0.5" pivotY="0.5" angle="-26">
         <Ellipse x="19" y="6" width="11" height="18">
           <Fill color="#4fa968" />
         </Ellipse>
       </PartDraw>
-      <PartDraw name="mini_leaf_right" x="6" y="0" width="48" height="48" pivotX="0.5" pivotY="0.5" angle="20">
+      <PartDraw x="6" y="0" width="48" height="48" name="mini_leaf_right" pivotX="0.5" pivotY="0.5" angle="20">
         <Ellipse x="18" y="4" width="12" height="20">
           <Fill color="#5fb874" />
         </Ellipse>
@@ -1573,7 +1573,7 @@
                 <Expression name="mini_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
               </Expressions>
               <Compare expression="mini_night">
-                <PartDraw name="mini_eyes_closed" x="16" y="32" width="28" height="12">
+                <PartDraw x="16" y="32" width="28" height="12" name="mini_eyes_closed">
                   <Line startX="2" startY="6" endX="11" endY="6">
                     <Stroke color="#23384f" thickness="2.5" cap="ROUND" />
                   </Line>
@@ -1598,7 +1598,7 @@
                 <Expression name="mini_uv">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.UV_INDEX] &gt;= 6 &amp;&amp; [WEATHER.IS_DAY]</Expression>
               </Expressions>
               <Compare expression="mini_uv">
-                <PartDraw name="mini_shades" x="16" y="31" width="28" height="12">
+                <PartDraw x="16" y="31" width="28" height="12" name="mini_shades">
                   <RoundRectangle x="2" y="2" width="10" height="8" cornerRadiusX="4" cornerRadiusY="4">
                     <Fill color="#1b2733" />
                   </RoundRectangle>
@@ -1616,7 +1616,7 @@
                 <Expression name="mini_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 10</Expression>
               </Expressions>
               <Compare expression="mini_cold">
-                <PartDraw name="mini_scarf" x="8" y="20" width="44" height="40">
+                <PartDraw x="8" y="20" width="44" height="40" name="mini_scarf">
                   <RoundRectangle x="2" y="33" width="40" height="9" cornerRadiusX="4.5" cornerRadiusY="4.5">
                     <Fill color="#3f78c4" />
                   </RoundRectangle>

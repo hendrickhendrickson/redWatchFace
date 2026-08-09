@@ -110,6 +110,18 @@ export const HERO_MOUTH_MASK = box(22, 35, 26, 13)
 
 export const HERO_SWEAT_BOX = box(38, 40, 26, 11)
 
+/**
+ * The scarf, 16px TALLER than the body so the hanging tail has room.
+ *
+ * Derived from HERO_BOX rather than restated, which is the whole point: the scarf
+ * sits on the body and a body that moves without it is a two-site edit that
+ * nothing checks.
+ */
+export const HERO_SCARF_BOX = box(HERO_BOX.x, HERO_BOX.y, HERO_BOX.width, HERO_BOX.height + 16)
+
+/** The sunglasses, across the eyes. */
+export const HERO_SHADES_BOX = box(24, 54, 50, 18)
+
 // --- Companion blob ---------------------------------------------------------
 
 /** The companion's body box. 30 sites in the hand-authored file. */
@@ -124,6 +136,27 @@ export const MINI_MOUTH_OPEN = box(16, 24, 12, 11)
 export const MINI_MOUTH_MASK = box(15, 21, 14, 8)
 
 export const MINI_SWEAT_BOX = box(21, 25, 18, 8)
+
+/**
+ * The companion's scarf, 2px SHORTER than its body - not taller, unlike the
+ * hero's.
+ *
+ * THE TAIL IS CLIPPED BY THIS BOX AND THAT IS THE SHIPPED SHAPE. The tail
+ * rectangle runs to local y51 inside a 40-high box, so its last 11px are cut off.
+ * It is called out in this blob's header as the scarf tail overshooting its box.
+ * Recorded here rather than quietly "fixed": growing the box would change what the
+ * watch has been drawing, which is a design decision and not a tidy-up.
+ */
+export const MINI_SCARF_BOX = box(MINI_BOX.x, MINI_BOX.y, MINI_BOX.width, MINI_BOX.height - 2)
+
+/** The companion's shades. 1px higher than its closed eyes, which is deliberate. */
+export const MINI_SHADES_BOX = box(16, 31, 28, 12)
+
+/** Closed eyes: a shallow box holding two short lines. */
+export const MINI_EYES_CLOSED_BOX = box(16, 32, 28, 12)
+
+/** The companion's leaf tuft. Smaller and lower than the hero's LEAF_BOX. */
+export const MINI_LEAF_BOX = box(6, 0, 48, 48)
 
 // --- Chips and icons --------------------------------------------------------
 

@@ -13,9 +13,18 @@
  */
 
 import { el, type Node } from './xml.ts'
-import { mouth, type Hex, type Weekday } from './palette.ts'
-import { tilt } from './expr.ts'
+import { C, mouth, type Hex, type Weekday } from './palette.ts'
+import { grow, group, heartRamp, secondPhase, tilt, triangleAlpha } from './expr.ts'
 import * as G from './geometry.ts'
+import { T } from './states.ts'
+import {
+  DRIP_RAMP_SPAN,
+  type DripFigure,
+  type Leaf,
+  type Limb,
+  type LimbStroke,
+  type SweatFigure,
+} from './data/blobs.ts'
 
 export interface BlobGeometry {
   /** The body box, which every weekday part is positioned against. */
@@ -80,6 +89,104 @@ export const mouthMask = (g: BlobGeometry, name: string, body: Hex): Node =>
 /** Name helper so the eight weekday sites cannot drift in their conventions. */
 export const partName = (prefix: string, part: string, day: Weekday): string =>
   `${prefix}_${part}_${day}`
+
+// --- Limbs ------------------------------------------------------------------
+
+/**
+ * A limb is one line drawn TWICE: thick in cream, then thin in ink over the top,
+ * with a cap ellipse on each pass.
+ *
+ * BOTH COLOUR PASSES COME FROM THE SAME ROW, which is the whole reason this exists.
+ * The hand-written version typed each line's four coordinates twice, in two blocks
+ * up to twenty lines apart, so a limb could be moved on one pass and not the other -
+ * an ink core protruding from a cream sleeve, invisible in the source.
+ *
+ * ALL CREAM PASSES FIRST, THEN ALL INK, not cream-then-ink per limb. That is the
+ * authored draw order and it matters where limbs overlap: the companion's four
+ * limbs are one part, and interleaving the passes would let one limb's cream sleeve
+ * paint over a neighbour's ink core.
+ */
+export const limbs = (rows: readonly Limb[], t: LimbStroke): Node[] => [
+  ...rows.flatMap((r) => [
+    el('Line', { ...r.line }, [el('Stroke', { color: C.LIMB, thickness: t.cream, cap: 'ROUND' })]),
+    el('Ellipse', { ...r.cream }, [el('Fill', { color: C.LIMB })]),
+  ]),
+  ...rows.flatMap((r) => [
+    el('Line', { ...r.line }, [el('Stroke', { color: C.INK, thickness: t.ink, cap: 'ROUND' })]),
+    el('Ellipse', { ...r.ink }, [el('Fill', { color: C.INK })]),
+  ]),
+]
+
+/** A limb part: the box, the name, and the two passes inside it. */
+export const limbPart = (box: G.Box, name: string, rows: readonly Limb[], t: LimbStroke): Node =>
+  el('PartDraw', { ...box, name }, limbs(rows, t))
+
+/**
+ * Mittens, drawn from the SAME rows the hands are.
+ *
+ * Every glove in the face was a byte-identical copy of an arm's cream cap, sitting
+ * in a different part of the file with only the fill changed - four such copies in
+ * the hero, two in the companion. A glove that no longer sits on its hand was one
+ * careless edit away and nothing would have reported it. Now it cannot be written.
+ */
+export const glovePart = (box: G.Box, name: string, hands: readonly Limb[]): Node =>
+  el('PartDraw', { ...box, name }, hands.map((h) => el('Ellipse', { ...h.cream }, [el('Fill', { color: C.SCARF })])))
+
+// --- The leaf tuft ----------------------------------------------------------
+
+/** One leaf, rotated about the centre of the shared tuft box. */
+export const leafPart = (box: G.Box, leaf: Leaf): Node =>
+  el('PartDraw', { ...box, name: leaf.name, pivotX: 0.5, pivotY: 0.5, angle: leaf.angle }, [
+    el('Ellipse', { ...leaf.blade }, [el('Fill', { color: leaf.dark ? C.LEAF_DARK : C.GREEN })]),
+    ...(leaf.vein
+      ? [el('Line', { ...leaf.vein }, [el('Stroke', { color: C.LEAF_LIGHT, thickness: 1.6, cap: 'ROUND' })])]
+      : []),
+  ])
+
+// --- Sweat ------------------------------------------------------------------
+
+/**
+ * One branch of the forehead cluster: the beads this branch shows, by index.
+ *
+ * The subset is indices into the figure's own table, so the middle bead has one
+ * definition instead of appearing in both the "all three" and the "just one" block.
+ */
+export const beadPart = (box: G.Box, name: string, fig: SweatFigure, pick: readonly number[]): Node =>
+  el('PartDraw', { ...box, name }, pick.map((i) => {
+    const b = fig.beads[i]
+    if (b === undefined) throw new Error(`${name}: no bead ${i} in a table of ${fig.beads.length}`)
+    return el('Ellipse', { ...b }, [el('Fill', { color: C.SWEAT })])
+  }))
+
+/**
+ * The two drip groups, sliding down the cheeks a second out of phase.
+ *
+ * FOUR HAND-WRITTEN EXPRESSIONS PER BLOB became four compositions. Each was a
+ * single attribute several hundred characters long, restating the whole-second
+ * sawtooth four times inside itself and burying the numbers 4, 6, 100, 2, 255, 3,
+ * 140 and 20 where no reader would find them - and the same eight again in the
+ * hero with 12 and 18 instead. expr.ts had every one of those idioms already.
+ *
+ * THE SECOND DRIP CARRIES AN EXTRA GATE so it fades in late, bracketing the
+ * all-three-beads threshold: a warm but resting wearer gets one trickle, not two.
+ */
+export const dripGroups = (box: G.Box, prefix: string, d: DripFigure): Node[] => {
+  const amplitude = grow(d.fall, d.fallExtra, heartRamp(T.PUFFED_BPM, T.PUFFED_BPM + DRIP_RAMP_SPAN))
+  const beads = (name: string) =>
+    el('PartDraw', { ...box, name }, d.beads.map((b) => el('Ellipse', { ...b }, [el('Fill', { color: C.SWEAT })])))
+
+  return ['a', 'b'].map((tag, i) => {
+    const p = group(secondPhase(2, i))
+    const alpha = i === 0
+      ? triangleAlpha(p)
+      : `${triangleAlpha(p)} * ${heartRamp(d.secondFrom, d.secondTo)}`
+    return el('Group', { ...box, name: `${prefix}_drip_${tag}`, alpha: 255 }, [
+      el('Transform', { target: 'y', value: `(${amplitude}) * ${p}` }),
+      el('Transform', { target: 'alpha', value: alpha }),
+      beads(`${prefix}_drip_beads_${tag}`),
+    ])
+  })
+}
 
 /**
  * Wrist-tilt parallax for a blob and everything that has to move with it.

@@ -6,44 +6,29 @@
  * because WFF has no path primitive. The tilt is on the Part, so the five stay
  * registered to each other whatever it changes to.
  *
+ * THREE COLUMNS, NOT FIVE. The five shapes share three widths between them, two of
+ * them twice, and each pair had its x and width typed independently - so the sole
+ * could narrow on one shape and not its partner. data/chips.ts names the columns
+ * and asserts the sole does not kink or widen toward the heel.
+ *
  * NO Condition HERE. A step count of zero is a true and useful reading, unlike a
  * heart rate of zero, so there is nothing to gate.
  */
 
-import { el, cdata, type Node } from '../xml.ts'
+import { el, type Node } from '../xml.ts'
 import { C } from '../palette.ts'
 import * as G from '../geometry.ts'
 import { AMBIENT_HIDE } from '../crossfade.ts'
-import { SIZE, font } from '../type.ts'
+import { chipValue } from '../chip.ts'
+import { FOOTPRINT_BOX, FOOTPRINT_SHAPES, TEXT_X } from '../data/chips.ts'
+
+const CHIP = G.ANCHORS.CHIP_STEPS
 
 export const chipSteps = (): Node =>
-  el('Group', { name: 'chip_steps', ...G.ANCHORS.CHIP_STEPS, alpha: 255 }, [
+  el('Group', { name: 'chip_steps', ...CHIP, alpha: 255 }, [
     el('Variant', AMBIENT_HIDE),
-    el('PartDraw', { name: 'steps_icon', x: 0, y: 1, width: 28, height: 34, pivotX: 0.5, pivotY: 0.5, angle: -25 }, [
-      el('Ellipse', { x: 7.5, y: 4.5, width: 11, height: 13 }, [
-        el('Fill', { color: C.LIMB }),
-      ]),
-      el('Ellipse', { x: 9.25, y: 11, width: 7.5, height: 9 }, [
-        el('Fill', { color: C.LIMB }),
-      ]),
-      el('Rectangle', { x: 9.25, y: 15.5, width: 7.5, height: 4 }, [
-        el('Fill', { color: C.LIMB }),
-      ]),
-      el('Rectangle', { x: 10.5, y: 21.5, width: 7, height: 3.5 }, [
-        el('Fill', { color: C.LIMB }),
-      ]),
-      el('Ellipse', { x: 10.5, y: 22, width: 7, height: 6.5 }, [
-        el('Fill', { color: C.LIMB }),
-      ]),
+    el('PartDraw', { name: 'steps_icon', ...FOOTPRINT_BOX }, [
+      ...FOOTPRINT_SHAPES.map((s) => el(s.tag, { ...s.box }, [el('Fill', { color: C.LIMB })])),
     ]),
-    el('PartText', { name: 'steps_value', x: 28, y: 0, width: 70, height: 36 }, [
-      el('Text', { align: 'START' }, [
-        el('Font', font(SIZE.CHIP, 'BOLD', C.CREAM), [
-          el('Template', {}, [
-            cdata('%d'),
-            el('Parameter', { expression: '[STEP_COUNT]' }),
-          ]),
-        ]),
-      ]),
-    ]),
+    chipValue(CHIP, { name: 'steps_value', x: TEXT_X.STEPS, colour: C.CREAM, text: '%d', source: 'STEP_COUNT' }),
   ])

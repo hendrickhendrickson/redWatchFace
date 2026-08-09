@@ -16,14 +16,17 @@
  * its shape rather than collapsing when the weather service has nothing.
  */
 
-import { el, cdata, type Node } from '../xml.ts'
+import { el, type Node } from '../xml.ts'
 import { C } from '../palette.ts'
 import * as G from '../geometry.ts'
 import { AMBIENT_HIDE } from '../crossfade.ts'
 import { switchOn, whenElse } from '../condition.ts'
 import { CLEAR_DAY, CLEAR_NIGHT, HAVE_FORECAST, PARTLY_CLOUDY, RAIN_ICON } from '../states.ts'
-import { SIZE, font } from '../type.ts'
+import { chipValue } from '../chip.ts'
+import { TEXT_X } from '../data/chips.ts'
 import { SUN, SUN_DISC, SUN_RAYS } from '../data/weather.ts'
+
+const CHIP = G.ANCHORS.CHIP_WEATHER
 
 /**
  * All five icons share one box, and only that.
@@ -37,13 +40,13 @@ const icon = (name: string, shapes: Node[]): Node =>
   el('PartDraw', { ...G.WX_ICON_BOX, name }, shapes)
 
 export const chipWeather = (): Node =>
-  el('Group', { name: 'chip_weather', ...G.ANCHORS.CHIP_WEATHER, alpha: 255 }, [
+  el('Group', { name: 'chip_weather', ...CHIP, alpha: 255 }, [
     el('Variant', AMBIENT_HIDE),
     whenElse(
       'wx_have',
       HAVE_FORECAST,
       [
-        el('Group', { name: 'wx_live', x: 0, y: 0, width: 90, height: 32, alpha: 255 }, [
+        el('Group', { name: 'wx_live', ...G.at(CHIP.width, CHIP.height), alpha: 255 }, [
           switchOn(
             [
               {
@@ -140,26 +143,20 @@ export const chipWeather = (): Node =>
             // section is the one that uses both orders. See switchOn in condition.ts.
             ['wx_wet', 'wx_sun', 'wx_moon', 'wx_partly'],
           ),
-          el('PartText', { name: 'wx_temp', x: 32, y: 0, width: 58, height: 32 }, [
-            el('Text', { align: 'START' }, [
-              el('Font', font(SIZE.CHIP, 'NORMAL', C.CREAM), [
-                el('Template', {}, [
-                  cdata('%d°'),
-                  el('Parameter', { expression: '[WEATHER.TEMPERATURE]' }),
-                ]),
-              ]),
-            ]),
-          ]),
+          chipValue(CHIP, {
+            name: 'wx_temp', x: TEXT_X.WEATHER, colour: C.CREAM, weight: 'NORMAL',
+            text: '%d°', source: 'WEATHER.TEMPERATURE',
+          }),
         ]),
       ],
       [
-        el('PartText', { name: 'wx_none', x: 0, y: 0, width: 90, height: 32 }, [
-          el('Text', { align: 'CENTER' }, [
-            el('Font', font(SIZE.CHIP, 'NORMAL', C.WX_NONE), [
-              cdata('--°'),
-            ]),
-          ]),
-        ]),
+        // Full width and CENTRED, unlike every other chip value: with no forecast
+        // there is no icon to sit beside, so the dashes centre in the chip instead
+        // of hanging off a left edge that has nothing on it.
+        chipValue(CHIP, {
+          name: 'wx_none', x: 0, colour: C.WX_NONE, weight: 'NORMAL',
+          align: 'CENTER', text: '--°',
+        }),
       ],
     ),
   ])

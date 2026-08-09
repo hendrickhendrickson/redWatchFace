@@ -131,6 +131,104 @@ export const WX_ICON_BOX = box(0, 3, 26, 26)
 export const BATTERY_BOX = box(0, 10, 26, 16)
 export const LEAF_BOX = box(10, 0, 80, 80)
 
+// --- Where the sections sit on the canvas ------------------------------------
+
+/**
+ * Every top-level group's box, in canvas coordinates.
+ *
+ * THESE WERE THE LAST NUMBERS WITH NO NAME ANYWHERE. The boxes above were named
+ * during the migration; the canvas positions that place them were not, so
+ * `x: 207, y: 262` sat inline in blob-hero.ts and `x: 143, y: 322` in
+ * blob-companion.ts, with ten more like them. "Where is the hero?" had no answer
+ * except grep, and the answer mattered: hero-props.ts derives its whole layout
+ * from the hero's position, four sections repeat a blob's Gyro gain to track it,
+ * and freeze_mark and moon_mark must share one box exactly or they overlap.
+ *
+ * THE SIZES ARE NOT INDEPENDENT of the boxes above, and the assertion at the
+ * bottom of this block proves it. A blob's group is exactly its limb box - the
+ * limbs are the widest thing it contains - so the hero group being 106x132 is a
+ * consequence of HERO_LIMB_BOX, not a second decision. It was written as a second
+ * decision, twice, in two files.
+ */
+export const ANCHORS = {
+  /** The hero blob. Its size IS HERO_LIMB_BOX; hero_props is placed against it. */
+  HERO: box(207, 262, HERO_LIMB_BOX.width, HERO_LIMB_BOX.height),
+  /** The companion. Size IS MINI_LIMB_BOX. */
+  COMPANION: box(143, 322, MINI_LIMB_BOX.width, MINI_LIMB_BOX.height),
+
+  /**
+   * Whatever the hero is holding.
+   *
+   * A SIBLING OF THE HERO, NOT A CHILD, and 8px to its left on purpose: a
+   * PartDraw cannot start left of its parent group's origin without being
+   * clipped, and a prop centred on the hero's raised hand would have to. See the
+   * header of face/hero-props.ts, and note that the hand's position in THIS
+   * group's coordinates is derived from these two anchors rather than typed.
+   */
+  HERO_PROPS: box(199, 262, 38, 50),
+
+  /** The storm burst behind the companion. */
+  COMPANION_BURST: box(123, 306, 104, 104),
+  /** The bolt. */
+  COMPANION_LIGHTNING: box(133, 264, 56, 68),
+  /** The umbrella the hero holds up in the rain. */
+  HERO_UMBRELLA: box(137, 250, 164, 70),
+
+  /**
+   * The sky mark, above and between the blobs.
+   *
+   * ONE BOX, TWO SECTIONS. freeze_mark and moon_mark both draw here and are
+   * mutually exclusive - states.ts asserts that they can never both fire. They
+   * had this box typed out separately, which is how a snowflake behind a moon
+   * would have happened.
+   */
+  SKY_MARK: box(156, 278, 36, 36),
+
+  /** The hero's sleep z's, up and to its right. */
+  SLEEP_ZZZ: box(294, 304, 64, 55),
+  /** The companion's, smaller and lower. */
+  MINI_SLEEP_ZZZ: box(105, 338, 46, 44),
+
+  /**
+   * The stat row and the weather chip above it.
+   *
+   * FOUR ORIGINS THAT MAKE ONE ROW. The three stat chips share y216 and h36 and
+   * are only readable as a row if they keep doing so; the weather chip sits above
+   * them at y184. The widths differ because the content does.
+   */
+  CHIP_WEATHER: box(190, 184, 90, 32),
+  CHIP_HEART_RATE: box(92, 216, 70, 36),
+  CHIP_STEPS: box(172, 216, 98, 36),
+  CHIP_BATTERY: box(280, 216, 110, 36),
+} as const
+
+/**
+ * A blob's group is exactly as big as its limbs.
+ *
+ * Proving it here is what makes ANCHORS.HERO's size a derivation rather than a
+ * coincidence, and it is the assertion that fires if someone widens a limb box
+ * and forgets the group - which clips the limbs, on the wrist, silently.
+ */
+for (const [name, anchor, limb] of [
+  ['HERO', ANCHORS.HERO, HERO_LIMB_BOX],
+  ['COMPANION', ANCHORS.COMPANION, MINI_LIMB_BOX],
+] as const) {
+  if (anchor.width !== limb.width || anchor.height !== limb.height) {
+    throw new Error(
+      `ANCHORS.${name} is ${anchor.width}x${anchor.height} but its limb box is ` +
+        `${limb.width}x${limb.height} - the limbs would be clipped`,
+    )
+  }
+}
+
+/** The three stat chips are a row, so they share a baseline and a height. */
+{
+  const row = [ANCHORS.CHIP_HEART_RATE, ANCHORS.CHIP_STEPS, ANCHORS.CHIP_BATTERY]
+  if (new Set(row.map((c) => `${c.y}:${c.height}`)).size !== 1) {
+    throw new Error('the three stat chips no longer share a y and a height - the row would step')
+  }
+}
+
 // --- Gyro -------------------------------------------------------------------
 
 /**

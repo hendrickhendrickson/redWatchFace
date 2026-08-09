@@ -43,6 +43,7 @@ import { verifyDerivation } from './palette.ts'
 import { extract, summarise } from './extract.ts'
 import { diverges, selfCheck } from './eval.ts'
 import { EVAL_GRID } from './fixtures.ts'
+import { PREDICATE_COUNT, verifyPredicates } from './states.ts'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const facePath = resolve(repo, 'watchface/src/main/res/raw/watchface.xml')
@@ -110,6 +111,22 @@ const auditPalette = () => {
   console.log('  OK         21 derived colours still reproduce from the 7 body hexes')
 }
 
+/**
+ * The composed predicates must still emit what they emitted as literals.
+ *
+ * Same idea as auditPalette, and the same justification: states.ts keeps the
+ * hand-typed string next to the composition that replaced it, so a change to a
+ * SHARED helper - and() joining differently, or() gaining parentheses - is
+ * reported once, by name, instead of as forty entries in a semantic diff.
+ */
+const auditPredicates = () => {
+  const problems = verifyPredicates()
+  if (problems.length) {
+    fail(`PREDICATES NO LONGER EMIT WHAT THEY SHIPPED\n\n    ${problems.join('\n\n    ')}`)
+  }
+  console.log(`  OK         ${PREDICATE_COUNT} predicates emit exactly what they shipped`)
+}
+
 /** Structural checks the WFF schema cannot express. */
 const auditStructure = (xml: string) => {
   const { nodes } = parse(xml)
@@ -134,6 +151,7 @@ const auditStructure = (xml: string) => {
 
 const semanticDiff = () => {
   auditPalette()
+  auditPredicates()
   const generated = serialize(face())
   auditStructure(generated)
 
@@ -270,6 +288,7 @@ const selftest = () => {
  */
 const audit = () => {
   auditPalette()
+  auditPredicates()
   const generated = serialize(face())
   auditStructure(generated)
   console.log()

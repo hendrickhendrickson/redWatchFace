@@ -42,6 +42,27 @@
 import type { Attrs } from './xml.ts'
 
 /**
+ * Not drawn in ambient at all. FIFTEEN sites, one per non-essential section.
+ *
+ * The plainest use of <Variant> and the most common: no window, no interpolation,
+ * just "this alpha is 0 in ambient". Everything that is decoration rather than
+ * information carries it - both blobs, the props, the rain, the weather marks, the
+ * Zzz, and every stat chip - which is what makes the ambient face the clock, the
+ * date and nothing else.
+ *
+ * IT LIVES HERE RATHER THAN IN A FILE OF ITS OWN because it is the same mechanism
+ * as the cross-fade below, and the asymmetry documented at the top of this file is
+ * exactly what a reader needs to know before using either. A separate variant.ts
+ * re-exporting this would be one more hop to the explanation.
+ *
+ * NO DURATION, on purpose. The cross-faded pairs below need windows because two
+ * copies are handing over between them; a section that simply disappears has
+ * nothing to hand over to, and giving it a window would fade decoration out over
+ * half a second while the clock had already changed weight.
+ */
+export const AMBIENT_HIDE: Attrs = { mode: 'AMBIENT', target: 'alpha', value: 0 }
+
+/**
  * The copy that is visible interactive: alpha 255 -> 0.
  *
  * Duration is deliberately SHORTER than the in copy's offset, by 0.05.

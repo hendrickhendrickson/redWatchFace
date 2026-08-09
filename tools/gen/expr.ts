@@ -144,6 +144,35 @@ export const triangleAlpha = (p: Expr): Expr =>
 export const grow = (base: number, extra: number, by: Expr): Expr =>
   `${n(base)} + ${n(extra)} * ${by}` as Expr
 
+/**
+ * Rise by `amount` as the phase goes 0..1. The sleep z's, drifting upward.
+ *
+ * WRITTEN AS A SUBTRACTION FROM ZERO - `0 - 14 * p`, not `-14 * p` - because y
+ * grows downward, so rising is negative, and that is how both z groups state it.
+ * Kept rather than tidied: the emitted string is what the wrist has been showing.
+ */
+export const drift = (amount: number, by: Expr): Expr => `0 - ${n(amount)} * ${by}` as Expr
+
+/**
+ * Triangle over a 0..1 phase, PEAKING AT THE MIDPOINT. Zero at both ends.
+ *
+ * DELIBERATELY NOT triangleAlpha, which is a different curve for a different job.
+ * Measured, at eighths of a cycle:
+ *
+ *          p     0   .125  .25  .375  .5  .625  .75  .875   1
+ *   driftAlpha    0    64   128  191  255  191  128   64    0     a peak
+ *   triangleAlpha 0   128   255  255  255  255  255  128    0     a plateau
+ *
+ * triangleAlpha holds at full for the middle half, which is what a rain drop
+ * wants: visible for nearly all of its fall, and gone at the instant its sawtooth
+ * resets. A z wants the opposite - it is most legible halfway up its drift and
+ * should be fading before it arrives, so nothing accumulates at the top of the
+ * arc. Two shapes, two names, and the reason written down; folding them together
+ * with a parameter would hide the one thing that distinguishes them.
+ */
+export const driftAlpha = (p: Expr): Expr =>
+  `255 * (2 * ${p} - clamp(4 * ${p} - 2, 0, 2))` as Expr
+
 // --- Gyro -------------------------------------------------------------------
 
 /** Wrist-tilt parallax, clamped before scaling so a sharp turn cannot fling a

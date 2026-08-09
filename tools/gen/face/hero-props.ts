@@ -24,10 +24,12 @@
  * viewer than a band worn on the head) and still under the companion, the
  * rain and the umbrella.
  *
- * THE ANCHOR. The hero group is at (207,262) and `hero_arm_left_up`'s hand
- * ellipse is (1,26,19,18), so the hand's centre is at canvas (217.5,297).
- * This group sits at (199,262), which puts that hand at group-local
- * (18.5,35) - the number every prop below is positioned against.
+ * THE ANCHOR IS NOW COMPUTED, NOT DESCRIBED. Every prop below is positioned
+ * against the hero's raised fist, and that position used to be worked out in
+ * this comment and then typed into eleven coordinates. It lives in
+ * data/props.ts as `HAND`, derived from the two anchors and the arm row and
+ * asserted against the shipped (18.5,35) on every build - so moving the hero
+ * can no longer leave the props hanging in mid-air.
  *
  * NO NEGATION ANYWHERE, the same idiom the retired salute used: the two
  * meeting props are tested AHEAD of the weather-driven cocktail, so the
@@ -45,223 +47,129 @@ import { HOT_AND_SUNNY } from '../states.ts'
 import { WEDNESDAY_MEETING, FRIDAY_GAME_ICON } from '../meetings.ts'
 import { triangleAlpha, secondPhase } from '../expr.ts'
 import { heroGyro } from '../blob.ts'
+import {
+  COCKTAIL, COCKTAIL_BOX, COCKTAIL_GLASS, COCKTAIL_LIQUID, COCKTAIL_STRAW,
+  CONTROLLER_BOX, CONTROLLER_SHAPES, CUP_BOX, CUP_SHAPES, DIAMOND, HANDLE, HANDLE_ARC,
+  PULSE_BOX, PULSE_BUTTON, STEAM, STEAM_SEGMENTS, type Seg,
+} from '../data/props.ts'
+
+const fill = (colour: string) => [el('Fill', { color: colour })]
+
+const stroke = (s: Seg, colour: string, thickness: number): Node =>
+  el('Line', { ...s }, [el('Stroke', { color: colour, thickness, cap: 'ROUND' })])
+
+/**
+ * The Wednesday coffee cup.
+ *
+ * IT IS NOT A ROUNDED RECTANGLE. It is a rim ellipse, a straight-sided body and
+ * a bottom ellipse, stacked - which is what gives it a CONVEX BASE. A
+ * RoundRectangle bottoms out flat, and a flat base is wrong in a view that is
+ * looking down far enough to see into the cup at all: if the rim reads as an
+ * ellipse then the base has to as well. data/props.ts stacks the three off one
+ * x, one width and one rim height rather than three independent placements.
+ *
+ * THE RIM IS A SEPARATE WHITE ELLIPSE UNDER THE COFFEE, and the coffee is inset
+ * inside it. Drawing the liquid at its own coordinates left it touching open
+ * background on the left and right, so the cup had no wall at the top - it read
+ * as a bowl of brown, not a mug.
+ *
+ * THE HANDLE'S 60-DEGREE GAP FACES THE CUP, and its centre is derived from the
+ * wall it has to touch: the ring's leftmost pixel lands ON x17 rather than
+ * inside it. Before that, the ring crossed into the body and the two whites
+ * merged into one wall twice as thick as the other side.
+ *
+ * THREE WISPS, EACH WITH TWO DIRECTION CHANGES. One direction change reads as a
+ * bent wire and two lines converging on a point read as an arrowhead - both were
+ * drawn and both were wrong. Three segments per wisp is where it starts reading
+ * as vapour, and the three occupy disjoint x-bands 1.1px apart, which
+ * data/props.ts asserts rather than claiming.
+ */
+const coffee = (): Node[] => [
+  el('PartDraw', { name: 'hero_coffee_cup', ...CUP_BOX }, [
+    el('Arc', { ...HANDLE_ARC }, [
+      el('Stroke', { color: C.WHITE, thickness: HANDLE.thickness, cap: 'ROUND' }),
+    ]),
+    el('Ellipse', { ...CUP_SHAPES.base }, fill(C.WHITE)),
+    el('Rectangle', { ...CUP_SHAPES.body }, fill(C.WHITE)),
+    el('Ellipse', { ...CUP_SHAPES.rim }, fill(C.WHITE)),
+    el('Ellipse', { ...CUP_SHAPES.coffee }, fill(C.COFFEE)),
+    ...STEAM_SEGMENTS.map((s) => stroke(s, C.STEAM, STEAM.thickness)),
+  ]),
+]
+
+/**
+ * The Friday game controller. Layout traced off a photograph of the real thing,
+ * as fractions of the full silhouette width - and those fractions are now the
+ * source in data/props.ts rather than prose beside their multiplied-out results.
+ *
+ * THE D-PAD SITS INBOARD OF THE LEFT STICK - 0.355 against 0.204. It is the most
+ * recognisable thing about this layout and the thing the first two attempts had
+ * backwards. The stick/d-pad/stick arrangement is asymmetric BY DESIGN; only the
+ * shell and the d-pad's own cross are symmetric, and both are - the cross by
+ * construction now, off one centre.
+ *
+ * THE SIDES ANGLE OUT, narrow at the top and wide at the base, because the real
+ * shell does: 0.67 of its maximum width at the top edge. That is built from a
+ * 24-wide shell with the grip ellipses reaching 28 at their widest, so the
+ * silhouette runs 15 across the very top (the flat between the corner arcs), 24
+ * by y4.5 and 28 by y13.5. A single rounded rectangle gave dead-vertical sides,
+ * which is what read as a slab.
+ *
+ * THE DEPARTURES FROM THE PHOTOGRAPH ARE NAMED FIELDS, and one of them turned
+ * out not to be what this comment used to say. See CONTROLLER in data/props.ts:
+ * the buttons really are enlarged to 3.2 against a true 2.2, but the diamond's
+ * 1.5px nudge buys clearance from the SHELL EDGE, not from the right stick.
+ */
+const controller = (): Node[] => [
+  el('PartDraw', { name: 'hero_controller', ...CONTROLLER_BOX }, [
+    // Grips first, so the shell covers where they join it.
+    ...CONTROLLER_SHAPES.grips.map((g) => el('Ellipse', { ...g }, fill(C.WHITE))),
+    el('RoundRectangle', { ...CONTROLLER_SHAPES.shell }, fill(C.WHITE)),
+    el('Ellipse', { ...CONTROLLER_SHAPES.leftStick }, fill(C.INK)),
+    ...CONTROLLER_SHAPES.dpad.map((bar) => el('Rectangle', { ...bar }, fill(C.INK))),
+    el('Ellipse', { ...CONTROLLER_SHAPES.rightStick }, fill(C.INK)),
+    // Y, X, B - the diamond's top, left and right. A (bottom) is drawn
+    // separately below so it alone can pulse.
+    el('Ellipse', { ...DIAMOND.top }, fill(C.SUN)),
+    el('Ellipse', { ...DIAMOND.left }, fill(C.SCARF)),
+    el('Ellipse', { ...DIAMOND.right }, fill(C.CORAL)),
+  ]),
+  // A, the diamond's bottom - the one face button that pulses, so the
+  // controller reads as being played rather than held. Same triangle idiom the
+  // sweat drips use, on its own 2s loop. A Group's x/y must be integers, so the
+  // fractional part of the button's position lives on the Ellipse inside it;
+  // both halves of that split are derived from the diamond's centre, so they
+  // cannot disagree with the three buttons above.
+  el('Group', { name: 'hero_controller_pulse', ...PULSE_BOX, alpha: 255 }, [
+    el('Transform', { target: 'alpha', value: triangleAlpha(secondPhase(2)) }),
+    el('PartDraw', { ...G.at(PULSE_BOX.width, PULSE_BOX.height), name: 'hero_controller_button' }, [
+      el('Ellipse', { ...PULSE_BUTTON }, fill(C.GREEN)),
+    ]),
+  ]),
+]
+
+/**
+ * The warm-day cocktail, unchanged since it shipped - the part box moved from
+ * the hero group's (0,6) to this group's (8,6), which is the same canvas
+ * position, (207,268).
+ *
+ * EVERY x COMES OFF THE STEM, which is the fist. The bowl, the stem, the foot
+ * and the liquid were six independent coordinates that happened to agree about
+ * being symmetric about x10.5; only the straw is asymmetric, deliberately.
+ */
+const cocktail = (): Node[] => [
+  el('PartDraw', { name: 'hero_cocktail', ...COCKTAIL_BOX }, [
+    stroke(COCKTAIL_STRAW, C.TEAL, COCKTAIL.thickness),
+    ...COCKTAIL_GLASS.map((s) => stroke(s, C.BONE, COCKTAIL.thickness)),
+    el('Ellipse', { ...COCKTAIL_LIQUID }, fill(C.COCKTAIL)),
+  ]),
+]
 
 export const heroProps = (): Node =>
   switchOn([
-    {
-      name: 'hero_coffee',
-      when: WEDNESDAY_MEETING,
-      /**
-       * The Wednesday coffee cup.
-       *
-       * IT IS NOT A ROUNDED RECTANGLE. It is a rim ellipse, a straight-sided
-       * body and a bottom ellipse, stacked - which is what gives it a CONVEX
-       * BASE. A RoundRectangle bottoms out flat, and a flat base is wrong in a
-       * view that is looking down far enough to see into the cup at all: if the
-       * rim reads as an ellipse then the base has to as well.
-       *
-       * THE RIM IS A SEPARATE WHITE ELLIPSE UNDER THE COFFEE, inset 1.75px
-       * horizontally and 1px vertically. Drawing the liquid straight onto the
-       * body left it touching open background on the left and right, so the cup
-       * had no wall at the top - it read as a bowl of brown, not a mug.
-       *
-       * The base sits exactly on the hand's centre (local y35) and the body is
-       * centred on the hand's x (18.5). The handle is deliberately NOT counted
-       * in that centring: a mug is centred on its body with the handle hanging
-       * off it.
-       *
-       * THE HANDLE'S 60-DEGREE GAP FACES THE CUP, so the leftmost pixel the
-       * ring draws lands at 21 - 3.5*cos(30) - 1 = 16.97, ON the wall at x17
-       * rather than inside it. Before that, the ring crossed into the body and
-       * the two whites merged into one wall twice as thick as the other side.
-       */
-      then: [
-        el('PartDraw', { name: 'hero_coffee_cup', x: 8, y: 12, width: 28, height: 24 }, [
-          el('Arc', { centerX: 21, centerY: 16, width: 7, height: 7, startAngle: 300, endAngle: 600 }, [
-            el('Stroke', { color: C.WHITE, thickness: 2, cap: 'ROUND' }),
-          ]),
-          el('Ellipse', { x: 4, y: 18.5, width: 13, height: 4.5 }, [
-            el('Fill', { color: C.WHITE }),
-          ]),
-          el('Rectangle', { x: 4, y: 11, width: 13, height: 9.75 }, [
-            el('Fill', { color: C.WHITE }),
-          ]),
-          el('Ellipse', { x: 4, y: 8.5, width: 13, height: 5 }, [
-            el('Fill', { color: C.WHITE }),
-          ]),
-          el('Ellipse', { x: 5.75, y: 9.5, width: 9.5, height: 3 }, [
-            el('Fill', { color: C.COFFEE }),
-          ]),
-          /**
-           * THREE wisps, each with TWO direction changes.
-           *
-           * One direction change reads as a bent wire and two lines converging
-           * on a point read as an arrowhead - both were drawn and both were
-           * wrong. Three segments per wisp is where it starts reading as
-           * vapour.
-           *
-           * THE THREE OCCUPY DISJOINT x-BANDS AND CANNOT TOUCH. Centrelines run
-           * 5..7, 9.5..11.5 and 14..16; at 1.4 thick each band grows 0.7 on
-           * both sides, giving 4.3..7.7, 8.8..12.2 and 13.3..16.7 - so the gaps
-           * between neighbours are 1.1px, checked rather than eyeballed. The
-           * outer two mirror about the cup's centre at 10.5; the middle one
-           * rises a little higher, which is what keeps the group from reading
-           * as a picket fence.
-           */
-          el('Line', { startX: 6, startY: 8, endX: 5, endY: 5.7 }, [
-            el('Stroke', { color: C.STEAM, thickness: 1.4, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 5, startY: 5.7, endX: 7, endY: 3.4 }, [
-            el('Stroke', { color: C.STEAM, thickness: 1.4, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 7, startY: 3.4, endX: 6, endY: 1.1 }, [
-            el('Stroke', { color: C.STEAM, thickness: 1.4, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 10.5, startY: 8, endX: 11.5, endY: 5.5 }, [
-            el('Stroke', { color: C.STEAM, thickness: 1.4, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 11.5, startY: 5.5, endX: 9.5, endY: 3 }, [
-            el('Stroke', { color: C.STEAM, thickness: 1.4, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 9.5, startY: 3, endX: 10.5, endY: 0.5 }, [
-            el('Stroke', { color: C.STEAM, thickness: 1.4, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 15, startY: 8, endX: 16, endY: 5.7 }, [
-            el('Stroke', { color: C.STEAM, thickness: 1.4, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 16, startY: 5.7, endX: 14, endY: 3.4 }, [
-            el('Stroke', { color: C.STEAM, thickness: 1.4, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 14, startY: 3.4, endX: 15, endY: 1.1 }, [
-            el('Stroke', { color: C.STEAM, thickness: 1.4, cap: 'ROUND' }),
-          ]),
-        ]),
-      ],
-    },
-    {
-      name: 'hero_controller',
-      when: FRIDAY_GAME_ICON,
-      /**
-       * The Friday game controller. Layout traced off a photograph of the real
-       * thing; every offset below is a measured fraction of the full silhouette
-       * width, so the proportions can be checked rather than re-judged:
-       *
-       *   left stick   0.204 across, 0.191 down, 0.164 diameter
-       *   d-pad        0.355 across, 0.388 down, 0.191 across the arms
-       *   right stick  0.691 across, 0.382 down, 0.164 diameter
-       *   ABXY centre  0.822 across, 0.204 down
-       *   grips        0.145 and 0.855 across, reaching 0.717 down
-       *
-       * THE D-PAD SITS INBOARD OF THE LEFT STICK - 0.355 against 0.204. It is
-       * the most recognisable thing about this layout and the thing the first
-       * two attempts had backwards. The stick/d-pad/stick arrangement is
-       * asymmetric BY DESIGN; only the shell and the d-pad's own cross are
-       * symmetric, and both are.
-       *
-       * THE SIDES ANGLE OUT, narrow at the top and wide at the base, because
-       * the real shell does: 0.67 of its maximum width at the top edge. That is
-       * built from a 24-wide shell with the grip ellipses reaching 28 at their
-       * widest, so the silhouette runs 15 across the very top (the flat between
-       * the corner arcs), 24 by y4.5 and 28 by y13.5. A single rounded
-       * rectangle gave dead-vertical sides, which is what read as a slab.
-       *
-       * TWO DEPARTURES FROM THE PHOTOGRAPH, both forced by scale. The buttons
-       * are 3.2px against a true 2.2 - below ~3px a colour stops reading as a
-       * colour at all - and the ABXY diamond and right stick are pulled 1.5px
-       * apart from where the fractions put them, because the enlarged buttons
-       * would otherwise collide with the enlarged stick. Everything else is
-       * honest.
-       *
-       * The half-pixel offsets are not noise: the hand's centre lands on x18.5
-       * and the silhouette is an even 28 wide, so the content carries a 0.5
-       * shift inside an integer PartDraw box to centre on it exactly.
-       */
-      then: [
-        el('PartDraw', { name: 'hero_controller', x: 4, y: 25, width: 29, height: 20 }, [
-          // Grips first, so the shell covers where they join it.
-          el('Ellipse', { x: 0.5, y: 7, width: 10, height: 13 }, [
-            el('Fill', { color: C.WHITE }),
-          ]),
-          el('Ellipse', { x: 18.5, y: 7, width: 10, height: 13 }, [
-            el('Fill', { color: C.WHITE }),
-          ]),
-          el('RoundRectangle', { x: 2.5, y: 0, width: 24, height: 15, cornerRadiusX: 4.5, cornerRadiusY: 4.5 }, [
-            el('Fill', { color: C.WHITE }),
-          ]),
-          // Left stick - high and outboard.
-          el('Ellipse', { x: 3.9, y: 3, width: 4.6, height: 4.6 }, [
-            el('Fill', { color: C.INK }),
-          ]),
-          // D-pad - low, and INBOARD of the stick above it. Both bars centre on
-          // (10.4,10.9), so the cross is symmetric about itself.
-          el('Rectangle', { x: 9.4, y: 8.2, width: 2, height: 5.4 }, [
-            el('Fill', { color: C.INK }),
-          ]),
-          el('Rectangle', { x: 7.7, y: 9.9, width: 5.4, height: 2 }, [
-            el('Fill', { color: C.INK }),
-          ]),
-          // Right stick - low, matching the d-pad's height rather than the left
-          // stick's, and nudged 1.5px clear of the A button above it.
-          el('Ellipse', { x: 16.7, y: 9.2, width: 4.6, height: 4.6 }, [
-            el('Fill', { color: C.INK }),
-          ]),
-          // Y, X, B - the diamond's top, left and right. A (bottom) is drawn
-          // separately below so it alone can pulse.
-          el('Ellipse', { x: 20.4, y: 1.5, width: 3.2, height: 3.2 }, [
-            el('Fill', { color: C.SUN }),
-          ]),
-          el('Ellipse', { x: 17.8, y: 4.1, width: 3.2, height: 3.2 }, [
-            el('Fill', { color: C.SCARF }),
-          ]),
-          el('Ellipse', { x: 23, y: 4.1, width: 3.2, height: 3.2 }, [
-            el('Fill', { color: C.CORAL }),
-          ]),
-        ]),
-        // A, the diamond's bottom - the one face button that pulses, so the
-        // controller reads as being played rather than held. Same triangle
-        // idiom the sweat drips use, on its own 2s loop. A Group's x/y must be
-        // integers, so the fractional part of the button's position lives on
-        // the Ellipse inside it: the centre lands at (26.0,33.3), which is the
-        // part box origin (4,25) plus local (22.0,8.3).
-        el('Group', { name: 'hero_controller_pulse', x: 24, y: 31, width: 5, height: 5, alpha: 255 }, [
-          el('Transform', { target: 'alpha', value: triangleAlpha(secondPhase(2)) }),
-          el('PartDraw', { x: 0, y: 0, width: 5, height: 5, name: 'hero_controller_button' }, [
-            el('Ellipse', { x: 0.4, y: 0.7, width: 3.2, height: 3.2 }, [
-              el('Fill', { color: C.GREEN }),
-            ]),
-          ]),
-        ]),
-      ],
-    },
-    {
-      name: 'hero_drink',
-      when: HOT_AND_SUNNY,
-      // The warm-day cocktail, unchanged since it shipped - the part box moved
-      // from the hero group's (0,6) to this group's (8,6), which is the same
-      // canvas position, (207,268).
-      then: [
-        el('PartDraw', { name: 'hero_cocktail', x: 8, y: 6, width: 20, height: 30 }, [
-          el('Line', { startX: 12.5, startY: 9, endX: 17.5, endY: 0 }, [
-            el('Stroke', { color: C.TEAL, thickness: 2, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 4, startY: 9, endX: 10.5, endY: 19 }, [
-            el('Stroke', { color: C.BONE, thickness: 2, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 17, startY: 9, endX: 10.5, endY: 19 }, [
-            el('Stroke', { color: C.BONE, thickness: 2, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 10.5, startY: 19, endX: 10.5, endY: 27 }, [
-            el('Stroke', { color: C.BONE, thickness: 2, cap: 'ROUND' }),
-          ]),
-          el('Line', { startX: 6.5, startY: 27.5, endX: 14.5, endY: 27.5 }, [
-            el('Stroke', { color: C.BONE, thickness: 2, cap: 'ROUND' }),
-          ]),
-          el('Ellipse', { x: 2.5, y: 6, width: 16, height: 6 }, [
-            el('Fill', { color: C.COCKTAIL }),
-          ]),
-        ]),
-      ],
-    },
+    { name: 'hero_coffee', when: WEDNESDAY_MEETING, then: coffee() },
+    { name: 'hero_controller', when: FRIDAY_GAME_ICON, then: controller() },
+    { name: 'hero_drink', when: HOT_AND_SUNNY, then: cocktail() },
   ])
 
 /**

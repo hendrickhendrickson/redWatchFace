@@ -129,17 +129,17 @@ export const HERO_SHADES_BOX = box(24, 54, 50, 18);
 // --- Companion blob ---------------------------------------------------------
 
 /** The companion's body box. 30 sites in the hand-authored file. */
-export const MINI_BOX = box(8, 20, 44, 42);
-export const MINI_BODY_SHAPE = at(44, 42);
-export const MINI_BODY_RADIUS = { cornerRadiusX: 22, cornerRadiusY: 20 };
+export const COMPANION_BOX = box(8, 20, 44, 42);
+export const COMPANION_BODY_SHAPE = at(44, 42);
+export const COMPANION_BODY_RADIUS = { cornerRadiusX: 22, cornerRadiusY: 20 };
 
-export const MINI_LIMB_BOX = box(0, 0, 62, 72);
+export const COMPANION_LIMB_BOX = box(0, 0, 62, 72);
 
-export const MINI_MOUTH_ROUND = box(18.5, 26, 7, 7);
-export const MINI_MOUTH_OPEN = box(16, 24, 12, 11);
-export const MINI_MOUTH_MASK = box(15, 21, 14, 8);
+export const COMPANION_MOUTH_ROUND = box(18.5, 26, 7, 7);
+export const COMPANION_MOUTH_OPEN = box(16, 24, 12, 11);
+export const COMPANION_MOUTH_MASK = box(15, 21, 14, 8);
 
-export const MINI_SWEAT_BOX = box(21, 25, 18, 8);
+export const COMPANION_SWEAT_BOX = box(21, 25, 18, 8);
 
 /**
  * The companion's scarf, 2px SHORTER than its body - not taller, unlike the
@@ -151,16 +151,21 @@ export const MINI_SWEAT_BOX = box(21, 25, 18, 8);
  * Recorded here rather than quietly "fixed": growing the box would change what the
  * watch has been drawing, which is a design decision and not a tidy-up.
  */
-export const MINI_SCARF_BOX = box(MINI_BOX.x, MINI_BOX.y, MINI_BOX.width, MINI_BOX.height - 2);
+export const COMPANION_SCARF_BOX = box(
+	COMPANION_BOX.x,
+	COMPANION_BOX.y,
+	COMPANION_BOX.width,
+	COMPANION_BOX.height - 2
+);
 
 /** The companion's shades. 1px higher than its closed eyes, which is deliberate. */
-export const MINI_SHADES_BOX = box(16, 31, 28, 12);
+export const COMPANION_SHADES_BOX = box(16, 31, 28, 12);
 
 /** Closed eyes: a shallow box holding two short lines. */
-export const MINI_EYES_CLOSED_BOX = box(16, 32, 28, 12);
+export const COMPANION_EYES_CLOSED_BOX = box(16, 32, 28, 12);
 
 /** The companion's leaf tuft. Smaller and lower than the hero's LEAF_BOX. */
-export const MINI_LEAF_BOX = box(6, 0, 48, 48);
+export const COMPANION_LEAF_BOX = box(6, 0, 48, 48);
 
 // --- Chips and icons --------------------------------------------------------
 
@@ -190,8 +195,8 @@ export const LEAF_BOX = box(10, 0, 80, 80);
 export const ANCHORS = {
 	/** The hero blob. Its size IS HERO_LIMB_BOX; hero_props is placed against it. */
 	HERO: box(207, 262, HERO_LIMB_BOX.width, HERO_LIMB_BOX.height),
-	/** The companion. Size IS MINI_LIMB_BOX. */
-	COMPANION: box(143, 322, MINI_LIMB_BOX.width, MINI_LIMB_BOX.height),
+	/** The companion. Size IS COMPANION_LIMB_BOX. */
+	COMPANION: box(143, 322, COMPANION_LIMB_BOX.width, COMPANION_LIMB_BOX.height),
 
 	/**
 	 * Whatever the hero is holding.
@@ -224,7 +229,7 @@ export const ANCHORS = {
 	/** The hero's sleep z's, up and to its right. */
 	SLEEP_ZZZ: box(294, 304, 64, 55),
 	/** The companion's, smaller and lower. */
-	MINI_SLEEP_ZZZ: box(105, 338, 46, 44),
+	COMPANION_SLEEP_ZZZ: box(105, 338, 46, 44),
 
 	/**
 	 * The stat row and the weather chip above it.
@@ -248,7 +253,7 @@ export const ANCHORS = {
  */
 for (const [name, anchor, limb] of [
 	['HERO', ANCHORS.HERO, HERO_LIMB_BOX],
-	['COMPANION', ANCHORS.COMPANION, MINI_LIMB_BOX]
+	['COMPANION', ANCHORS.COMPANION, COMPANION_LIMB_BOX]
 ] as const) {
 	if (anchor.width !== limb.width || anchor.height !== limb.height) {
 		throw new Error(

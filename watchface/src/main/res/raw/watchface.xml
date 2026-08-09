@@ -1227,17 +1227,17 @@
     <Group name="blob_companion" x="143" y="322" width="62" height="72" alpha="255">
       <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.157" y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.1" />
       <Variant mode="AMBIENT" target="alpha" value="0" />
-      <PartDraw x="6" y="0" width="48" height="48" name="mini_leaf_left" pivotX="0.5" pivotY="0.5" angle="-26">
+      <PartDraw x="6" y="0" width="48" height="48" name="companion_leaf_left" pivotX="0.5" pivotY="0.5" angle="-26">
         <Ellipse x="19" y="6" width="11" height="18">
           <Fill color="#4fa968" />
         </Ellipse>
       </PartDraw>
-      <PartDraw x="6" y="0" width="48" height="48" name="mini_leaf_right" pivotX="0.5" pivotY="0.5" angle="20">
+      <PartDraw x="6" y="0" width="48" height="48" name="companion_leaf_right" pivotX="0.5" pivotY="0.5" angle="20">
         <Ellipse x="18" y="4" width="12" height="20">
           <Fill color="#5fb874" />
         </Ellipse>
       </PartDraw>
-      <PartDraw x="0" y="0" width="62" height="72" name="mini_limbs">
+      <PartDraw x="0" y="0" width="62" height="72" name="companion_limbs">
         <Line startX="12" startY="44" endX="5" endY="38">
           <Stroke color="#e9dccb" thickness="6.2" cap="ROUND" />
         </Line>
@@ -1289,10 +1289,10 @@
       </PartDraw>
       <Condition>
         <Expressions>
-          <Expression name="mini_zapped">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
+          <Expression name="companion_zapped">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.CHANCE_OF_PRECIPITATION] &gt;= 90</Expression>
         </Expressions>
-        <Compare expression="mini_zapped">
-          <PartDraw x="8" y="20" width="44" height="42" name="mini_skeleton">
+        <Compare expression="companion_zapped">
+          <PartDraw x="8" y="20" width="44" height="42" name="companion_skeleton">
             <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
               <Fill color="#14181d" />
             </RoundRectangle>
@@ -1326,60 +1326,60 @@
           </PartDraw>
         </Compare>
         <Default>
-          <Group x="0" y="0" width="62" height="72" name="mini_alive" alpha="255">
+          <Group x="0" y="0" width="62" height="72" name="companion_alive" alpha="255">
             <Condition>
               <Expressions>
-                <Expression name="mini_tue">[DAY_OF_WEEK] == 3</Expression>
-                <Expression name="mini_wed">[DAY_OF_WEEK] == 4</Expression>
-                <Expression name="mini_thu">[DAY_OF_WEEK] == 5</Expression>
-                <Expression name="mini_fri">[DAY_OF_WEEK] == 6</Expression>
-                <Expression name="mini_sat">[DAY_OF_WEEK] == 7</Expression>
-                <Expression name="mini_sun">[DAY_OF_WEEK] == 1</Expression>
+                <Expression name="companion_body_tue">[DAY_OF_WEEK] == 3</Expression>
+                <Expression name="companion_body_wed">[DAY_OF_WEEK] == 4</Expression>
+                <Expression name="companion_body_thu">[DAY_OF_WEEK] == 5</Expression>
+                <Expression name="companion_body_fri">[DAY_OF_WEEK] == 6</Expression>
+                <Expression name="companion_body_sat">[DAY_OF_WEEK] == 7</Expression>
+                <Expression name="companion_body_sun">[DAY_OF_WEEK] == 1</Expression>
               </Expressions>
-              <Compare expression="mini_tue">
-                <PartDraw x="8" y="20" width="44" height="42" name="mini_body_tue">
+              <Compare expression="companion_body_tue">
+                <PartDraw x="8" y="20" width="44" height="42" name="companion_body_tue">
                   <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
                     <Fill color="#a5d63a" />
                   </RoundRectangle>
                 </PartDraw>
               </Compare>
-              <Compare expression="mini_wed">
-                <PartDraw x="8" y="20" width="44" height="42" name="mini_body_wed">
+              <Compare expression="companion_body_wed">
+                <PartDraw x="8" y="20" width="44" height="42" name="companion_body_wed">
                   <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
                     <Fill color="#6b9df2" />
                   </RoundRectangle>
                 </PartDraw>
               </Compare>
-              <Compare expression="mini_thu">
-                <PartDraw x="8" y="20" width="44" height="42" name="mini_body_thu">
+              <Compare expression="companion_body_thu">
+                <PartDraw x="8" y="20" width="44" height="42" name="companion_body_thu">
                   <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
                     <Fill color="#f0862f" />
                   </RoundRectangle>
                 </PartDraw>
               </Compare>
-              <Compare expression="mini_fri">
-                <PartDraw x="8" y="20" width="44" height="42" name="mini_body_fri">
+              <Compare expression="companion_body_fri">
+                <PartDraw x="8" y="20" width="44" height="42" name="companion_body_fri">
                   <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
                     <Fill color="#8fa3bc" />
                   </RoundRectangle>
                 </PartDraw>
               </Compare>
-              <Compare expression="mini_sat">
-                <PartDraw x="8" y="20" width="44" height="42" name="mini_body_sat">
+              <Compare expression="companion_body_sat">
+                <PartDraw x="8" y="20" width="44" height="42" name="companion_body_sat">
                   <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
                     <Fill color="#b07ce4" />
                   </RoundRectangle>
                 </PartDraw>
               </Compare>
-              <Compare expression="mini_sun">
-                <PartDraw x="8" y="20" width="44" height="42" name="mini_body_sun">
+              <Compare expression="companion_body_sun">
+                <PartDraw x="8" y="20" width="44" height="42" name="companion_body_sun">
                   <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
                     <Fill color="#ee4e43" />
                   </RoundRectangle>
                 </PartDraw>
               </Compare>
               <Default>
-                <PartDraw x="8" y="20" width="44" height="42" name="mini_body_mon">
+                <PartDraw x="8" y="20" width="44" height="42" name="companion_body_mon">
                   <RoundRectangle x="0" y="0" width="44" height="42" cornerRadiusX="22" cornerRadiusY="20">
                     <Fill color="#f5c92e" />
                   </RoundRectangle>
@@ -1388,62 +1388,62 @@
             </Condition>
             <Condition>
               <Expressions>
-                <Expression name="mini_mouth_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+                <Expression name="companion_mouth_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
               </Expressions>
-              <Compare expression="mini_mouth_night">
+              <Compare expression="companion_mouth_night">
                 <Condition>
                   <Expressions>
-                    <Expression name="minirmouth_tue">[DAY_OF_WEEK] == 3</Expression>
-                    <Expression name="minirmouth_wed">[DAY_OF_WEEK] == 4</Expression>
-                    <Expression name="minirmouth_thu">[DAY_OF_WEEK] == 5</Expression>
-                    <Expression name="minirmouth_fri">[DAY_OF_WEEK] == 6</Expression>
-                    <Expression name="minirmouth_sat">[DAY_OF_WEEK] == 7</Expression>
-                    <Expression name="minirmouth_sun">[DAY_OF_WEEK] == 1</Expression>
+                    <Expression name="companion_rmouth_tue">[DAY_OF_WEEK] == 3</Expression>
+                    <Expression name="companion_rmouth_wed">[DAY_OF_WEEK] == 4</Expression>
+                    <Expression name="companion_rmouth_thu">[DAY_OF_WEEK] == 5</Expression>
+                    <Expression name="companion_rmouth_fri">[DAY_OF_WEEK] == 6</Expression>
+                    <Expression name="companion_rmouth_sat">[DAY_OF_WEEK] == 7</Expression>
+                    <Expression name="companion_rmouth_sun">[DAY_OF_WEEK] == 1</Expression>
                   </Expressions>
-                  <Compare expression="minirmouth_tue">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_sleep_tue">
+                  <Compare expression="companion_rmouth_tue">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_sleep_tue">
                       <Ellipse x="18.5" y="26" width="7" height="7">
                         <Fill color="#3f4c24" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minirmouth_wed">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_sleep_wed">
+                  <Compare expression="companion_rmouth_wed">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_sleep_wed">
                       <Ellipse x="18.5" y="26" width="7" height="7">
                         <Fill color="#273f69" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minirmouth_thu">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_sleep_thu">
+                  <Compare expression="companion_rmouth_thu">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_sleep_thu">
                       <Ellipse x="18.5" y="26" width="7" height="7">
                         <Fill color="#57381f" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minirmouth_fri">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_sleep_fri">
+                  <Compare expression="companion_rmouth_fri">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_sleep_fri">
                       <Ellipse x="18.5" y="26" width="7" height="7">
                         <Fill color="#3a434d" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minirmouth_sat">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_sleep_sat">
+                  <Compare expression="companion_rmouth_sat">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_sleep_sat">
                       <Ellipse x="18.5" y="26" width="7" height="7">
                         <Fill color="#482e62" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minirmouth_sun">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_sleep_sun">
+                  <Compare expression="companion_rmouth_sun">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_sleep_sun">
                       <Ellipse x="18.5" y="26" width="7" height="7">
                         <Fill color="#5b2622" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
                   <Default>
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_sleep_mon">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_sleep_mon">
                       <Ellipse x="18.5" y="26" width="7" height="7">
                         <Fill color="#594c1e" />
                       </Ellipse>
@@ -1454,57 +1454,57 @@
               <Default>
                 <Condition>
                   <Expressions>
-                    <Expression name="miniomouth_tue">[DAY_OF_WEEK] == 3</Expression>
-                    <Expression name="miniomouth_wed">[DAY_OF_WEEK] == 4</Expression>
-                    <Expression name="miniomouth_thu">[DAY_OF_WEEK] == 5</Expression>
-                    <Expression name="miniomouth_fri">[DAY_OF_WEEK] == 6</Expression>
-                    <Expression name="miniomouth_sat">[DAY_OF_WEEK] == 7</Expression>
-                    <Expression name="miniomouth_sun">[DAY_OF_WEEK] == 1</Expression>
+                    <Expression name="companion_omouth_tue">[DAY_OF_WEEK] == 3</Expression>
+                    <Expression name="companion_omouth_wed">[DAY_OF_WEEK] == 4</Expression>
+                    <Expression name="companion_omouth_thu">[DAY_OF_WEEK] == 5</Expression>
+                    <Expression name="companion_omouth_fri">[DAY_OF_WEEK] == 6</Expression>
+                    <Expression name="companion_omouth_sat">[DAY_OF_WEEK] == 7</Expression>
+                    <Expression name="companion_omouth_sun">[DAY_OF_WEEK] == 1</Expression>
                   </Expressions>
-                  <Compare expression="miniomouth_tue">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_open_tue">
+                  <Compare expression="companion_omouth_tue">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_open_tue">
                       <Ellipse x="16" y="24" width="12" height="11">
                         <Fill color="#3f4c24" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="miniomouth_wed">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_open_wed">
+                  <Compare expression="companion_omouth_wed">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_open_wed">
                       <Ellipse x="16" y="24" width="12" height="11">
                         <Fill color="#273f69" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="miniomouth_thu">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_open_thu">
+                  <Compare expression="companion_omouth_thu">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_open_thu">
                       <Ellipse x="16" y="24" width="12" height="11">
                         <Fill color="#57381f" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="miniomouth_fri">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_open_fri">
+                  <Compare expression="companion_omouth_fri">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_open_fri">
                       <Ellipse x="16" y="24" width="12" height="11">
                         <Fill color="#3a434d" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="miniomouth_sat">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_open_sat">
+                  <Compare expression="companion_omouth_sat">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_open_sat">
                       <Ellipse x="16" y="24" width="12" height="11">
                         <Fill color="#482e62" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="miniomouth_sun">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_open_sun">
+                  <Compare expression="companion_omouth_sun">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_open_sun">
                       <Ellipse x="16" y="24" width="12" height="11">
                         <Fill color="#5b2622" />
                       </Ellipse>
                     </PartDraw>
                   </Compare>
                   <Default>
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_open_mon">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_open_mon">
                       <Ellipse x="16" y="24" width="12" height="11">
                         <Fill color="#594c1e" />
                       </Ellipse>
@@ -1513,57 +1513,57 @@
                 </Condition>
                 <Condition>
                   <Expressions>
-                    <Expression name="minimask_tue">[DAY_OF_WEEK] == 3</Expression>
-                    <Expression name="minimask_wed">[DAY_OF_WEEK] == 4</Expression>
-                    <Expression name="minimask_thu">[DAY_OF_WEEK] == 5</Expression>
-                    <Expression name="minimask_fri">[DAY_OF_WEEK] == 6</Expression>
-                    <Expression name="minimask_sat">[DAY_OF_WEEK] == 7</Expression>
-                    <Expression name="minimask_sun">[DAY_OF_WEEK] == 1</Expression>
+                    <Expression name="companion_mask_tue">[DAY_OF_WEEK] == 3</Expression>
+                    <Expression name="companion_mask_wed">[DAY_OF_WEEK] == 4</Expression>
+                    <Expression name="companion_mask_thu">[DAY_OF_WEEK] == 5</Expression>
+                    <Expression name="companion_mask_fri">[DAY_OF_WEEK] == 6</Expression>
+                    <Expression name="companion_mask_sat">[DAY_OF_WEEK] == 7</Expression>
+                    <Expression name="companion_mask_sun">[DAY_OF_WEEK] == 1</Expression>
                   </Expressions>
-                  <Compare expression="minimask_tue">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_mask_tue">
+                  <Compare expression="companion_mask_tue">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_mask_tue">
                       <Rectangle x="15" y="21" width="14" height="8">
                         <Fill color="#a5d63a" />
                       </Rectangle>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minimask_wed">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_mask_wed">
+                  <Compare expression="companion_mask_wed">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_mask_wed">
                       <Rectangle x="15" y="21" width="14" height="8">
                         <Fill color="#6b9df2" />
                       </Rectangle>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minimask_thu">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_mask_thu">
+                  <Compare expression="companion_mask_thu">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_mask_thu">
                       <Rectangle x="15" y="21" width="14" height="8">
                         <Fill color="#f0862f" />
                       </Rectangle>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minimask_fri">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_mask_fri">
+                  <Compare expression="companion_mask_fri">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_mask_fri">
                       <Rectangle x="15" y="21" width="14" height="8">
                         <Fill color="#8fa3bc" />
                       </Rectangle>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minimask_sat">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_mask_sat">
+                  <Compare expression="companion_mask_sat">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_mask_sat">
                       <Rectangle x="15" y="21" width="14" height="8">
                         <Fill color="#b07ce4" />
                       </Rectangle>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="minimask_sun">
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_mask_sun">
+                  <Compare expression="companion_mask_sun">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_mask_sun">
                       <Rectangle x="15" y="21" width="14" height="8">
                         <Fill color="#ee4e43" />
                       </Rectangle>
                     </PartDraw>
                   </Compare>
                   <Default>
-                    <PartDraw x="8" y="20" width="44" height="42" name="mini_mouth_mask_mon">
+                    <PartDraw x="8" y="20" width="44" height="42" name="companion_mouth_mask_mon">
                       <Rectangle x="15" y="21" width="14" height="8">
                         <Fill color="#f5c92e" />
                       </Rectangle>
@@ -1574,10 +1574,10 @@
             </Condition>
             <Condition>
               <Expressions>
-                <Expression name="mini_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
+                <Expression name="companion_night">[HOUR_0_23] &gt;= 23 || 7 &gt; [HOUR_0_23]</Expression>
               </Expressions>
-              <Compare expression="mini_night">
-                <PartDraw x="16" y="32" width="28" height="12" name="mini_eyes_closed">
+              <Compare expression="companion_night">
+                <PartDraw x="16" y="32" width="28" height="12" name="companion_eyes_closed">
                   <Line startX="2" startY="6" endX="11" endY="6">
                     <Stroke color="#23384f" thickness="2.5" cap="ROUND" />
                   </Line>
@@ -1587,7 +1587,7 @@
                 </PartDraw>
               </Compare>
               <Default>
-                <PartDraw x="8" y="20" width="44" height="42" name="mini_eyes_open">
+                <PartDraw x="8" y="20" width="44" height="42" name="companion_eyes_open">
                   <Ellipse x="12" y="14" width="5" height="6">
                     <Fill color="#23384f" />
                   </Ellipse>
@@ -1599,10 +1599,10 @@
             </Condition>
             <Condition>
               <Expressions>
-                <Expression name="mini_uv">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.UV_INDEX] &gt;= 6 &amp;&amp; [WEATHER.IS_DAY]</Expression>
+                <Expression name="companion_uv">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.UV_INDEX] &gt;= 6 &amp;&amp; [WEATHER.IS_DAY]</Expression>
               </Expressions>
-              <Compare expression="mini_uv">
-                <PartDraw x="16" y="31" width="28" height="12" name="mini_shades">
+              <Compare expression="companion_uv">
+                <PartDraw x="16" y="31" width="28" height="12" name="companion_shades">
                   <RoundRectangle x="2" y="2" width="10" height="8" cornerRadiusX="4" cornerRadiusY="4">
                     <Fill color="#1b2733" />
                   </RoundRectangle>
@@ -1617,10 +1617,10 @@
             </Condition>
             <Condition>
               <Expressions>
-                <Expression name="mini_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 10</Expression>
+                <Expression name="companion_cold">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 10</Expression>
               </Expressions>
-              <Compare expression="mini_cold">
-                <PartDraw x="8" y="20" width="44" height="40" name="mini_scarf">
+              <Compare expression="companion_cold">
+                <PartDraw x="8" y="20" width="44" height="40" name="companion_scarf">
                   <RoundRectangle x="2" y="33" width="40" height="9" cornerRadiusX="4.5" cornerRadiusY="4.5">
                     <Fill color="#3f78c4" />
                   </RoundRectangle>
@@ -1632,10 +1632,10 @@
             </Condition>
             <Condition>
               <Expressions>
-                <Expression name="mini_cold_hands">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 5</Expression>
+                <Expression name="companion_cold_hands">[WEATHER.IS_AVAILABLE] &amp;&amp; [WEATHER.TEMPERATURE] &lt;= 5</Expression>
               </Expressions>
-              <Compare expression="mini_cold_hands">
-                <PartDraw x="0" y="0" width="62" height="72" name="mini_gloves">
+              <Compare expression="companion_cold_hands">
+                <PartDraw x="0" y="0" width="62" height="72" name="companion_gloves">
                   <Ellipse x="-2" y="32" width="13" height="12">
                     <Fill color="#3f78c4" />
                   </Ellipse>
@@ -1647,16 +1647,16 @@
             </Condition>
             <Condition>
               <Expressions>
-                <Expression name="mini_puffed">[HEART_RATE] &gt;= 100</Expression>
+                <Expression name="companion_puffed">[HEART_RATE] &gt;= 100</Expression>
               </Expressions>
-              <Compare expression="mini_puffed">
+              <Compare expression="companion_puffed">
                 <Condition>
                   <Expressions>
-                    <Expression name="mini_sweat_all">[HEART_RATE] &gt;= 150</Expression>
-                    <Expression name="mini_sweat_two">[HEART_RATE] &gt;= 120</Expression>
+                    <Expression name="companion_sweat_all">[HEART_RATE] &gt;= 150</Expression>
+                    <Expression name="companion_sweat_two">[HEART_RATE] &gt;= 120</Expression>
                   </Expressions>
-                  <Compare expression="mini_sweat_all">
-                    <PartDraw x="21" y="25" width="18" height="8" name="mini_sweat_three">
+                  <Compare expression="companion_sweat_all">
+                    <PartDraw x="21" y="25" width="18" height="8" name="companion_sweat_three">
                       <Ellipse x="0" y="2" width="4" height="5">
                         <Fill color="#9fd4e8" />
                       </Ellipse>
@@ -1668,8 +1668,8 @@
                       </Ellipse>
                     </PartDraw>
                   </Compare>
-                  <Compare expression="mini_sweat_two">
-                    <PartDraw x="21" y="25" width="18" height="8" name="mini_sweat_pair">
+                  <Compare expression="companion_sweat_two">
+                    <PartDraw x="21" y="25" width="18" height="8" name="companion_sweat_pair">
                       <Ellipse x="0" y="2" width="4" height="5">
                         <Fill color="#9fd4e8" />
                       </Ellipse>
@@ -1679,17 +1679,17 @@
                     </PartDraw>
                   </Compare>
                   <Default>
-                    <PartDraw x="21" y="25" width="18" height="8" name="mini_sweat_one">
+                    <PartDraw x="21" y="25" width="18" height="8" name="companion_sweat_one">
                       <Ellipse x="6" y="0" width="4" height="5">
                         <Fill color="#9fd4e8" />
                       </Ellipse>
                     </PartDraw>
                   </Default>
                 </Condition>
-                <Group x="0" y="0" width="62" height="72" name="mini_drip_a" alpha="255">
+                <Group x="0" y="0" width="62" height="72" name="companion_drip_a" alpha="255">
                   <Transform target="y" value="(4 + 6 * clamp(([HEART_RATE] - 100) / 100, 0, 1)) * ((([SECOND] % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2)" />
                   <Transform target="alpha" value="255 * (clamp(4 * ((([SECOND] % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2), 0, 1) - clamp(4 * ((([SECOND] % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2) - 3, 0, 1))" />
-                  <PartDraw x="0" y="0" width="62" height="72" name="mini_drip_beads_a">
+                  <PartDraw x="0" y="0" width="62" height="72" name="companion_drip_beads_a">
                     <Ellipse x="12" y="37" width="3.5" height="4.5">
                       <Fill color="#9fd4e8" />
                     </Ellipse>
@@ -1698,10 +1698,10 @@
                     </Ellipse>
                   </PartDraw>
                 </Group>
-                <Group x="0" y="0" width="62" height="72" name="mini_drip_b" alpha="255">
+                <Group x="0" y="0" width="62" height="72" name="companion_drip_b" alpha="255">
                   <Transform target="y" value="(4 + 6 * clamp(([HEART_RATE] - 100) / 100, 0, 1)) * (((([SECOND] + 1) % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2)" />
                   <Transform target="alpha" value="255 * (clamp(4 * (((([SECOND] + 1) % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2), 0, 1) - clamp(4 * (((([SECOND] + 1) % 2) + [SECOND_MILLISECOND] - [SECOND]) / 2) - 3, 0, 1)) * clamp(([HEART_RATE] - 140) / 20, 0, 1)" />
-                  <PartDraw x="0" y="0" width="62" height="72" name="mini_drip_beads_b">
+                  <PartDraw x="0" y="0" width="62" height="72" name="companion_drip_beads_b">
                     <Ellipse x="12" y="37" width="3.5" height="4.5">
                       <Fill color="#9fd4e8" />
                     </Ellipse>
@@ -2164,23 +2164,23 @@
             </PartText>
           </Group>
         </Group>
-        <Group name="mini_sleep_zzz" x="105" y="338" width="46" height="44" alpha="255">
+        <Group name="companion_sleep_zzz" x="105" y="338" width="46" height="44" alpha="255">
           <Gyro x="clamp([ACCELEROMETER_ANGLE_X], -35, 35) * 0.157" y="clamp([ACCELEROMETER_ANGLE_Y], -35, 35) * 0.1" />
           <Variant mode="AMBIENT" target="alpha" value="0" />
-          <Group name="mini_sleep_zzz_drift" x="0" y="0" width="46" height="44" alpha="255">
+          <Group name="companion_sleep_zzz_drift" x="0" y="0" width="46" height="44" alpha="255">
             <Transform target="y" value="0 - 9 * (((([SECOND] + 1) % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3)" />
             <Transform target="alpha" value="255 * (2 * (((([SECOND] + 1) % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3) - clamp(4 * (((([SECOND] + 1) % 3) + [SECOND_MILLISECOND] - [SECOND]) / 3) - 2, 0, 2))" />
-            <PartText name="mini_zzz_small" x="32" y="28" width="12" height="14">
+            <PartText name="companion_zzz_small" x="32" y="28" width="12" height="14">
               <Text align="START">
                 <Font family="SYNC_TO_DEVICE" size="9" weight="BOLD" slant="ITALIC" color="#93a3b4"><![CDATA[z]]></Font>
               </Text>
             </PartText>
-            <PartText name="mini_zzz_mid" x="17" y="14" width="15" height="17">
+            <PartText name="companion_zzz_mid" x="17" y="14" width="15" height="17">
               <Text align="START">
                 <Font family="SYNC_TO_DEVICE" size="12" weight="BOLD" slant="ITALIC" color="#a8b8c8"><![CDATA[z]]></Font>
               </Text>
             </PartText>
-            <PartText name="mini_zzz_big" x="0" y="0" width="18" height="20">
+            <PartText name="companion_zzz_big" x="0" y="0" width="18" height="20">
               <Text align="START">
                 <Font family="SYNC_TO_DEVICE" size="15" weight="BOLD" slant="ITALIC" color="#b9c6d4"><![CDATA[z]]></Font>
               </Text>

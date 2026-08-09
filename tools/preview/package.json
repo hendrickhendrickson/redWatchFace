@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"private": true,
 	"type": "module",
-	"description": "Live preview of the watch face. Deliberately isolated from the root package so the generator stays dependency-free.",
+	"description": "Live preview of the watch face. Deliberately isolated from the root package.json.",
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",

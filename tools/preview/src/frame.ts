@@ -20,7 +20,7 @@ import { clockValues, weekdayLabel } from './clock.ts';
 
 const TREE = face();
 
-/** Every state the preview can show, in the order capture-states.ps1 shoots them. */
+/** Every state the preview can show, in the order capture-states.ts shoots them. */
 export const STATE_NAMES: string[] = objectKeys(STATES);
 
 /**

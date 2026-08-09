@@ -43,8 +43,8 @@ export const colourFor = (wearer: Wearer, d: Weekday): Hex =>
  * `exprPrefix` is the name stem for the six <Expression> elements. It has to
  * stay unique per site because WFF expression names are scoped to their own
  * Condition but are still easier to read when they do not collide - the
- * original file used body, rmouth, omouth, mask, their mini equivalents, and
- * date.
+ * original file used body, rmouth, omouth, mask, their companion equivalents,
+ * and date.
  *
  * `build` receives the day and the colour that day's wearer shows, and returns
  * the parts to draw. It is called seven times: six inside Compares, once inside

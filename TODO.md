@@ -155,7 +155,7 @@ cocktail's canvas position being unchanged by the group move), and - **shot on t
 watch four times, 2026-08-08**. The last shoot also re-took `3-sunny` as a
 regression check on the cocktail, since it changed coordinate spaces. All frames plus
 the contact sheet are current. The pulsing controller button is visible in a still,
-but `cycle-states.ps1 -Only headset,fricontroller` is still worth a run before
+but `cycle-states.ts --only=headset,fricontroller` is still worth a run before
 calling the *motion* settled - a still shows the pulse at one arbitrary phase, not
 its cadence.
 

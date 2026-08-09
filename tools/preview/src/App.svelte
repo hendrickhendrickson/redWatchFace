@@ -59,7 +59,7 @@
       450&times;450 design canvas. Not pixel truth: text metrics belong to the device
       (<code>SYNC_TO_DEVICE</code>), the ambient easing curves are approximated, and
       hardware reports 426 where the emulator reports 454. The wrist is the arbiter &mdash;
-      <code>tools/cycle-states.ps1</code> is still the final word.
+      <code>tools/cycle-states.ts</code> is still the final word.
     </p>
   </section>
 

@@ -365,6 +365,6 @@ Each is cheap and each removes something currently painful or impossible.
    `[CONFIGURATION.<id>]` makes it drive expressions rather than only swap hexes.
 
 Two verification notes that apply to all of the above: anything expression-level has to be
-seen on the wrist (`tools/cycle-states.ps1`), and anything with a periodic alpha has to be
+seen on the wrist (`tools/cycle-states.ts`), and anything with a periodic alpha has to be
 checked against the mock's frozen `SECOND_MILLISECOND = 1.0` or its capture frame comes out
 empty.

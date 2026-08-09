@@ -77,7 +77,7 @@ broadcast and a wake. It is **not pixel truth** — text metrics belong to the d
 the easing curves are approximated — and the wrist stays the arbiter.
 
 ```bash
-cd tools/preview && npm install     # once, isolated: the generator stays dependency-free
+cd tools/preview && npm install     # once, isolated from the root package.json
 npm run preview                     # the authoring loop
 npm run preview:check               # prove the preview animates, clamps, clips and crossfades
 node tools/gen/build.ts --svg       # the same renderer, straight to a file
@@ -503,14 +503,13 @@ out, which it does routinely.
 
 To review the states without waiting for the weather, `tools/mock-state.ts` patches the
 **data** — temperature, hour, heart rate — into `watchface.xml`, so the real Conditions
-evaluate against known values, and `tools/capture-states.ps1` drives a build per state:
+evaluate against known values, and `tools/capture-states.ts` drives a build per state:
 
-```powershell
-powershell -File tools/capture-states.ps1                          # all twenty-four + ambient
-powershell -Command "& tools/capture-states.ps1 -Only 4b-gloves"   # one
-powershell -Command "& tools/capture-states.ps1 -SheetOnly"        # redraw the contact
-                                                                   #   sheet from disk
-node tools/mock-state.ts list                                     # what each state sets
+```bash
+node tools/capture-states.ts                            # all twenty-four + ambient
+node tools/capture-states.ts --only=4b-gloves            # one
+node tools/capture-states.ts --sheet-only                # redraw the contact sheet from disk
+node tools/mock-state.ts list                            # what each state sets
 
 # any point BETWEEN the named states - both new reactions are continuous ramps
 node tools/mock-state.ts on sweating --set=HEART_RATE=150 --live
@@ -525,7 +524,7 @@ rather than silently substituting nothing and leaving the source live.
 
 **Two things can put a wrong frame on disk, and only one of them is the script's fault.**
 
-_The screen dims and the check misses it._ `capture-states.ps1` rejects a capture that is
+_The screen dims and the check misses it._ `capture-states.ts` rejects a capture that is
 not the interactive face, and until 2026-08-07 it tested `max luminance >= 240` — which a
 half-brightness frame passed, because the watch draws a small pure-white system indicator
 near the bottom of the screen and that pins `max` at 255 no matter how dark the face is.
@@ -726,7 +725,7 @@ and the arms cross it. It now uses the headset's own cushion tone at a luma gap 
 peak moved to the body's topmost point so it rides _on_ the crown instead of cutting a chord
 through the head.
 
-`headset` and `fricontroller` are both in `cycle-states.ps1` if either accessory changes again — a
+`headset` and `fricontroller` are both in `cycle-states.ts` if either accessory changes again — a
 still frame shows the controller's pulse at one arbitrary phase, not its cadence.
 
 ### How the blobs are built
@@ -794,26 +793,26 @@ fire in the preview.
 
 ### Judging motion
 
-`capture-states.ps1` photographs states; [tools/cycle-states.ps1](tools/cycle-states.ps1)
+`capture-states.ts` photographs states; [tools/cycle-states.ts](tools/cycle-states.ts)
 _shows_ them. Parallax, the Zzz drift and the ambient crossfade cannot be seen in a
 still, so the only way to judge them is on a wrist:
 
-```powershell
-powershell -File tools/cycle-states.ps1                          # loop until stopped
-powershell -Command "& tools/cycle-states.ps1 -Laps 1"
-powershell -Command "& tools/cycle-states.ps1 -Only rainy,thunderstorm,night"
+```bash
+node tools/cycle-states.ts                          # loop until stopped
+node tools/cycle-states.ts --laps=1
+node tools/cycle-states.ts --only=rainy,thunderstorm,night
 ```
 
-Every state is mocked with `--live`, holds for `-HoldSeconds` (default 20), and ambient
+Every state is mocked with `--live`, holds for `--hold-seconds` (default 20), and ambient
 is skipped since both blob groups are alpha 0 there.
 
-Ctrl-C is safe — the screen timeout and the real build come back in a `finally`. **A hard
-kill is not**, and that is observed rather than theoretical: killing the owning job skips
-`finally` and leaves the watch on a 45 s timeout running a mock. The original timeout is
-written to `tools/cycle-states.state` first, so recovery is one command:
+Ctrl-C is safe — a SIGINT handler restores the screen timeout and the real build. **A hard
+kill is not**, and that is observed rather than theoretical: killing the owning process skips
+the handler entirely and leaves the watch on a 45 s timeout running a mock. The original
+timeout is written to `tools/cycle-states.state` first, so recovery is one command:
 
-```powershell
-powershell -Command "& tools/cycle-states.ps1 -Restore"
+```bash
+node tools/cycle-states.ts --restore
 ```
 
 It puts the timeout back, reinstalls, and **verifies by comparing the installed APK's md5

@@ -263,7 +263,7 @@ export const CUP_BOX = G.box(HAND.x - CUP_CENTRE_X, HAND.y - CUP_BASE_BOTTOM, 28
 	 * The middle wisp's centreline tops out at y0.5 inside a box that starts at 0,
 	 * and a 1.4-thick round cap reaches 0.7 past the endpoint - so its last 0.2px
 	 * arrives flat instead of round. Recorded rather than quietly fixed, the same
-	 * call MINI_SCARF_BOX makes about the companion's scarf tail: growing the box
+	 * call COMPANION_SCARF_BOX makes about the companion's scarf tail: growing the box
 	 * changes what the watch has been drawing.
 	 *
 	 * What is asserted is the line itself, not the cap. A centreline outside the

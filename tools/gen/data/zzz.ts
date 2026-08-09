@@ -69,9 +69,9 @@ export const ZZZ_SETS: ZzzSet[] = [
 		]
 	},
 	{
-		part: 'mini_zzz',
-		group: 'mini_sleep_zzz',
-		anchor: G.ANCHORS.MINI_SLEEP_ZZZ,
+		part: 'companion_zzz',
+		group: 'companion_sleep_zzz',
+		anchor: G.ANCHORS.COMPANION_SLEEP_ZZZ,
 		gyro: 'companion',
 		rise: 9,
 		period: 3,
@@ -114,8 +114,8 @@ export const ZZZ_SETS: ZzzSet[] = [
 	}
 
 	// The whole point of the offset.
-	const [hero, mini] = ZZZ_SETS;
-	if (hero.offset % hero.period === mini.offset % mini.period) {
+	const [hero, companion] = ZZZ_SETS;
+	if (hero.offset % hero.period === companion.offset % companion.period) {
 		problems.push(
 			'both trios are on the same phase - they would pulse together, which is the one thing to avoid'
 		);

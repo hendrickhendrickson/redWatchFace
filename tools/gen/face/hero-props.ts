@@ -6,7 +6,7 @@
  * starts at canvas x207 and its raised hand sits at group-local x10.5, so a
  * prop wider than 21px centred on that hand would need to start left of the
  * group's own origin - and content there is clipped. The companion's left
- * hand already demonstrates it: `mini_limbs` draws its cream cap from x-2 and
+ * hand already demonstrates it: `companion_limbs` draws its cream cap from x-2 and
  * the cap arrives flat-sided. Two passes of the controller were left visibly
  * off-centre by that limit before it was worth restructuring around.
  *

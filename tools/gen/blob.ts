@@ -46,12 +46,12 @@ export const HERO_GEOMETRY: BlobGeometry = {
 };
 
 export const COMPANION_GEOMETRY: BlobGeometry = {
-	box: G.MINI_BOX,
-	bodyShape: G.MINI_BODY_SHAPE,
-	bodyRadius: G.MINI_BODY_RADIUS,
-	mouthRound: G.MINI_MOUTH_ROUND,
-	mouthOpen: G.MINI_MOUTH_OPEN,
-	mouthMask: G.MINI_MOUTH_MASK
+	box: G.COMPANION_BOX,
+	bodyShape: G.COMPANION_BODY_SHAPE,
+	bodyRadius: G.COMPANION_BODY_RADIUS,
+	mouthRound: G.COMPANION_MOUTH_ROUND,
+	mouthOpen: G.COMPANION_MOUTH_OPEN,
+	mouthMask: G.COMPANION_MOUTH_MASK
 };
 
 /** The body: a rounded rectangle in the day's colour. */

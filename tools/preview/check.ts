@@ -156,7 +156,7 @@ const count = (text: string, pattern: RegExp): number => (text.match(pattern) ??
 // --- Clipping --------------------------------------------------------------
 
 /**
- * A Part clips to its own box, and the companion proves it: `mini_limbs` row 0 draws
+ * A Part clips to its own box, and the companion proves it: `companion_limbs` row 0 draws
  * a cream cap centred at local x4.5 with rx 6.5, so it starts at x-2 - OUTSIDE the
  * box - and arrives FLAT-SIDED on the watch. That observation is what the entire
  * hero_props restructuring came out of. A preview that drew it round would hide the

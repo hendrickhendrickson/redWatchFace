@@ -643,7 +643,7 @@ Clipping is implemented for the same reason and is not optional: `mini_limbs` dr
 x-2 inside a box starting at 0, and a preview that drew it round would hide the exact bug class
 that produced the whole `hero_props` restructuring.
 
-**The wrist stays the arbiter.** `tools/cycle-states.ps1` is still the final word — a green check
+**The wrist stays the arbiter.** `tools/cycle-states.ts` is still the final word — a green check
 proves nothing until you have watched it fail, and this document is emphatic about that everywhere
 else.
 

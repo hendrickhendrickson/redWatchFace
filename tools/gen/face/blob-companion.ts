@@ -28,12 +28,12 @@ import {
 } from '../states.ts';
 import { byWeekday } from '../weekday.ts';
 import {
-	MINI_DRIP,
-	MINI_HAND_LIMBS,
-	MINI_LEAVES,
-	MINI_LIMBS,
-	MINI_STROKE,
-	MINI_SWEAT
+	COMPANION_DRIP,
+	COMPANION_HAND_LIMBS,
+	COMPANION_LEAVES,
+	COMPANION_LIMBS,
+	COMPANION_STROKE,
+	COMPANION_SWEAT
 } from '../data/blobs.ts';
 import {
 	COMPANION_GEOMETRY,
@@ -53,14 +53,14 @@ import {
 /**
  * The X-ray, for when the bolt strikes: a dark body with a pale skeleton in it.
  *
- * IT SPREADS MINI_BODY_RADIUS RATHER THAN RESTATING 22/20, which it used to do two
- * branches away from the living body that uses the same constant. A change to the
- * body's corners would have left the X-ray rounder or squarer than the blob it
+ * IT SPREADS COMPANION_BODY_RADIUS RATHER THAN RESTATING 22/20, which it used to do
+ * two branches away from the living body that uses the same constant. A change to
+ * the body's corners would have left the X-ray rounder or squarer than the blob it
  * replaces - visible only during a thunderstorm, and only to someone looking for it.
  */
 const skeleton = (): Node =>
-	el('PartDraw', { ...G.MINI_BOX, name: 'mini_skeleton' }, [
-		el('RoundRectangle', { ...G.MINI_BODY_SHAPE, ...G.MINI_BODY_RADIUS }, [
+	el('PartDraw', { ...G.COMPANION_BOX, name: 'companion_skeleton' }, [
+		el('RoundRectangle', { ...G.COMPANION_BODY_SHAPE, ...G.COMPANION_BODY_RADIUS }, [
 			el('Fill', { color: C.SKELETON_DARK })
 		]),
 		el('Ellipse', { x: 12, y: 4, width: 20, height: 19 }, [
@@ -91,10 +91,10 @@ const skeleton = (): Node =>
 /** Awake, or asleep. The lids are two short strokes rather than closed lashes. */
 const eyes = (): Node =>
 	whenElse(
-		'mini_night',
+		'companion_night',
 		NIGHT,
 		[
-			el('PartDraw', { ...G.MINI_EYES_CLOSED_BOX, name: 'mini_eyes_closed' }, [
+			el('PartDraw', { ...G.COMPANION_EYES_CLOSED_BOX, name: 'companion_eyes_closed' }, [
 				el('Line', { startX: 2, startY: 6, endX: 11, endY: 6 }, [
 					el('Stroke', { color: C.INK, thickness: 2.5, cap: 'ROUND' })
 				]),
@@ -104,7 +104,7 @@ const eyes = (): Node =>
 			])
 		],
 		[
-			el('PartDraw', { ...G.MINI_BOX, name: 'mini_eyes_open' }, [
+			el('PartDraw', { ...G.COMPANION_BOX, name: 'companion_eyes_open' }, [
 				el('Ellipse', { x: 12, y: 14, width: 5, height: 6 }, [el('Fill', { color: C.INK })]),
 				el('Ellipse', { x: 27, y: 14, width: 5, height: 6 }, [el('Fill', { color: C.INK })])
 			])
@@ -113,8 +113,8 @@ const eyes = (): Node =>
 
 /** Sunglasses: two lenses and a bridge, no frame - there is no room for one. */
 const shades = (): Node =>
-	when('mini_uv', HIGH_UV, [
-		el('PartDraw', { ...G.MINI_SHADES_BOX, name: 'mini_shades' }, [
+	when('companion_uv', HIGH_UV, [
+		el('PartDraw', { ...G.COMPANION_SHADES_BOX, name: 'companion_shades' }, [
 			el(
 				'RoundRectangle',
 				{ x: 2, y: 2, width: 10, height: 8, cornerRadiusX: 4, cornerRadiusY: 4 },
@@ -130,10 +130,10 @@ const shades = (): Node =>
 	]);
 
 /** A band across the neck and a tail hanging off it. The tail is clipped; see
- *  MINI_SCARF_BOX. */
+ *  COMPANION_SCARF_BOX. */
 const scarf = (): Node =>
-	when('mini_cold', COLD, [
-		el('PartDraw', { ...G.MINI_SCARF_BOX, name: 'mini_scarf' }, [
+	when('companion_cold', COLD, [
+		el('PartDraw', { ...G.COMPANION_SCARF_BOX, name: 'companion_scarf' }, [
 			el(
 				'RoundRectangle',
 				{ x: 2, y: 33, width: 40, height: 9, cornerRadiusX: 4.5, cornerRadiusY: 4.5 },
@@ -149,65 +149,79 @@ const scarf = (): Node =>
 
 /** Forehead pearls in three steps, plus the two drips. */
 const sweat = (): Node =>
-	when('mini_puffed', PUFFED, [
+	when('companion_puffed', PUFFED, [
 		switchOn(
 			[
 				{
-					name: 'mini_sweat_all',
+					name: 'companion_sweat_all',
 					when: SWEAT_ALL,
-					then: [beadPart(G.MINI_SWEAT_BOX, 'mini_sweat_three', MINI_SWEAT, MINI_SWEAT.three)]
+					then: [
+						beadPart(
+							G.COMPANION_SWEAT_BOX,
+							'companion_sweat_three',
+							COMPANION_SWEAT,
+							COMPANION_SWEAT.three
+						)
+					]
 				},
 				{
-					name: 'mini_sweat_two',
+					name: 'companion_sweat_two',
 					when: SWEAT_TWO,
-					then: [beadPart(G.MINI_SWEAT_BOX, 'mini_sweat_pair', MINI_SWEAT, MINI_SWEAT.two)]
+					then: [
+						beadPart(
+							G.COMPANION_SWEAT_BOX,
+							'companion_sweat_pair',
+							COMPANION_SWEAT,
+							COMPANION_SWEAT.two
+						)
+					]
 				}
 			],
-			[beadPart(G.MINI_SWEAT_BOX, 'mini_sweat_one', MINI_SWEAT, MINI_SWEAT.one)]
+			[beadPart(G.COMPANION_SWEAT_BOX, 'companion_sweat_one', COMPANION_SWEAT, COMPANION_SWEAT.one)]
 		),
-		...dripGroups(G.MINI_LIMB_BOX, 'mini', MINI_DRIP)
+		...dripGroups(G.COMPANION_LIMB_BOX, 'companion', COMPANION_DRIP)
 	]);
 
 export const blobCompanion = (): Node =>
 	el('Group', { name: 'blob_companion', ...G.ANCHORS.COMPANION, alpha: 255 }, [
 		companionGyro(),
 		el('Variant', AMBIENT_HIDE),
-		...MINI_LEAVES.map((leaf) => leafPart(G.MINI_LEAF_BOX, leaf)),
-		limbPart(G.MINI_LIMB_BOX, 'mini_limbs', MINI_LIMBS, MINI_STROKE),
+		...COMPANION_LEAVES.map((leaf) => leafPart(G.COMPANION_LEAF_BOX, leaf)),
+		limbPart(G.COMPANION_LIMB_BOX, 'companion_limbs', COMPANION_LIMBS, COMPANION_STROKE),
 		whenElse(
-			'mini_zapped',
+			'companion_zapped',
 			STORM,
 			[skeleton()],
 			[
-				el('Group', { ...G.MINI_LIMB_BOX, name: 'mini_alive', alpha: 255 }, [
-					byWeekday('mini', 'companion', (day, body) => [
-						bodyPart(COMPANION_GEOMETRY, partName('mini', 'body', day), body)
+				el('Group', { ...G.COMPANION_LIMB_BOX, name: 'companion_alive', alpha: 255 }, [
+					byWeekday('companion_body', 'companion', (day, body) => [
+						bodyPart(COMPANION_GEOMETRY, partName('companion', 'body', day), body)
 					]),
 					whenElse(
-						'mini_mouth_night',
+						'companion_mouth_night',
 						NIGHT,
 						[
-							byWeekday('minirmouth', 'companion', (day, body) => [
-								roundMouth(COMPANION_GEOMETRY, partName('mini', 'mouth_sleep', day), body)
+							byWeekday('companion_rmouth', 'companion', (day, body) => [
+								roundMouth(COMPANION_GEOMETRY, partName('companion', 'mouth_sleep', day), body)
 							])
 						],
 						[
-							byWeekday('miniomouth', 'companion', (day, body) => [
-								openMouth(COMPANION_GEOMETRY, partName('mini', 'mouth_open', day), body)
+							byWeekday('companion_omouth', 'companion', (day, body) => [
+								openMouth(COMPANION_GEOMETRY, partName('companion', 'mouth_open', day), body)
 							]),
-							byWeekday('minimask', 'companion', (day, body) => [
-								mouthMask(COMPANION_GEOMETRY, partName('mini', 'mouth_mask', day), body)
+							byWeekday('companion_mask', 'companion', (day, body) => [
+								mouthMask(COMPANION_GEOMETRY, partName('companion', 'mouth_mask', day), body)
 							])
 						]
 					),
 					eyes(),
 					shades(),
 					scarf(),
-					when('mini_cold_hands', GLOVE_COLD, [
+					when('companion_cold_hands', GLOVE_COLD, [
 						glovePart(
-							G.MINI_LIMB_BOX,
-							'mini_gloves',
-							MINI_HAND_LIMBS.map((i) => MINI_LIMBS[i])
+							G.COMPANION_LIMB_BOX,
+							'companion_gloves',
+							COMPANION_HAND_LIMBS.map((i) => COMPANION_LIMBS[i])
 						)
 					]),
 					sweat()

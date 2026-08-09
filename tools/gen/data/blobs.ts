@@ -128,7 +128,7 @@ export const HERO_LEAVES: Leaf[] = [
 
 // --- The companion ----------------------------------------------------------
 
-export const MINI_STROKE: LimbStroke = { cream: 6.2, ink: 3.2 };
+export const COMPANION_STROKE: LimbStroke = { cream: 6.2, ink: 3.2 };
 
 /**
  * All four limbs in one part, unlike the hero.
@@ -143,7 +143,7 @@ export const MINI_STROKE: LimbStroke = { cream: 6.2, ink: 3.2 };
  * hero_props restructuring came out of: content left of a part's origin is cut
  * off. See face/hero-props.ts and the clipping note in svg.ts.
  */
-export const MINI_LIMBS: Limb[] = [
+export const COMPANION_LIMBS: Limb[] = [
 	{
 		line: { startX: 12, startY: 44, endX: 5, endY: 38 },
 		cream: G.box(-2, 32, 13, 12),
@@ -203,11 +203,11 @@ export const GOAL_POLE = { x: 93, top: 19, bottom: 74, thickness: 2.5 };
 }
 
 /** Which limbs are hands, and so get mittens when it is cold enough. */
-export const MINI_HAND_LIMBS = [0, 1] as const;
+export const COMPANION_HAND_LIMBS = [0, 1] as const;
 
-export const MINI_LEAVES: Leaf[] = [
-	{ name: 'mini_leaf_left', angle: -26, blade: G.box(19, 6, 11, 18), dark: true },
-	{ name: 'mini_leaf_right', angle: 20, blade: G.box(18, 4, 12, 20), dark: false }
+export const COMPANION_LEAVES: Leaf[] = [
+	{ name: 'companion_leaf_left', angle: -26, blade: G.box(19, 6, 11, 18), dark: true },
+	{ name: 'companion_leaf_right', angle: 20, blade: G.box(18, 4, 12, 20), dark: false }
 ];
 
 // --- Sweat ------------------------------------------------------------------
@@ -239,7 +239,7 @@ export const HERO_SWEAT: SweatFigure = {
 	...SUBSETS
 };
 
-export const MINI_SWEAT: SweatFigure = {
+export const COMPANION_SWEAT: SweatFigure = {
 	beads: [G.box(0, 2, 4, 5), G.box(6, 0, 4, 5), G.box(12, 2, 4, 4)],
 	...SUBSETS
 };
@@ -273,7 +273,7 @@ export const HERO_DRIP: DripFigure = {
 	...SECOND_DRIP
 };
 
-export const MINI_DRIP: DripFigure = {
+export const COMPANION_DRIP: DripFigure = {
 	beads: [G.box(12, 37, 3.5, 4.5), G.box(44.5, 37, 3.5, 4.5)],
 	fall: 4,
 	fallExtra: 6,
@@ -290,6 +290,9 @@ export const MINI_DRIP: DripFigure = {
 export const DRIP_RAMP_SPAN = 100;
 
 /** Build-time proof that the two drip figures agree about their late fade. */
-if (HERO_DRIP.secondFrom !== MINI_DRIP.secondFrom || HERO_DRIP.secondTo !== MINI_DRIP.secondTo) {
+if (
+	HERO_DRIP.secondFrom !== COMPANION_DRIP.secondFrom ||
+	HERO_DRIP.secondTo !== COMPANION_DRIP.secondTo
+) {
 	throw new Error('the two blobs disagree about when the second drip appears');
 }

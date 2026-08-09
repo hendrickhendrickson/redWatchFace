@@ -206,7 +206,7 @@ export const STATES: StateTable = {
 	thunderstorm: { 'WEATHER.CHANCE_OF_PRECIPITATION': 90, 'WEATHER.CONDITION': 12 },
 	// The top of the rain ramp: all 24 drops, largest and fastest. No docs frame
 	// of its own - rainy and thunderstorm bracket the range - but it is in
-	// cycle-states.ps1, because the whole point of the ramp is how it moves.
+	// cycle-states.ts, because the whole point of the ramp is how it moves.
 	downpour: { 'WEATHER.CHANCE_OF_PRECIPITATION': 100, 'WEATHER.CONDITION': 12 },
 	// The sweat frames BRACKET the ramp rather than sampling its middle: 100 is
 	// exactly on the gate, where the drip is shortest and slowest with one bead

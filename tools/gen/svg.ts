@@ -23,7 +23,7 @@
  *
  * WHAT IT IS FOR, and what it is not. Seeing a change on the wrist costs a Gradle
  * build, an install, a broadcast and a wake; a full state sweep via
- * capture-states.ps1 costs about nine minutes. That is a fine gate and a hopeless
+ * capture-states.ts costs about nine minutes. That is a fine gate and a hopeless
  * authoring loop. This is the authoring loop.
  *
  * IT IS NOT PIXEL TRUTH, and three things guarantee that:
@@ -37,7 +37,7 @@
  *   - SCALE. The design canvas is 450x450, the Pixel Watch 4 reports 426, and the
  *     emulator 454. This adds a fourth geometry rather than settling the question.
  *
- * The wrist stays the arbiter. cycle-states.ps1 is still the final word.
+ * The wrist stays the arbiter. cycle-states.ts is still the final word.
  */
 
 import { isElement, isTextNode, type Attrs, type Element, type Node } from './xml.ts';
@@ -409,7 +409,7 @@ const render = (node: Node, opts: RenderOpts, defs: string[]): string => {
 		 * A Part CLIPS TO ITS OWN BOX, and implementing that is not optional.
 		 *
 		 * It is the single most consequential piece of WFF semantics in this face.
-		 * `mini_limbs` draws a hand ellipse from local x-2 inside a box that starts at
+		 * `companion_limbs` draws a hand ellipse from local x-2 inside a box that starts at
 		 * 0, and the cap arrives FLAT-SIDED on the watch - which is the observation
 		 * the entire hero_props restructuring came out of, since a prop centred on the
 		 * hero's raised hand would have been cut off the same way. A preview that

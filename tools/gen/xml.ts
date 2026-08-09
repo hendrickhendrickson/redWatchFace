@@ -81,7 +81,33 @@ export const fmt = (n: number): string => {
 }
 
 const INDENT = '  '
-const EOL = '\r\n'
+
+/**
+ * LF, NOT CRLF - and this was a real bug for at least one release.
+ *
+ * The serialiser emitted CRLF because the hand-authored file had it and the
+ * migration was gated on byte-identical output. That reason expired when the
+ * migration landed and the frozen original was deleted; the CRLF stayed, and it
+ * quietly broke the staleness gate.
+ *
+ * `core.autocrlf` is `input` here, so git normalises CRLF to LF on the way in and
+ * writes LF back out on checkout. Every committed blob is therefore pure LF -
+ * verified across 1.2.0 and every commit since, 2189 LF lines and not one CR. But
+ * the generator wrote CRLF into the working tree. So --check compared a CRLF tree
+ * against a CRLF render and passed, right up until anything touched the file:
+ *
+ *   fresh clone, checkout, rebase, git stash pop
+ *     -> tree becomes LF -> --check fails at byte 38, on line 1
+ *
+ * That takes `validateWatchFaceXml` with it, since it dependsOn the staleness
+ * check - so on a fresh clone the Gradle verification reported the XML stale
+ * before it ever reached the schema. Regenerating "fixed" it and re-armed it.
+ *
+ * LF is also simply correct here: XML is line-ending agnostic, the APK has been
+ * built from LF blobs for a release already, and every other file in the repo is
+ * LF. Nothing is gained by being the exception.
+ */
+export const EOL = '\n'
 
 const openTag = (e: Element, selfClose: boolean): string => {
   const parts = [e.tag]

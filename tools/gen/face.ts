@@ -10,7 +10,7 @@
  * nothing derived from watchface.xml is ever an input to watchface.xml.
  */
 
-import { el, type Node } from "./xml.ts";
+import { el, EOL, type Node } from "./xml.ts";
 import { sections } from "./face/index.ts";
 
 /** WFF format version. Keep in step with AndroidManifest.xml and build.gradle.kts. */
@@ -55,7 +55,7 @@ const BANNER = [
   "    The design notes that used to live here now sit on the constants they",
   "    explain - see palette.ts, geometry.ts and expr.ts.",
   "",
-].join("\r\n");
+].join(EOL);
 
 /**
  * XML forbids "--" inside a comment, and the WFF validator enforces it. Writing
@@ -68,16 +68,25 @@ if (BANNER.includes("--")) {
   );
 }
 
+/**
+ * THE LINE ENDING COMES FROM xml.ts, in one place.
+ *
+ * These four separators and the BANNER's own join were hard-coded to "\r\n" while
+ * the serialiser had its own copy - so the document's endings were defined twice,
+ * and switching the serialiser to LF left twelve CRLF lines behind at the top of
+ * the file. See the note on EOL in xml.ts for why LF, and for the release-long bug
+ * the CRLF was causing.
+ */
 export function face(): Node[] {
   return [
     { k: "decl", text: '<?xml version="1.0" encoding="utf-8"?>' },
-    { k: "text", text: "\r\n" },
+    { k: "text", text: EOL },
     { k: "comment", text: BANNER, raw: `<!--${BANNER}-->` },
-    { k: "text", text: "\r\n" },
+    { k: "text", text: EOL },
     el("WatchFace", { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }, [
       ...METADATA.map(([key, value]) => el("Metadata", { key, value })),
       el("Scene", { backgroundColor: SCENE_BACKGROUND }, sections()),
     ]),
-    { k: "text", text: "\r\n" },
+    { k: "text", text: EOL },
   ];
 }

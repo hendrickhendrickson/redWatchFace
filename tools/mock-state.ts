@@ -36,24 +36,27 @@
  * the clock block, the leftover scan.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { objectEntries, objectKeys } from 'hhson-lib';
 import {
-  BASE,
-  BASE_DISPLAY,
-  LIVE_SOURCES,
-  NOT_A_VALUE,
-  STATES,
-  type NumericSource,
-} from './gen/fixtures.ts'
+	BASE,
+	BASE_DISPLAY,
+	isNumericSource,
+	LIVE_SOURCES,
+	NOT_A_VALUE,
+	STATES,
+	type NumericSource
+} from './gen/fixtures.ts';
 
-const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const face = resolve(repo, 'watchface/src/main/res/raw/watchface.xml')
+const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const face = resolve(repo, 'watchface/src/main/res/raw/watchface.xml');
 // Under build/ because aapt rejects a resource filename containing a dot.
-const backup = resolve(repo, 'watchface/build/mock-state-backup.xml')
+const backup = resolve(repo, 'watchface/build/mock-state-backup.xml');
 
-type Values = Record<string, number | string>
+// Partial: keyed by source name, and `values['DAY']` is a lookup that can miss.
+type Values = Partial<Record<string, number | string>>;
 
 /**
  * Templates that cannot become numeric literals.
@@ -64,25 +67,25 @@ type Values = Record<string, number | string>
  * than producing 24 wrong screenshots. The generator now renders any element
  * with text content inline, partly for this reason.
  */
-const TEMPLATE_SWAPS = (v: Values): Array<[string, string]> => [
-  // %s cannot take a number, so the weekday is replaced wholesale. Static text
-  // has to be bare Font content: a Template requires at least one Parameter.
-  [
-    `<Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>`,
-    `<![CDATA[${v['weekday']}]]>`,
-  ],
-  [
-    `<Template><![CDATA[%s %d]]><Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template>`,
-    `<![CDATA[${v['weekday']} ${v['DAY']}]]>`,
-  ],
-]
+const TEMPLATE_SWAPS = (values: Values): Array<[string, string]> => [
+	// %s cannot take a number, so the weekday is replaced wholesale. Static text
+	// has to be bare Font content: a Template requires at least one Parameter.
+	[
+		`<Template><![CDATA[%s]]><Parameter expression="[DAY_OF_WEEK_S]" /></Template>`,
+		`<![CDATA[${values['weekday']}]]>`
+	],
+	[
+		`<Template><![CDATA[%s %d]]><Parameter expression="[DAY_OF_WEEK_S]" /><Parameter expression="[DAY]" /></Template>`,
+		`<![CDATA[${values['weekday']} ${values['DAY']}]]>`
+	]
+];
 
 /**
  * TimeText renders the system clock, has no literal mode, and its <Font> is a
  * restricted definition that accepts no children - so it cannot even hold a
  * Transform. The whole DigitalClock block is swapped for PartTexts.
  */
-const CLOCK_RE = /<DigitalClock\b[\s\S]*?<\/DigitalClock>/
+const CLOCK_RE = /<DigitalClock\b[\s\S]*?<\/DigitalClock>/;
 
 /**
  * BOTH COPIES, not one.
@@ -94,13 +97,13 @@ const CLOCK_RE = /<DigitalClock\b[\s\S]*?<\/DigitalClock>/
  * than in this file. So the two-copy crossfade is mirrored here exactly, Variant
  * timings included.
  */
-const clockMock = (v: Values): string =>
-  `<Group name="mock_time_interactive" x="0" y="0" width="450" height="450" alpha="255">
+const clockMock = (values: Values): string =>
+	`<Group name="mock_time_interactive" x="0" y="0" width="450" height="450" alpha="255">
       <Variant mode="AMBIENT" target="alpha" value="0"
                duration="0.45" startOffset="0" interpolation="EASE_IN" />
       <PartText name="mock_time" x="0" y="68" width="450" height="120">
         <Text align="CENTER">
-          <Font family="SYNC_TO_DEVICE" size="100" weight="BOLD" slant="NORMAL" color="#fff6e8"><![CDATA[${v['time']}]]></Font>
+          <Font family="SYNC_TO_DEVICE" size="100" weight="BOLD" slant="NORMAL" color="#fff6e8"><![CDATA[${values['time']}]]></Font>
         </Text>
       </PartText>
     </Group>
@@ -109,23 +112,28 @@ const clockMock = (v: Values): string =>
                duration="0.50" startOffset="0.50" interpolation="EASE_OUT" />
       <PartText name="mock_time_amb" x="0" y="68" width="450" height="120">
         <Text align="CENTER">
-          <Font family="SYNC_TO_DEVICE" size="100" weight="LIGHT" slant="NORMAL" color="#ffffff"><![CDATA[${v['time']}]]></Font>
+          <Font family="SYNC_TO_DEVICE" size="100" weight="LIGHT" slant="NORMAL" color="#ffffff"><![CDATA[${values['time']}]]></Font>
         </Text>
       </PartText>
-    </Group>`
+    </Group>`;
 
 // --- CLI --------------------------------------------------------------------
 
-const argv = process.argv.slice(2)
-const live = argv.includes('--live')
-const positional = argv.filter((a) => !a.startsWith('--'))
-const cmd = positional[0] ?? 'status'
-const stateName = positional[1]
+const argv = process.argv.slice(2);
+const live = argv.includes('--live');
+const positional = argv.filter((arg) => !arg.startsWith('--'));
+const cmd = positional[0] ?? 'status';
+const stateName = positional[1];
 
-const die = (msg: string): never => {
-  console.error(msg)
-  process.exit(1)
-}
+/**
+ * The type annotation is on the CONST, not just on the arrow: TypeScript only treats a call as
+ * terminating control flow when the callee has an explicit type annotation at its declaration.
+ * Without it, every value checked by a `die()` guard stays possibly-undefined afterwards.
+ */
+const die: (msg: string) => never = (msg) => {
+	console.error(msg);
+	process.exit(1);
+};
 
 /**
  * Ad-hoc overrides:  --set=WEATHER.CHANCE_OF_PRECIPITATION=70
@@ -142,91 +150,106 @@ const die = (msg: string): never => {
  * substitute nothing, and leave the source LIVE - the exact failure the leftover
  * scan exists to prevent.
  */
-const overrides: Partial<Record<NumericSource, number>> = {}
-for (const a of argv.filter((x) => x.startsWith('--set='))) {
-  const [k, v] = a.slice('--set='.length).split('=')
-  if (!k || !(k in BASE)) {
-    console.error(`ABORT: --set key "${k}" is not a known source. One of:`)
-    die(`  ${Object.keys(BASE).join(', ')}`)
-  }
-  if (v === undefined || v === '' || Number.isNaN(Number(v))) {
-    die(`ABORT: --set ${k} needs a numeric value, got "${v}"`)
-  }
-  overrides[k as NumericSource] = Number(v)
+const overrides: Partial<Record<NumericSource, number>> = {};
+for (const arg of argv.filter((candidate) => candidate.startsWith('--set='))) {
+	// `at`, not destructuring: `--set=` with nothing after it splits to a one-element array, so
+	// both halves are genuinely optional and the checks below are real.
+	const parts = arg.slice('--set='.length).split('=');
+	const key = parts.at(0);
+	const value = parts.at(1);
+	if (key === undefined || !isNumericSource(key)) {
+		console.error(`ABORT: --set key "${key}" is not a known source. One of:`);
+		die(`  ${objectKeys(BASE).join(', ')}`);
+	}
+	if (value === undefined || value === '' || Number.isNaN(Number(value))) {
+		die(`ABORT: --set ${key} needs a numeric value, got "${value}"`);
+	}
+	overrides[key] = Number(value);
 }
 
 if (cmd === 'list') {
-  console.log('States:')
-  for (const [n, o] of Object.entries(STATES)) {
-    const delta = Object.entries(o).map(([k, val]) => `${k}=${val}`).join('  ')
-    console.log(`  ${n.padEnd(13)} ${delta || '(base values)'}`)
-  }
-  process.exit(0)
+	console.log('States:');
+	for (const [name, delta] of objectEntries(STATES)) {
+		if (delta === undefined) {
+			continue;
+		}
+		const summary = objectEntries(delta)
+			.map(([key, val]) => `${key}=${val}`)
+			.join('  ');
+		console.log(`  ${name.padEnd(13)} ${summary === '' ? '(base values)' : summary}`);
+	}
+	process.exit(0);
 }
 
 if (cmd === 'status') {
-  console.log(existsSync(backup) ? 'MOCK is IN PLACE (backup exists)' : 'real values (clean)')
-  if (existsSync(backup)) console.log(`  backup: ${backup}`)
-  // THIS COMMAND CANNOT SEE THE WATCH. It reports on the working tree only, and
-  // a clean tree says nothing about which APK is installed - `off` restores the
-  // file but does not reinstall. Reading "clean" as "the watch is showing real
-  // data" is wrong, and was wrong in a way that produced three bug reports
-  // against the watch face for what was a leftover mock build.
-  console.log('  (working tree only - says NOTHING about which APK is on the watch;')
-  console.log('   reinstall to be sure: ./gradlew :watchface:installDebug)')
-  process.exit(0)
+	console.log(existsSync(backup) ? 'MOCK is IN PLACE (backup exists)' : 'real values (clean)');
+	if (existsSync(backup)) {
+		console.log(`  backup: ${backup}`);
+	}
+	// THIS COMMAND CANNOT SEE THE WATCH. It reports on the working tree only, and
+	// a clean tree says nothing about which APK is installed - `off` restores the
+	// file but does not reinstall. Reading "clean" as "the watch is showing real
+	// data" is wrong, and was wrong in a way that produced three bug reports
+	// against the watch face for what was a leftover mock build.
+	console.log('  (working tree only - says NOTHING about which APK is on the watch;');
+	console.log('   reinstall to be sure: ./gradlew :watchface:installDebug)');
+	process.exit(0);
 }
 
 if (cmd === 'off') {
-  if (!existsSync(backup)) {
-    die('No backup found - nothing to restore. Values are presumably already real.')
-  }
-  writeFileSync(face, readFileSync(backup))
-  rmSync(backup)
-  console.log('Real values restored. REINSTALL so the watch stops showing the mock:')
-  console.log('  ./gradlew :watchface:installDebug')
-  process.exit(0)
+	if (!existsSync(backup)) {
+		die('No backup found - nothing to restore. Values are presumably already real.');
+	}
+	writeFileSync(face, readFileSync(backup));
+	rmSync(backup);
+	console.log('Real values restored. REINSTALL so the watch stops showing the mock:');
+	console.log('  ./gradlew :watchface:installDebug');
+	process.exit(0);
 }
 
 if (cmd !== 'on') {
-  die(`Unknown command "${cmd}". Use: on <state> | off | status | list`)
+	die(`Unknown command "${cmd}". Use: on <state> | off | status | list`);
 }
 if (!stateName || !(stateName in STATES)) {
-  console.error('Usage: node tools/mock-state.ts on <state>')
-  die(`States: ${Object.keys(STATES).join(', ')}`)
+	console.error('Usage: node tools/mock-state.ts on <state>');
+	die(`States: ${objectKeys(STATES).join(', ')}`);
 }
 if (existsSync(backup)) {
-  console.error('Already mocked - run "off" first, or delete the backup if you are sure:')
-  die(`  ${backup}`)
+	console.error('Already mocked - run "off" first, or delete the backup if you are sure:');
+	die(`  ${backup}`);
 }
 
 const values: Values = {
-  ...BASE,
-  ...BASE_DISPLAY,
-  ...STATES[stateName as string],
-  ...overrides,
-}
+	...BASE,
+	...BASE_DISPLAY,
+	...STATES[stateName],
+	...overrides
+};
 
-let s = readFileSync(face, 'utf8')
+let xml = readFileSync(face, 'utf8');
 const fail = (msg: string): never => {
-  console.error(`ABORT: ${msg}`)
-  return die('watchface.xml has changed. Update tools/mock-state.ts.')
-}
+	console.error(`ABORT: ${msg}`);
+	return die('watchface.xml has changed. Update tools/mock-state.ts.');
+};
 
 // 1. Templates that cannot become numeric literals.
 for (const [from, to] of TEMPLATE_SWAPS(values)) {
-  if (s.includes(from)) s = s.split(from).join(to)
+	if (xml.includes(from)) {
+		xml = xml.split(from).join(to);
+	}
 }
-if (s.includes('DAY_OF_WEEK_S')) fail('a [DAY_OF_WEEK_S] Template was not in the swap table')
+if (xml.includes('DAY_OF_WEEK_S')) {
+	fail('a [DAY_OF_WEEK_S] Template was not in the swap table');
+}
 
 // 2. Every remaining source token -> a literal.
 //    Longest name first so no token is a prefix of another.
-const kept = new Set<string>(live ? LIVE_SOURCES : [])
-const substitutable = Object.keys(values)
-  .filter((k) => k !== 'time' && k !== 'weekday' && !kept.has(k))
-  .sort((a, b) => b.length - a.length)
+const kept = new Set<string>(live ? LIVE_SOURCES : []);
+const substitutable = objectKeys(values)
+	.filter((key) => key !== 'time' && key !== 'weekday' && !kept.has(key))
+	.sort((a, b) => b.length - a.length);
 for (const key of substitutable) {
-  s = s.split(`[${key}]`).join(String(values[key]))
+	xml = xml.split(`[${key}]`).join(String(values[key]));
 }
 
 // 3. Nothing may be left reading live data. This is the safety net: a source
@@ -235,38 +258,44 @@ for (const key of substitutable) {
 //
 //    COMMENTS ARE STRIPPED FIRST. The generated banner mentions no sources, but
 //    this stays because it costs nothing and the rule is "only markup counts".
-const markup = s.replace(/<!--[\s\S]*?-->/g, '')
+const markup = xml.replace(/<!--[\s\S]*?-->/g, '');
 const leftover = [
-  ...new Set([...markup.matchAll(/\[([A-Z][A-Z0-9_.]*)\]/g)].map((m) => m[1] as string)),
-].filter((n) => !NOT_A_VALUE.has(n) && !kept.has(n))
-if (leftover.length) fail(`unmocked source(s) still live: ${leftover.join(', ')}`)
+	...new Set([...markup.matchAll(/\[([A-Z][A-Z0-9_.]*)\]/g)].map((match) => match[1]))
+].filter((source) => !NOT_A_VALUE.has(source) && !kept.has(source));
+if (leftover.length) {
+	fail(`unmocked source(s) still live: ${leftover.join(', ')}`);
+}
 
 // 4. The clock.
-if (!CLOCK_RE.test(s)) fail('no <DigitalClock> block found')
-s = s.replace(CLOCK_RE, clockMock(values))
+if (!CLOCK_RE.test(xml)) {
+	fail('no <DigitalClock> block found');
+}
+xml = xml.replace(CLOCK_RE, clockMock(values));
 
-mkdirSync(dirname(backup), { recursive: true })
-writeFileSync(backup, readFileSync(face))
-writeFileSync(face, s)
+mkdirSync(dirname(backup), { recursive: true });
+writeFileSync(backup, readFileSync(face));
+writeFileSync(face, xml);
 
-const overrideNote = Object.keys(overrides).length
-  ? ` + ${Object.entries(overrides).map(([k, v]) => `${k}=${v}`).join(' ')}`
-  : ''
-console.log(`Mocked as "${stateName}"${overrideNote}:`)
-console.log(`   ${values['time']}  ${values['weekday']} ${values['DAY']}`)
+const overrideNote = objectKeys(overrides).length
+	? ` + ${objectEntries(overrides)
+			.map(([key, value]) => `${key}=${value}`)
+			.join(' ')}`
+	: '';
+console.log(`Mocked as "${stateName}"${overrideNote}:`);
+console.log(`   ${values['time']}  ${values['weekday']} ${values['DAY']}`);
 console.log(
-  `   ${values['WEATHER.TEMPERATURE']}°  cond=${values['WEATHER.CONDITION']}` +
-    `  day=${values['WEATHER.IS_DAY']}  precip=${values['WEATHER.CHANCE_OF_PRECIPITATION']}%` +
-    `  uv=${values['WEATHER.UV_INDEX']}`,
-)
+	`   ${values['WEATHER.TEMPERATURE']}°  cond=${values['WEATHER.CONDITION']}` +
+		`  day=${values['WEATHER.IS_DAY']}  precip=${values['WEATHER.CHANCE_OF_PRECIPITATION']}%` +
+		`  uv=${values['WEATHER.UV_INDEX']}`
+);
 console.log(
-  `   ${values['HEART_RATE']} bpm · ${values['STEP_COUNT']} steps` +
-    ` (${values['STEP_PERCENT']}%) · ${values['BATTERY_PERCENT']}%`,
-)
+	`   ${values['HEART_RATE']} bpm · ${values['STEP_COUNT']} steps` +
+		` (${values['STEP_PERCENT']}%) · ${values['BATTERY_PERCENT']}%`
+);
 console.log(
-  live
-    ? '   motion LIVE - accelerometer and seconds still run'
-    : '   motion frozen - deterministic, use --live to watch parallax or the zzz drift',
-)
-console.log('')
-console.log('AFTERWARDS:  node tools/mock-state.ts off   AND REINSTALL.')
+	live
+		? '   motion LIVE - accelerometer and seconds still run'
+		: '   motion frozen - deterministic, use --live to watch parallax or the zzz drift'
+);
+console.log('');
+console.log('AFTERWARDS:  node tools/mock-state.ts off   AND REINSTALL.');

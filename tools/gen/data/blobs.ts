@@ -26,42 +26,42 @@
  * removed: a mitten that no longer sits on its hand cannot be written.
  */
 
-import type { Box } from '../geometry.ts'
-import * as G from '../geometry.ts'
-import { T } from '../states.ts'
+import type { Box } from '../geometry.ts';
+import * as G from '../geometry.ts';
+import { T } from '../states.ts';
 
 /** A limb: one line, drawn twice, with a cap on each pass. */
-export interface Limb {
-  line: { startX: number; startY: number; endX: number; endY: number }
-  /** The outer cream cap - a hand or a foot. Gloves are drawn from this box. */
-  cream: Box
-  /** The inner ink cap, inset inside the cream one. */
-  ink: Box
-}
+export type Limb = {
+	line: { startX: number; startY: number; endX: number; endY: number };
+	/** The outer cream cap - a hand or a foot. Gloves are drawn from this box. */
+	cream: Box;
+	/** The inner ink cap, inset inside the cream one. */
+	ink: Box;
+};
 
 /** How thick each of a blob's two passes is. */
-export interface LimbStroke {
-  cream: number
-  ink: number
-}
+export type LimbStroke = {
+	cream: number;
+	ink: number;
+};
 
 // --- The hero ---------------------------------------------------------------
 
-export const HERO_STROKE: LimbStroke = { cream: 8, ink: 4.5 }
+export const HERO_STROKE: LimbStroke = { cream: 8, ink: 4.5 };
 
 /** Both legs, in one part. Always drawn; the arms are pose-dependent. */
 export const HERO_LEGS: Limb[] = [
-  {
-    line: { startX: 38, startY: 112, endX: 34, endY: 124 },
-    cream: G.box(22, 117, 24, 15),
-    ink: G.box(24, 119, 20, 11),
-  },
-  {
-    line: { startX: 62, startY: 112, endX: 66, endY: 124 },
-    cream: G.box(54, 117, 24, 15),
-    ink: G.box(56, 119, 20, 11),
-  },
-]
+	{
+		line: { startX: 38, startY: 112, endX: 34, endY: 124 },
+		cream: G.box(22, 117, 24, 15),
+		ink: G.box(24, 119, 20, 11)
+	},
+	{
+		line: { startX: 62, startY: 112, endX: 66, endY: 124 },
+		cream: G.box(54, 117, 24, 15),
+		ink: G.box(56, 119, 20, 11)
+	}
+];
 
 /**
  * The four arm poses, one Limb each.
@@ -72,31 +72,31 @@ export const HERO_LEGS: Limb[] = [
  * into a comment. See the header of face/hero-props.ts.
  */
 export const HERO_ARMS = {
-  /** Raised, holding whatever the props section draws. The daytime default. */
-  leftUp: {
-    line: { startX: 22, startY: 70, endX: 11, endY: 40 },
-    cream: G.box(1, 26, 19, 18),
-    ink: G.box(3, 28, 15, 14),
-  },
-  /** Hanging, at night when it is not raining. */
-  leftDown: {
-    line: { startX: 24, startY: 78, endX: 12, endY: 96 },
-    cream: G.box(0.5, 93, 19, 18),
-    ink: G.box(2.5, 95, 15, 14),
-  },
-  /** Out to the side, the daytime default. Lands partly under the headset cup. */
-  rightOut: {
-    line: { startX: 84, startY: 74, endX: 93, endY: 62 },
-    cream: G.box(84, 52, 18, 17),
-    ink: G.box(86, 54, 14, 13),
-  },
-  /** Hanging, at night. */
-  rightDown: {
-    line: { startX: 76, startY: 78, endX: 88, endY: 96 },
-    cream: G.box(80.5, 93, 19, 18),
-    ink: G.box(82.5, 95, 15, 14),
-  },
-} as const satisfies Record<string, Limb>
+	/** Raised, holding whatever the props section draws. The daytime default. */
+	leftUp: {
+		line: { startX: 22, startY: 70, endX: 11, endY: 40 },
+		cream: G.box(1, 26, 19, 18),
+		ink: G.box(3, 28, 15, 14)
+	},
+	/** Hanging, at night when it is not raining. */
+	leftDown: {
+		line: { startX: 24, startY: 78, endX: 12, endY: 96 },
+		cream: G.box(0.5, 93, 19, 18),
+		ink: G.box(2.5, 95, 15, 14)
+	},
+	/** Out to the side, the daytime default. Lands partly under the headset cup. */
+	rightOut: {
+		line: { startX: 84, startY: 74, endX: 93, endY: 62 },
+		cream: G.box(84, 52, 18, 17),
+		ink: G.box(86, 54, 14, 13)
+	},
+	/** Hanging, at night. */
+	rightDown: {
+		line: { startX: 76, startY: 78, endX: 88, endY: 96 },
+		cream: G.box(80.5, 93, 19, 18),
+		ink: G.box(82.5, 95, 15, 14)
+	}
+} as const satisfies Record<string, Limb>;
 
 /**
  * The leaf tuft: three leaves, all in one box, rotated about its centre.
@@ -104,31 +104,31 @@ export const HERO_ARMS = {
  * The centre leaf is the light green one and carries a vein; the outer two are
  * darker and sit behind it. Order is draw order.
  */
-export interface Leaf {
-  name: string
-  angle: number
-  /** The blade. */
-  blade: Box
-  dark: boolean
-  /** The centre leaf's vein, if it has one. */
-  vein?: { startX: number; startY: number; endX: number; endY: number }
-}
+export type Leaf = {
+	name: string;
+	angle: number;
+	/** The blade. */
+	blade: Box;
+	dark: boolean;
+	/** The centre leaf's vein, if it has one. */
+	vein?: { startX: number; startY: number; endX: number; endY: number };
+};
 
 export const HERO_LEAVES: Leaf[] = [
-  { name: 'leaf_left', angle: -36, blade: G.box(30, 4, 20, 36), dark: true },
-  { name: 'leaf_right', angle: 34, blade: G.box(30, 6, 20, 34), dark: true },
-  {
-    name: 'leaf_center',
-    angle: 0,
-    blade: G.box(29, 0, 22, 40),
-    dark: false,
-    vein: { startX: 40, startY: 36, endX: 40, endY: 8 },
-  },
-]
+	{ name: 'leaf_left', angle: -36, blade: G.box(30, 4, 20, 36), dark: true },
+	{ name: 'leaf_right', angle: 34, blade: G.box(30, 6, 20, 34), dark: true },
+	{
+		name: 'leaf_center',
+		angle: 0,
+		blade: G.box(29, 0, 22, 40),
+		dark: false,
+		vein: { startX: 40, startY: 36, endX: 40, endY: 8 }
+	}
+];
 
 // --- The companion ----------------------------------------------------------
 
-export const MINI_STROKE: LimbStroke = { cream: 6.2, ink: 3.2 }
+export const MINI_STROKE: LimbStroke = { cream: 6.2, ink: 3.2 };
 
 /**
  * All four limbs in one part, unlike the hero.
@@ -144,27 +144,27 @@ export const MINI_STROKE: LimbStroke = { cream: 6.2, ink: 3.2 }
  * off. See face/hero-props.ts and the clipping note in svg.ts.
  */
 export const MINI_LIMBS: Limb[] = [
-  {
-    line: { startX: 12, startY: 44, endX: 5, endY: 38 },
-    cream: G.box(-2, 32, 13, 12),
-    ink: G.box(0, 34, 9, 8),
-  },
-  {
-    line: { startX: 48, startY: 44, endX: 56, endY: 37 },
-    cream: G.box(50, 30, 13, 12),
-    ink: G.box(52, 32, 9, 8),
-  },
-  {
-    line: { startX: 24, startY: 60, endX: 22, endY: 66 },
-    cream: G.box(12, 61, 19, 12),
-    ink: G.box(14, 63, 15, 8),
-  },
-  {
-    line: { startX: 38, startY: 60, endX: 40, endY: 66 },
-    cream: G.box(31, 61, 19, 12),
-    ink: G.box(33, 63, 15, 8),
-  },
-]
+	{
+		line: { startX: 12, startY: 44, endX: 5, endY: 38 },
+		cream: G.box(-2, 32, 13, 12),
+		ink: G.box(0, 34, 9, 8)
+	},
+	{
+		line: { startX: 48, startY: 44, endX: 56, endY: 37 },
+		cream: G.box(50, 30, 13, 12),
+		ink: G.box(52, 32, 9, 8)
+	},
+	{
+		line: { startX: 24, startY: 60, endX: 22, endY: 66 },
+		cream: G.box(12, 61, 19, 12),
+		ink: G.box(14, 63, 15, 8)
+	},
+	{
+		line: { startX: 38, startY: 60, endX: 40, endY: 66 },
+		cream: G.box(31, 61, 19, 12),
+		ink: G.box(33, 63, 15, 8)
+	}
+];
 
 /**
  * The step-goal flag's pole, and the hand that holds it.
@@ -179,32 +179,36 @@ export const MINI_LIMBS: Limb[] = [
  * Recording the pole here, next to the arm row it depends on, is what makes the
  * relationship checkable. face/blob-hero.ts draws it.
  */
-export const GOAL_POLE = { x: 93, top: 19, bottom: 74, thickness: 2.5 }
+export const GOAL_POLE = { x: 93, top: 19, bottom: 74, thickness: 2.5 };
 
 {
-  const cap = HERO_ARMS.rightOut.cream
-  const fist = { x: cap.x + cap.width / 2, y: cap.y + cap.height / 2 }
-  const problems: string[] = []
-  // Half a pixel either way: the pole has to pass through the fist, not near it.
-  if (Math.abs(GOAL_POLE.x - fist.x) > 0.5) {
-    problems.push(`the pole is at x${GOAL_POLE.x} and the fist at x${fist.x} - it would be held beside the hand`)
-  }
-  if (fist.y < GOAL_POLE.top || fist.y > GOAL_POLE.bottom) {
-    problems.push(
-      `the fist is at y${fist.y}, outside the pole's ${GOAL_POLE.top}..${GOAL_POLE.bottom} - ` +
-        'the hand would grip empty air',
-    )
-  }
-  if (problems.length) throw new Error(`the step-goal flag is no longer held:\n  ${problems.join('\n  ')}`)
+	const cap = HERO_ARMS.rightOut.cream;
+	const fist = { x: cap.x + cap.width / 2, y: cap.y + cap.height / 2 };
+	const problems: string[] = [];
+	// Half a pixel either way: the pole has to pass through the fist, not near it.
+	if (Math.abs(GOAL_POLE.x - fist.x) > 0.5) {
+		problems.push(
+			`the pole is at x${GOAL_POLE.x} and the fist at x${fist.x} - it would be held beside the hand`
+		);
+	}
+	if (fist.y < GOAL_POLE.top || fist.y > GOAL_POLE.bottom) {
+		problems.push(
+			`the fist is at y${fist.y}, outside the pole's ${GOAL_POLE.top}..${GOAL_POLE.bottom} - ` +
+				'the hand would grip empty air'
+		);
+	}
+	if (problems.length) {
+		throw new Error(`the step-goal flag is no longer held:\n  ${problems.join('\n  ')}`);
+	}
 }
 
 /** Which limbs are hands, and so get mittens when it is cold enough. */
-export const MINI_HAND_LIMBS = [0, 1] as const
+export const MINI_HAND_LIMBS = [0, 1] as const;
 
 export const MINI_LEAVES: Leaf[] = [
-  { name: 'mini_leaf_left', angle: -26, blade: G.box(19, 6, 11, 18), dark: true },
-  { name: 'mini_leaf_right', angle: 20, blade: G.box(18, 4, 12, 20), dark: false },
-]
+	{ name: 'mini_leaf_left', angle: -26, blade: G.box(19, 6, 11, 18), dark: true },
+	{ name: 'mini_leaf_right', angle: 20, blade: G.box(18, 4, 12, 20), dark: false }
+];
 
 // --- Sweat ------------------------------------------------------------------
 
@@ -220,25 +224,25 @@ export const MINI_LEAVES: Leaf[] = [
  * The companion's figure is the hero's scaled to suit the larger head relative to
  * its body, not the other way round; see blob.ts.
  */
-export interface SweatFigure {
-  beads: Box[]
-  /** Indices into `beads`, per branch. Shared by both blobs by design. */
-  three: number[]
-  two: number[]
-  one: number[]
-}
+export type SweatFigure = {
+	beads: Box[];
+	/** Indices into `beads`, per branch. Shared by both blobs by design. */
+	three: number[];
+	two: number[];
+	one: number[];
+};
 
-const SUBSETS = { three: [0, 1, 2], two: [0, 2], one: [1] }
+const SUBSETS = { three: [0, 1, 2], two: [0, 2], one: [1] };
 
 export const HERO_SWEAT: SweatFigure = {
-  beads: [G.box(0, 3, 6, 7.5), G.box(9, 0, 6, 7.5), G.box(18, 3, 6, 6)],
-  ...SUBSETS,
-}
+	beads: [G.box(0, 3, 6, 7.5), G.box(9, 0, 6, 7.5), G.box(18, 3, 6, 6)],
+	...SUBSETS
+};
 
 export const MINI_SWEAT: SweatFigure = {
-  beads: [G.box(0, 2, 4, 5), G.box(6, 0, 4, 5), G.box(12, 2, 4, 4)],
-  ...SUBSETS,
-}
+	beads: [G.box(0, 2, 4, 5), G.box(6, 0, 4, 5), G.box(12, 2, 4, 4)],
+	...SUBSETS
+};
 
 /**
  * The drips: two out-of-phase groups of beads sliding down the cheeks.
@@ -252,29 +256,29 @@ export const MINI_SWEAT: SweatFigure = {
  * threshold, which is why it is expressed against T.SWEAT_ALL_BPM instead of as
  * two more loose numbers.
  */
-export interface DripFigure {
-  beads: Box[]
-  fall: number
-  fallExtra: number
-  secondFrom: number
-  secondTo: number
-}
+export type DripFigure = {
+	beads: Box[];
+	fall: number;
+	fallExtra: number;
+	secondFrom: number;
+	secondTo: number;
+};
 
-const SECOND_DRIP = { secondFrom: T.SWEAT_ALL_BPM - 10, secondTo: T.SWEAT_ALL_BPM + 10 }
+const SECOND_DRIP = { secondFrom: T.SWEAT_ALL_BPM - 10, secondTo: T.SWEAT_ALL_BPM + 10 };
 
 export const HERO_DRIP: DripFigure = {
-  beads: [G.box(20, 55, 5, 7), G.box(73, 55, 5, 7)],
-  fall: 12,
-  fallExtra: 18,
-  ...SECOND_DRIP,
-}
+	beads: [G.box(20, 55, 5, 7), G.box(73, 55, 5, 7)],
+	fall: 12,
+	fallExtra: 18,
+	...SECOND_DRIP
+};
 
 export const MINI_DRIP: DripFigure = {
-  beads: [G.box(12, 37, 3.5, 4.5), G.box(44.5, 37, 3.5, 4.5)],
-  fall: 4,
-  fallExtra: 6,
-  ...SECOND_DRIP,
-}
+	beads: [G.box(12, 37, 3.5, 4.5), G.box(44.5, 37, 3.5, 4.5)],
+	fall: 4,
+	fallExtra: 6,
+	...SECOND_DRIP
+};
 
 /**
  * How far the drip amplitude ramp reaches above the gate.
@@ -283,9 +287,9 @@ export const MINI_DRIP: DripFigure = {
  * sweat gate to this much above it. 100 over 100 is one doubling, which is what
  * the authored expression encoded.
  */
-export const DRIP_RAMP_SPAN = 100
+export const DRIP_RAMP_SPAN = 100;
 
 /** Build-time proof that the two drip figures agree about their late fade. */
 if (HERO_DRIP.secondFrom !== MINI_DRIP.secondFrom || HERO_DRIP.secondTo !== MINI_DRIP.secondTo) {
-  throw new Error('the two blobs disagree about when the second drip appears')
+	throw new Error('the two blobs disagree about when the second drip appears');
 }

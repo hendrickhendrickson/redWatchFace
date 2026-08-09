@@ -38,25 +38,39 @@
  * 10:35 or a hot sunny Friday 15:45 would draw two props in one fist.
  */
 
-import { el, type Node } from '../xml.ts'
-import { C } from '../palette.ts'
-import * as G from '../geometry.ts'
-import { AMBIENT_HIDE } from '../crossfade.ts'
-import { switchOn } from '../condition.ts'
-import { HOT_AND_SUNNY } from '../states.ts'
-import { WEDNESDAY_MEETING, FRIDAY_GAME_ICON } from '../meetings.ts'
-import { triangleAlpha, secondPhase } from '../expr.ts'
-import { heroGyro } from '../blob.ts'
+import { el, type Node } from '../xml.ts';
+import { C } from '../palette.ts';
+import * as G from '../geometry.ts';
+import { AMBIENT_HIDE } from '../crossfade.ts';
+import { switchOn } from '../condition.ts';
+import { HOT_AND_SUNNY } from '../states.ts';
+import { WEDNESDAY_MEETING, FRIDAY_GAME_ICON } from '../meetings.ts';
+import { triangleAlpha, secondPhase } from '../expr.ts';
+import { heroGyro } from '../blob.ts';
 import {
-  COCKTAIL, COCKTAIL_BOX, COCKTAIL_GLASS, COCKTAIL_LIQUID, COCKTAIL_STRAW,
-  CONTROLLER_BOX, CONTROLLER_SHAPES, CUP_BOX, CUP_SHAPES, DIAMOND, HANDLE, HANDLE_ARC,
-  PULSE_BOX, PULSE_BUTTON, STEAM, STEAM_SEGMENTS, type Seg,
-} from '../data/props.ts'
+	COCKTAIL,
+	COCKTAIL_BOX,
+	COCKTAIL_GLASS,
+	COCKTAIL_LIQUID,
+	COCKTAIL_STRAW,
+	CONTROLLER_BOX,
+	CONTROLLER_SHAPES,
+	CUP_BOX,
+	CUP_SHAPES,
+	DIAMOND,
+	HANDLE,
+	HANDLE_ARC,
+	PULSE_BOX,
+	PULSE_BUTTON,
+	STEAM,
+	STEAM_SEGMENTS,
+	type Seg
+} from '../data/props.ts';
 
-const fill = (colour: string) => [el('Fill', { color: colour })]
+const fill = (colour: string) => [el('Fill', { color: colour })];
 
-const stroke = (s: Seg, colour: string, thickness: number): Node =>
-  el('Line', { ...s }, [el('Stroke', { color: colour, thickness, cap: 'ROUND' })])
+const stroke = (segment: Seg, colour: string, thickness: number): Node =>
+	el('Line', { ...segment }, [el('Stroke', { color: colour, thickness, cap: 'ROUND' })]);
 
 /**
  * The Wednesday coffee cup.
@@ -85,17 +99,17 @@ const stroke = (s: Seg, colour: string, thickness: number): Node =>
  * data/props.ts asserts rather than claiming.
  */
 const coffee = (): Node[] => [
-  el('PartDraw', { name: 'hero_coffee_cup', ...CUP_BOX }, [
-    el('Arc', { ...HANDLE_ARC }, [
-      el('Stroke', { color: C.WHITE, thickness: HANDLE.thickness, cap: 'ROUND' }),
-    ]),
-    el('Ellipse', { ...CUP_SHAPES.base }, fill(C.WHITE)),
-    el('Rectangle', { ...CUP_SHAPES.body }, fill(C.WHITE)),
-    el('Ellipse', { ...CUP_SHAPES.rim }, fill(C.WHITE)),
-    el('Ellipse', { ...CUP_SHAPES.coffee }, fill(C.COFFEE)),
-    ...STEAM_SEGMENTS.map((s) => stroke(s, C.STEAM, STEAM.thickness)),
-  ]),
-]
+	el('PartDraw', { name: 'hero_coffee_cup', ...CUP_BOX }, [
+		el('Arc', { ...HANDLE_ARC }, [
+			el('Stroke', { color: C.WHITE, thickness: HANDLE.thickness, cap: 'ROUND' })
+		]),
+		el('Ellipse', { ...CUP_SHAPES.base }, fill(C.WHITE)),
+		el('Rectangle', { ...CUP_SHAPES.body }, fill(C.WHITE)),
+		el('Ellipse', { ...CUP_SHAPES.rim }, fill(C.WHITE)),
+		el('Ellipse', { ...CUP_SHAPES.coffee }, fill(C.COFFEE)),
+		...STEAM_SEGMENTS.map((segment) => stroke(segment, C.STEAM, STEAM.thickness))
+	])
+];
 
 /**
  * The Friday game controller. Layout traced off a photograph of the real thing,
@@ -121,32 +135,32 @@ const coffee = (): Node[] => [
  * 1.5px nudge buys clearance from the SHELL EDGE, not from the right stick.
  */
 const controller = (): Node[] => [
-  el('PartDraw', { name: 'hero_controller', ...CONTROLLER_BOX }, [
-    // Grips first, so the shell covers where they join it.
-    ...CONTROLLER_SHAPES.grips.map((g) => el('Ellipse', { ...g }, fill(C.WHITE))),
-    el('RoundRectangle', { ...CONTROLLER_SHAPES.shell }, fill(C.WHITE)),
-    el('Ellipse', { ...CONTROLLER_SHAPES.leftStick }, fill(C.INK)),
-    ...CONTROLLER_SHAPES.dpad.map((bar) => el('Rectangle', { ...bar }, fill(C.INK))),
-    el('Ellipse', { ...CONTROLLER_SHAPES.rightStick }, fill(C.INK)),
-    // Y, X, B - the diamond's top, left and right. A (bottom) is drawn
-    // separately below so it alone can pulse.
-    el('Ellipse', { ...DIAMOND.top }, fill(C.SUN)),
-    el('Ellipse', { ...DIAMOND.left }, fill(C.SCARF)),
-    el('Ellipse', { ...DIAMOND.right }, fill(C.CORAL)),
-  ]),
-  // A, the diamond's bottom - the one face button that pulses, so the
-  // controller reads as being played rather than held. Same triangle idiom the
-  // sweat drips use, on its own 2s loop. A Group's x/y must be integers, so the
-  // fractional part of the button's position lives on the Ellipse inside it;
-  // both halves of that split are derived from the diamond's centre, so they
-  // cannot disagree with the three buttons above.
-  el('Group', { name: 'hero_controller_pulse', ...PULSE_BOX, alpha: 255 }, [
-    el('Transform', { target: 'alpha', value: triangleAlpha(secondPhase(2)) }),
-    el('PartDraw', { ...G.at(PULSE_BOX.width, PULSE_BOX.height), name: 'hero_controller_button' }, [
-      el('Ellipse', { ...PULSE_BUTTON }, fill(C.GREEN)),
-    ]),
-  ]),
-]
+	el('PartDraw', { name: 'hero_controller', ...CONTROLLER_BOX }, [
+		// Grips first, so the shell covers where they join it.
+		...CONTROLLER_SHAPES.grips.map((grip) => el('Ellipse', { ...grip }, fill(C.WHITE))),
+		el('RoundRectangle', { ...CONTROLLER_SHAPES.shell }, fill(C.WHITE)),
+		el('Ellipse', { ...CONTROLLER_SHAPES.leftStick }, fill(C.INK)),
+		...CONTROLLER_SHAPES.dpad.map((bar) => el('Rectangle', { ...bar }, fill(C.INK))),
+		el('Ellipse', { ...CONTROLLER_SHAPES.rightStick }, fill(C.INK)),
+		// Y, X, B - the diamond's top, left and right. A (bottom) is drawn
+		// separately below so it alone can pulse.
+		el('Ellipse', { ...DIAMOND.top }, fill(C.SUN)),
+		el('Ellipse', { ...DIAMOND.left }, fill(C.SCARF)),
+		el('Ellipse', { ...DIAMOND.right }, fill(C.CORAL))
+	]),
+	// A, the diamond's bottom - the one face button that pulses, so the
+	// controller reads as being played rather than held. Same triangle idiom the
+	// sweat drips use, on its own 2s loop. A Group's x/y must be integers, so the
+	// fractional part of the button's position lives on the Ellipse inside it;
+	// both halves of that split are derived from the diamond's centre, so they
+	// cannot disagree with the three buttons above.
+	el('Group', { name: 'hero_controller_pulse', ...PULSE_BOX, alpha: 255 }, [
+		el('Transform', { target: 'alpha', value: triangleAlpha(secondPhase(2)) }),
+		el('PartDraw', { ...G.at(PULSE_BOX.width, PULSE_BOX.height), name: 'hero_controller_button' }, [
+			el('Ellipse', { ...PULSE_BUTTON }, fill(C.GREEN))
+		])
+	])
+];
 
 /**
  * The warm-day cocktail, unchanged since it shipped - the part box moved from
@@ -158,19 +172,19 @@ const controller = (): Node[] => [
  * being symmetric about x10.5; only the straw is asymmetric, deliberately.
  */
 const cocktail = (): Node[] => [
-  el('PartDraw', { name: 'hero_cocktail', ...COCKTAIL_BOX }, [
-    stroke(COCKTAIL_STRAW, C.TEAL, COCKTAIL.thickness),
-    ...COCKTAIL_GLASS.map((s) => stroke(s, C.BONE, COCKTAIL.thickness)),
-    el('Ellipse', { ...COCKTAIL_LIQUID }, fill(C.COCKTAIL)),
-  ]),
-]
+	el('PartDraw', { name: 'hero_cocktail', ...COCKTAIL_BOX }, [
+		stroke(COCKTAIL_STRAW, C.TEAL, COCKTAIL.thickness),
+		...COCKTAIL_GLASS.map((segment) => stroke(segment, C.BONE, COCKTAIL.thickness)),
+		el('Ellipse', { ...COCKTAIL_LIQUID }, fill(C.COCKTAIL))
+	])
+];
 
 export const heroProps = (): Node =>
-  switchOn([
-    { name: 'hero_coffee', when: WEDNESDAY_MEETING, then: coffee() },
-    { name: 'hero_controller', when: FRIDAY_GAME_ICON, then: controller() },
-    { name: 'hero_drink', when: HOT_AND_SUNNY, then: cocktail() },
-  ])
+	switchOn([
+		{ name: 'hero_coffee', when: WEDNESDAY_MEETING, then: coffee() },
+		{ name: 'hero_controller', when: FRIDAY_GAME_ICON, then: controller() },
+		{ name: 'hero_drink', when: HOT_AND_SUNNY, then: cocktail() }
+	]);
 
 /**
  * The wrapper that carries the position and the Gyro. Kept separate from the
@@ -178,8 +192,8 @@ export const heroProps = (): Node =>
  * two different questions.
  */
 export const heroPropsSection = (): Node =>
-  el('Group', { name: 'hero_props', ...G.ANCHORS.HERO_PROPS, alpha: 255 }, [
-    heroGyro(),
-    el('Variant', AMBIENT_HIDE),
-    heroProps(),
-  ])
+	el('Group', { name: 'hero_props', ...G.ANCHORS.HERO_PROPS, alpha: 255 }, [
+		heroGyro(),
+		el('Variant', AMBIENT_HIDE),
+		heroProps()
+	]);

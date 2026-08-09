@@ -1,0 +1,25 @@
+# The library owns its own formatting and its own prettier version. Reformatting it from here
+# would show up as noise in the submodule's diff and be reverted by its next `pnpm format`.
+submodules/
+
+node_modules/
+build/
+.gradle/
+
+# npm rewrites these with its own indentation whenever the tree changes, so formatting them
+# means `prettier --check` goes red on the next `npm install`. They are npm's files, not ours.
+package-lock.json
+tools/preview/package-lock.json
+
+# Generated, both of them.
+tools/preview/dist/
+watchface/src/main/res/raw/watchface.xml
+
+# A generated snapshot, not source. It is 1402 rendering elements written by --snapshot; the
+# whole point is that it changes only when the face does, so reflowing it would be a diff for
+# nothing.
+tools/gen/face.model.json
+
+# Long-form notes with hand-aligned tables and ASCII diagrams that prettier reflows into
+# something less readable than what is there.
+TODO.md

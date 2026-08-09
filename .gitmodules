@@ -1,0 +1,4 @@
+[submodule "submodules/hhson-lib"]
+	path = submodules/hhson-lib
+	url = git@github.com:hendrickhendrickson/hhson-lib.git
+	branch = main

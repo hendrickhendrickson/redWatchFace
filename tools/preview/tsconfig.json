@@ -1,18 +1,28 @@
 {
-  "compilerOptions": {
-    "target": "ES2023",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "erasableSyntaxOnly": true,
-    "noEmit": true,
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "isolatedModules": true,
-    "skipLibCheck": true,
-    "types": ["vite/client"]
-  },
-  "include": ["src/**/*.ts", "src/**/*.svelte", "vite.config.ts"]
+	"compilerOptions": {
+		"target": "ES2023",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"erasableSyntaxOnly": true,
+		"noEmit": true,
+		"strict": true,
+
+		// Off for the reasons written out in the root tsconfig.json, and they have to match: this
+		// app imports tools/gen directly, so a file checked by both gates must mean the same thing
+		// in each.
+		"noUncheckedIndexedAccess": false,
+		"exactOptionalPropertyTypes": false,
+
+		"isolatedModules": true,
+		"skipLibCheck": true,
+		// "node" is here for check.ts alone, which calls process.exit. It is listed below so that
+		// typescript-eslint's project service can find a project containing it: the service picks the
+		// NEAREST tsconfig, which for tools/preview/check.ts is this one, and a file the nearest
+		// project does not include gets no type information and so no type-aware lint rules.
+		"types": ["vite/client", "node"],
+		"paths": { "hhson-lib": ["../../submodules/hhson-lib/src/index.ts"] }
+	},
+	"include": ["src/**/*.ts", "src/**/*.svelte", "vite.config.ts", "check.ts"]
 }

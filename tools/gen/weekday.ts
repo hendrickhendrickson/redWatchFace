@@ -16,8 +16,8 @@
  * same value, so it cannot be written.
  */
 
-import { el, type Node } from './xml.ts'
-import { HERO, COMPANION, DAY_OF_WEEK, WEEKDAYS, type Hex, type Weekday } from './palette.ts'
+import { el, type Node } from './xml.ts';
+import { HERO, COMPANION, DAY_OF_WEEK, WEEKDAYS, type Hex, type Weekday } from './palette.ts';
 
 /**
  * MONDAY IS THE DEFAULT, deliberately.
@@ -28,14 +28,14 @@ import { HERO, COMPANION, DAY_OF_WEEK, WEEKDAYS, type Hex, type Weekday } from '
  * listed in calendar order rather than in [DAY_OF_WEEK] order because that is
  * the order a person checks them in.
  */
-const COMPARED: Weekday[] = ['tue', 'wed', 'thu', 'fri', 'sat', 'sun']
-export const DEFAULT_DAY: Weekday = 'mon'
+const COMPARED: Weekday[] = ['tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+export const DEFAULT_DAY: Weekday = 'mon';
 
 /** Which blob a site belongs to. The companion always wears TOMORROW's colour. */
-export type Wearer = 'hero' | 'companion'
+export type Wearer = 'hero' | 'companion';
 
 export const colourFor = (wearer: Wearer, d: Weekday): Hex =>
-  wearer === 'hero' ? HERO[d] : COMPANION(d)
+	wearer === 'hero' ? HERO[d] : COMPANION(d);
 
 /**
  * Build a seven-way weekday Condition.
@@ -51,29 +51,31 @@ export const colourFor = (wearer: Wearer, d: Weekday): Hex =>
  * the Default.
  */
 export function byWeekday(
-  exprPrefix: string,
-  wearer: Wearer,
-  build: (day: Weekday, colour: Hex) => Node[],
+	exprPrefix: string,
+	wearer: Wearer,
+	build: (day: Weekday, colour: Hex) => Node[]
 ): Node {
-  return el('Condition', {}, [
-    el('Expressions', {},
-      COMPARED.map((d) =>
-        el('Expression', { name: `${exprPrefix}_${d}` }, [
-          { k: 'text', text: `[DAY_OF_WEEK] == ${DAY_OF_WEEK[d]}` },
-        ]),
-      ),
-    ),
-    ...COMPARED.map((d) =>
-      el('Compare', { expression: `${exprPrefix}_${d}` }, build(d, colourFor(wearer, d))),
-    ),
-    el('Default', {}, build(DEFAULT_DAY, colourFor(wearer, DEFAULT_DAY))),
-  ])
+	return el('Condition', {}, [
+		el(
+			'Expressions',
+			{},
+			COMPARED.map((d) =>
+				el('Expression', { name: `${exprPrefix}_${d}` }, [
+					{ k: 'text', text: `[DAY_OF_WEEK] == ${DAY_OF_WEEK[d]}` }
+				])
+			)
+		),
+		...COMPARED.map((d) =>
+			el('Compare', { expression: `${exprPrefix}_${d}` }, build(d, colourFor(wearer, d)))
+		),
+		el('Default', {}, build(DEFAULT_DAY, colourFor(wearer, DEFAULT_DAY)))
+	]);
 }
 
 /** Every weekday, in the order the Condition emits them. Useful for audits. */
-export const emittedOrder: Weekday[] = [...COMPARED, DEFAULT_DAY]
+export const emittedOrder: Weekday[] = [...COMPARED, DEFAULT_DAY];
 
 /** Sanity: the seven days must be exactly the palette's seven. */
 if (new Set([...COMPARED, DEFAULT_DAY]).size !== WEEKDAYS.length) {
-  throw new Error('weekday fan-out does not cover the palette exactly')
+	throw new Error('weekday fan-out does not cover the palette exactly');
 }

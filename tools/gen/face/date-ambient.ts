@@ -19,22 +19,26 @@
  * for burn-in, and it fades into the filled chip on a shared boundary.
  */
 
-import { el, type Node } from '../xml.ts'
-import { C } from '../palette.ts'
-import { FADE_IN } from '../crossfade.ts'
-import * as G from '../geometry.ts'
+import { el, type Node } from '../xml.ts';
+import { C } from '../palette.ts';
+import { FADE_IN } from '../crossfade.ts';
+import * as G from '../geometry.ts';
 import {
-  CHIP_OUTLINE_RADIUS, CHIP_STROKE, DATE_GROUP, dayGlyph, weekdayGlyph,
-} from './date-common.ts'
+	CHIP_OUTLINE_RADIUS,
+	CHIP_STROKE,
+	DATE_GROUP,
+	dayGlyph,
+	weekdayGlyph
+} from './date-common.ts';
 
 export const dateAmbient = (): Node =>
-  el('Group', { name: 'date_ambient', ...DATE_GROUP, alpha: 0 }, [
-    el('Variant', FADE_IN),
-    el('PartDraw', { ...G.DATE_CHIP_BOX, name: 'date_ambient_chip' }, [
-      el('RoundRectangle', { ...G.DATE_CHIP_OUTLINE_SHAPE, ...CHIP_OUTLINE_RADIUS }, [
-        el('Stroke', { color: C.ICE, thickness: CHIP_STROKE }),
-      ]),
-    ]),
-    weekdayGlyph('date_ambient_weekday', 'NORMAL', C.ICE),
-    dayGlyph('date_ambient_day', 'NORMAL', C.ICE),
-  ])
+	el('Group', { name: 'date_ambient', ...DATE_GROUP, alpha: 0 }, [
+		el('Variant', FADE_IN),
+		el('PartDraw', { ...G.DATE_CHIP_BOX, name: 'date_ambient_chip' }, [
+			el('RoundRectangle', { ...G.DATE_CHIP_OUTLINE_SHAPE, ...CHIP_OUTLINE_RADIUS }, [
+				el('Stroke', { color: C.ICE, thickness: CHIP_STROKE })
+			])
+		]),
+		weekdayGlyph('date_ambient_weekday', 'NORMAL', C.ICE),
+		dayGlyph('date_ambient_day', 'NORMAL', C.ICE)
+	]);

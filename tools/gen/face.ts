@@ -10,8 +10,8 @@
  * nothing derived from watchface.xml is ever an input to watchface.xml.
  */
 
-import { el, EOL, type Node } from "./xml.ts";
-import { sections } from "./face/index.ts";
+import { el, EOL, type Node } from './xml.ts';
+import { sections } from './face/index.ts';
 
 /** WFF format version. Keep in step with AndroidManifest.xml and build.gradle.kts. */
 export const WFF_VERSION = 5;
@@ -25,15 +25,15 @@ export const CANVAS_HEIGHT = 450;
  * thing to light up. Everything non-essential is faded out in ambient via
  * <Variant mode="AMBIENT">.
  */
-export const SCENE_BACKGROUND = "#ff000000";
+export const SCENE_BACKGROUND = '#ff000000';
 
 /**
  * PREVIEW_TIME is what the watch face picker renders in its tile. It is not the
  * time any screenshot is taken at - mock-state.ts pins that separately.
  */
 const METADATA: Array<[string, string]> = [
-  ["CLOCK_TYPE", "DIGITAL"],
-  ["PREVIEW_TIME", "10:09:00"],
+	['CLOCK_TYPE', 'DIGITAL'],
+	['PREVIEW_TIME', '10:09:00']
 ];
 
 /**
@@ -44,17 +44,17 @@ const METADATA: Array<[string, string]> = [
  * rather than a risk, and it is cheap to prevent.
  */
 const BANNER = [
-  "",
-  "    GENERATED FILE - DO NOT EDIT.",
-  "",
-  "    Source:     tools/gen/*.ts",
-  "    Regenerate: node tools/gen/build.ts",
-  "    Verify:     node tools/gen/build.ts (with the diff flag) - checks that",
-  "                the face still renders the same as before the migration.",
-  "",
-  "    The design notes that used to live here now sit on the constants they",
-  "    explain - see palette.ts, geometry.ts and expr.ts.",
-  "",
+	'',
+	'    GENERATED FILE - DO NOT EDIT.',
+	'',
+	'    Source:     tools/gen/*.ts',
+	'    Regenerate: node tools/gen/build.ts',
+	'    Verify:     node tools/gen/build.ts (with the diff flag) - checks that',
+	'                the face still renders the same as before the migration.',
+	'',
+	'    The design notes that used to live here now sit on the constants they',
+	'    explain - see palette.ts, geometry.ts and expr.ts.',
+	''
 ].join(EOL);
 
 /**
@@ -62,10 +62,8 @@ const BANNER = [
  * the regenerate command with its flag spelled out cost one failed build; catch
  * it here instead, where the error names the cause.
  */
-if (BANNER.includes("--")) {
-  throw new Error(
-    'BANNER contains "--", which is illegal inside an XML comment.',
-  );
+if (BANNER.includes('--')) {
+	throw new Error('BANNER contains "--", which is illegal inside an XML comment.');
 }
 
 /**
@@ -78,15 +76,15 @@ if (BANNER.includes("--")) {
  * the CRLF was causing.
  */
 export function face(): Node[] {
-  return [
-    { k: "decl", text: '<?xml version="1.0" encoding="utf-8"?>' },
-    { k: "text", text: EOL },
-    { k: "comment", text: BANNER, raw: `<!--${BANNER}-->` },
-    { k: "text", text: EOL },
-    el("WatchFace", { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }, [
-      ...METADATA.map(([key, value]) => el("Metadata", { key, value })),
-      el("Scene", { backgroundColor: SCENE_BACKGROUND }, sections()),
-    ]),
-    { k: "text", text: EOL },
-  ];
+	return [
+		{ k: 'decl', text: '<?xml version="1.0" encoding="utf-8"?>' },
+		{ k: 'text', text: EOL },
+		{ k: 'comment', text: BANNER, raw: `<!--${BANNER}-->` },
+		{ k: 'text', text: EOL },
+		el('WatchFace', { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }, [
+			...METADATA.map(([key, value]) => el('Metadata', { key, value })),
+			el('Scene', { backgroundColor: SCENE_BACKGROUND }, sections())
+		]),
+		{ k: 'text', text: EOL }
+	];
 }

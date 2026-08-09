@@ -15,20 +15,26 @@
  * heart rate of zero, so there is nothing to gate.
  */
 
-import { el, type Node } from '../xml.ts'
-import { C } from '../palette.ts'
-import * as G from '../geometry.ts'
-import { AMBIENT_HIDE } from '../crossfade.ts'
-import { chipValue } from '../chip.ts'
-import { FOOTPRINT_BOX, FOOTPRINT_SHAPES, TEXT_X } from '../data/chips.ts'
+import { el, type Node } from '../xml.ts';
+import { C } from '../palette.ts';
+import * as G from '../geometry.ts';
+import { AMBIENT_HIDE } from '../crossfade.ts';
+import { chipValue } from '../chip.ts';
+import { FOOTPRINT_BOX, FOOTPRINT_SHAPES, TEXT_X } from '../data/chips.ts';
 
-const CHIP = G.ANCHORS.CHIP_STEPS
+const CHIP = G.ANCHORS.CHIP_STEPS;
 
 export const chipSteps = (): Node =>
-  el('Group', { name: 'chip_steps', ...CHIP, alpha: 255 }, [
-    el('Variant', AMBIENT_HIDE),
-    el('PartDraw', { name: 'steps_icon', ...FOOTPRINT_BOX }, [
-      ...FOOTPRINT_SHAPES.map((s) => el(s.tag, { ...s.box }, [el('Fill', { color: C.LIMB })])),
-    ]),
-    chipValue(CHIP, { name: 'steps_value', x: TEXT_X.STEPS, colour: C.CREAM, text: '%d', source: 'STEP_COUNT' }),
-  ])
+	el('Group', { name: 'chip_steps', ...CHIP, alpha: 255 }, [
+		el('Variant', AMBIENT_HIDE),
+		el('PartDraw', { name: 'steps_icon', ...FOOTPRINT_BOX }, [
+			...FOOTPRINT_SHAPES.map((s) => el(s.tag, { ...s.box }, [el('Fill', { color: C.LIMB })]))
+		]),
+		chipValue(CHIP, {
+			name: 'steps_value',
+			x: TEXT_X.STEPS,
+			colour: C.CREAM,
+			text: '%d',
+			source: 'STEP_COUNT'
+		})
+	]);

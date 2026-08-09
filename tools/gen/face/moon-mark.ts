@@ -22,28 +22,30 @@
  * freeze-mark.ts's gate.
  */
 
-import { el, type Node } from '../xml.ts'
-import { C } from '../palette.ts'
-import * as G from '../geometry.ts'
-import { AMBIENT_HIDE } from '../crossfade.ts'
-import { when } from '../condition.ts'
-import { MOON_VISIBLE } from '../states.ts'
-import { MOON_DISC, moonShadowX } from '../data/weather.ts'
+import { el, type Node } from '../xml.ts';
+import { C } from '../palette.ts';
+import * as G from '../geometry.ts';
+import { AMBIENT_HIDE } from '../crossfade.ts';
+import { when } from '../condition.ts';
+import { MOON_VISIBLE } from '../states.ts';
+import { MOON_DISC, moonShadowX } from '../data/weather.ts';
 
 export const moonMark = (): Node =>
-  when('prop_moon', MOON_VISIBLE, [
-    el('Group', { name: 'moon_mark', ...G.ANCHORS.SKY_MARK, alpha: 255 }, [
-      el('Variant', AMBIENT_HIDE),
-      el('PartDraw', { name: 'moon_disc', ...G.at(G.ANCHORS.SKY_MARK.width, G.ANCHORS.SKY_MARK.height) }, [
-        el('Ellipse', { ...MOON_DISC }, [
-          el('Fill', { color: C.MOON_DISC }),
-        ]),
-        // The shadow's authored x is where the Transform's first frame puts it -
-        // half way across - so the part reads sensibly with no data at all.
-        el('Ellipse', { ...MOON_DISC, x: MOON_DISC.x + MOON_DISC.width / 2 }, [
-          el('Transform', { target: 'x', value: moonShadowX() }),
-          el('Fill', { color: C.BLACK }),
-        ]),
-      ]),
-    ]),
-  ])
+	when('prop_moon', MOON_VISIBLE, [
+		el('Group', { name: 'moon_mark', ...G.ANCHORS.SKY_MARK, alpha: 255 }, [
+			el('Variant', AMBIENT_HIDE),
+			el(
+				'PartDraw',
+				{ name: 'moon_disc', ...G.at(G.ANCHORS.SKY_MARK.width, G.ANCHORS.SKY_MARK.height) },
+				[
+					el('Ellipse', { ...MOON_DISC }, [el('Fill', { color: C.MOON_DISC })]),
+					// The shadow's authored x is where the Transform's first frame puts it -
+					// half way across - so the part reads sensibly with no data at all.
+					el('Ellipse', { ...MOON_DISC, x: MOON_DISC.x + MOON_DISC.width / 2 }, [
+						el('Transform', { target: 'x', value: moonShadowX() }),
+						el('Fill', { color: C.BLACK })
+					])
+				]
+			)
+		])
+	]);

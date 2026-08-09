@@ -21,18 +21,39 @@
  * are expressed with <Variant mode="AMBIENT">, not with a condition.
  */
 export type Source =
-  | 'SECOND' | 'SECOND_MILLISECOND' | 'MINUTE' | 'HOUR_0_23'
-  | 'DAY' | 'DAY_OF_WEEK' | 'DAY_OF_WEEK_S'
-  | 'HEART_RATE'
-  | 'STEP_COUNT' | 'STEP_PERCENT' | 'STEP_GOAL'
-  | 'BATTERY_PERCENT' | 'BATTERY_IS_LOW'
-  | 'ACCELEROMETER_ANGLE_X' | 'ACCELEROMETER_ANGLE_Y'
-  | 'MOON_PHASE_POSITION'
-  | 'WEATHER.IS_AVAILABLE' | 'WEATHER.TEMPERATURE' | 'WEATHER.CONDITION'
-  | 'WEATHER.IS_DAY' | 'WEATHER.CHANCE_OF_PRECIPITATION' | 'WEATHER.UV_INDEX'
+	| 'SECOND'
+	| 'SECOND_MILLISECOND'
+	| 'MINUTE'
+	| 'HOUR_0_23'
+	| 'DAY'
+	| 'DAY_OF_WEEK'
+	| 'DAY_OF_WEEK_S'
+	| 'HEART_RATE'
+	| 'STEP_COUNT'
+	| 'STEP_PERCENT'
+	| 'STEP_GOAL'
+	| 'BATTERY_PERCENT'
+	| 'BATTERY_IS_LOW'
+	| 'ACCELEROMETER_ANGLE_X'
+	| 'ACCELEROMETER_ANGLE_Y'
+	| 'MOON_PHASE_POSITION'
+	| 'WEATHER.IS_AVAILABLE'
+	| 'WEATHER.TEMPERATURE'
+	| 'WEATHER.CONDITION'
+	| 'WEATHER.IS_DAY'
+	| 'WEATHER.CHANCE_OF_PRECIPITATION'
+	| 'WEATHER.UV_INDEX';
 
-/** Branded so a bare string cannot be passed where an expression is expected. */
-export type Expr = string & { readonly __expr: unique symbol }
+/**
+ * Branded so a bare string cannot be passed where an expression is expected.
+ *
+ * THIS MODULE IS THE ONLY PLACE THAT MINTS ONE. The `as Expr` assertions below are the brand's
+ * constructors, which is the sanctioned use - a brand is not a claim about a value's contents,
+ * it is a claim about where the value came from, and here that is true by construction. An
+ * `as Expr` anywhere else defeats the brand entirely; call `raw()` instead, so the one
+ * deliberate escape stays visible and greppable. See /hhson-typescript on brands.
+ */
+export type Expr = string & { readonly __expr: unique symbol };
 
 /**
  * Numbers going INTO an expression string must go through here.
@@ -43,14 +64,18 @@ export type Expr = string & { readonly __expr: unique symbol }
  * and draw the right thing, but the file becomes unreadable and every diff
  * fills with noise. Caught by the semantic differ the first time it happened.
  */
-export const n = (v: number): string => {
-  if (!Number.isFinite(v)) throw new Error(`not a finite number: ${v}`)
-  if (Number.isInteger(v)) return String(v)
-  return String(Number(v.toFixed(6)))
-}
+export const n = (value: number): string => {
+	if (!Number.isFinite(value)) {
+		throw new Error(`not a finite number: ${value}`);
+	}
+	if (Number.isInteger(value)) {
+		return String(value);
+	}
+	return String(Number(value.toFixed(6)));
+};
 
-export const raw = (s: string): Expr => s as Expr
-export const src = (s: Source): Expr => `[${s}]` as Expr
+export const raw = (expr: string): Expr => expr as Expr;
+export const src = (source: Source): Expr => `[${source}]` as Expr;
 
 // --- Comparison -------------------------------------------------------------
 //
@@ -68,19 +93,21 @@ export const src = (s: Source): Expr => `[${s}]` as Expr
  * `<` was unavailable. They are not worth churning, so the helpers have to be
  * able to say it in the original direction.
  */
-type Operand = number | Expr
+type Operand = number | Expr;
 
-const cmp = (op: string) => (a: Operand, b: Operand): Expr =>
-  `${typeof a === 'number' ? n(a) : a} ${op} ${typeof b === 'number' ? n(b) : b}` as Expr
+const cmp =
+	(op: string) =>
+	(a: Operand, b: Operand): Expr =>
+		`${typeof a === 'number' ? n(a) : a} ${op} ${typeof b === 'number' ? n(b) : b}` as Expr;
 
-export const eq = cmp('==')
-export const gte = cmp('&gt;=')
-export const gt = cmp('&gt;')
-export const lt = cmp('&lt;')
-export const lte = cmp('&lt;=')
-export const and = (...xs: Expr[]): Expr => xs.join(' &amp;&amp; ') as Expr
-export const or = (...xs: Expr[]): Expr => xs.join(' || ') as Expr
-export const group = (e: Expr): Expr => `(${e})` as Expr
+export const eq = cmp('==');
+export const gte = cmp('&gt;=');
+export const gt = cmp('&gt;');
+export const lt = cmp('&lt;');
+export const lte = cmp('&lt;=');
+export const and = (...parts: Expr[]): Expr => parts.join(' &amp;&amp; ') as Expr;
+export const or = (...parts: Expr[]): Expr => parts.join(' || ') as Expr;
+export const group = (expr: Expr): Expr => `(${expr})` as Expr;
 
 // --- Ramps ------------------------------------------------------------------
 
@@ -93,17 +120,17 @@ export const group = (e: Expr): Expr => `(${e})` as Expr
  * a threshold survives it is because it was asked for.
  */
 export const ramp = (v: Expr, lo: number, hi: number): Expr =>
-  `clamp((${v} - ${n(lo)}) / ${n(hi - lo)}, 0, 1)` as Expr
+	`clamp((${v} - ${n(lo)}) / ${n(hi - lo)}, 0, 1)` as Expr;
 
 /** The precipitation ramp. ONE binding for what was 73 verbatim copies. */
-export const PRECIP = ramp(src('WEATHER.CHANCE_OF_PRECIPITATION'), 50, 100)
+export const PRECIP = ramp(src('WEATHER.CHANCE_OF_PRECIPITATION'), 50, 100);
 
 /** Per-drop rain gate: density ramps with the forecast, 8 points wide. */
 export const precipGate = (from: number): Expr =>
-  ramp(src('WEATHER.CHANCE_OF_PRECIPITATION'), from, from + 8)
+	ramp(src('WEATHER.CHANCE_OF_PRECIPITATION'), from, from + 8);
 
 /** Sweat intensity, from the resting band up to a hard effort. */
-export const heartRamp = (lo: number, hi: number): Expr => ramp(src('HEART_RATE'), lo, hi)
+export const heartRamp = (lo: number, hi: number): Expr => ramp(src('HEART_RATE'), lo, hi);
 
 // --- Phase ------------------------------------------------------------------
 
@@ -115,7 +142,7 @@ export const heartRamp = (lo: number, hi: number): Expr => ramp(src('HEART_RATE'
  * sawtooth below and the rain fell in visible ranks.
  */
 export const phase = (hz: number, offset: number): Expr =>
-  `fract([SECOND_MILLISECOND] * ${n(hz)} + ${n(offset)})` as Expr
+	`fract([SECOND_MILLISECOND] * ${n(hz)} + ${n(offset)})` as Expr;
 
 /**
  * The OLD whole-second sawtooth, 0..1 over `n` seconds.
@@ -126,9 +153,9 @@ export const phase = (hz: number, offset: number): Expr =>
  * the type system can answer instead of a grep.
  */
 export const secondPhase = (period: number, plus = 0): Expr => {
-  const s = plus ? `([SECOND] + ${n(plus)})` : `[SECOND]`
-  return `((${s} % ${n(period)}) + [SECOND_MILLISECOND] - [SECOND]) / ${n(period)}` as Expr
-}
+	const second = plus ? `([SECOND] + ${n(plus)})` : `[SECOND]`;
+	return `((${second} % ${n(period)}) + [SECOND_MILLISECOND] - [SECOND]) / ${n(period)}` as Expr;
+};
 
 /**
  * Triangle over a 0..1 phase, ZERO AT BOTH ENDS.
@@ -138,11 +165,11 @@ export const secondPhase = (period: number, plus = 0): Expr => {
  * Rises over the first quarter, holds, falls over the last quarter.
  */
 export const triangleAlpha = (p: Expr): Expr =>
-  `255 * (clamp(4 * ${p}, 0, 1) - clamp(4 * ${p} - 3, 0, 1))` as Expr
+	`255 * (clamp(4 * ${p}, 0, 1) - clamp(4 * ${p} - 3, 0, 1))` as Expr;
 
 /** `base` grows to `base + extra` as the ramp goes 0..1. */
 export const grow = (base: number, extra: number, by: Expr): Expr =>
-  `${n(base)} + ${n(extra)} * ${by}` as Expr
+	`${n(base)} + ${n(extra)} * ${by}` as Expr;
 
 /**
  * Rise by `amount` as the phase goes 0..1. The sleep z's, drifting upward.
@@ -151,7 +178,7 @@ export const grow = (base: number, extra: number, by: Expr): Expr =>
  * grows downward, so rising is negative, and that is how both z groups state it.
  * Kept rather than tidied: the emitted string is what the wrist has been showing.
  */
-export const drift = (amount: number, by: Expr): Expr => `0 - ${n(amount)} * ${by}` as Expr
+export const drift = (amount: number, by: Expr): Expr => `0 - ${n(amount)} * ${by}` as Expr;
 
 /**
  * Triangle over a 0..1 phase, PEAKING AT THE MIDPOINT. Zero at both ends.
@@ -170,12 +197,11 @@ export const drift = (amount: number, by: Expr): Expr => `0 - ${n(amount)} * ${b
  * arc. Two shapes, two names, and the reason written down; folding them together
  * with a parameter would hide the one thing that distinguishes them.
  */
-export const driftAlpha = (p: Expr): Expr =>
-  `255 * (2 * ${p} - clamp(4 * ${p} - 2, 0, 2))` as Expr
+export const driftAlpha = (p: Expr): Expr => `255 * (2 * ${p} - clamp(4 * ${p} - 2, 0, 2))` as Expr;
 
 // --- Gyro -------------------------------------------------------------------
 
 /** Wrist-tilt parallax, clamped before scaling so a sharp turn cannot fling a
  *  blob off the canvas. */
 export const tilt = (axis: 'X' | 'Y', gain: number, clamp = 35): Expr =>
-  `clamp([ACCELEROMETER_ANGLE_${axis}], -${n(clamp)}, ${n(clamp)}) * ${n(gain)}` as Expr
+	`clamp([ACCELEROMETER_ANGLE_${axis}], -${n(clamp)}, ${n(clamp)}) * ${n(gain)}` as Expr;

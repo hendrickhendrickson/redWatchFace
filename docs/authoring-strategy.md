@@ -5,12 +5,12 @@ artifact emitted by `node tools/gen/build.ts`; the magic numbers move into a con
 typed constants.
 
 > **Status: done, and since built on.** The migration landed the same day and the first feature
-> authored *in* the generator rather than migrated into it followed immediately — see
+> authored _in_ the generator rather than migrated into it followed immediately — see
 > §"After the migration", which is the part to read if you are about to add something rather than
 > to understand how the tree got here. Everything before that section is the case for the decision
 > and the record of executing it, kept because the reasoning is still load-bearing.
 >
-> This document is about *authoring*. For how the face behaves, see `README.md`; for the running
+> This document is about _authoring_. For how the face behaves, see `README.md`; for the running
 > engineering log and open items, `TODO.md`.
 
 Numbers below are measured against `watchface.xml` as committed in **`9aa11c9` ("1.1.0")** —
@@ -22,17 +22,17 @@ commit, and are historical: they describe the file the migration started from, n
 WFF has no variables, no functions and no constants. Every number is written where it is used. The
 result, with comments stripped:
 
-| | total | distinct |
-|---|---|---|
-| numeric literals in attributes | **3737** | **313** |
-| `x` | 433 | 89 |
-| `y` | 433 | 79 |
-| `width` | 437 | 56 |
-| `height` | 437 | 52 |
-| `cornerRadiusX` / `Y` | 68 / 68 | 16 / 16 |
-| `thickness` | 100 | 15 |
-| `alpha` | 50 | **2** |
-| colour literals | 331 | 61 |
+|                                | total    | distinct |
+| ------------------------------ | -------- | -------- |
+| numeric literals in attributes | **3737** | **313**  |
+| `x`                            | 433      | 89       |
+| `y`                            | 433      | 79       |
+| `width`                        | 437      | 56       |
+| `height`                       | 437      | 52       |
+| `cornerRadiusX` / `Y`          | 68 / 68  | 16 / 16  |
+| `thickness`                    | 100      | 15       |
+| `alpha`                        | 50       | **2**    |
+| colour literals                | 331      | 61       |
 
 **About 3400 of the 3737 literals are repeats of a value already written elsewhere.**
 
@@ -74,12 +74,12 @@ loop.
 
 ### The counter-argument, and why it lost
 
-An earlier draft of this document recommended *against* generating, on the grounds that ~450 lines
+An earlier draft of this document recommended _against_ generating, on the grounds that ~450 lines
 of structurally-duplicated markup (the weekday tables and the rain field) were only 11% of the file,
 were internally consistent, and were already finished — while the bulk of real editing was
 one-of-a-kind geometry a generator would not help with.
 
-That reasoning had a hole. It counted *structural block* duplication and colour literals, and
+That reasoning had a hole. It counted _structural block_ duplication and colour literals, and
 treated everything else as un-abstractable bespoke geometry. But bespoke geometry is exactly where
 the 3737 literals live, and `HERO_BOX` repeated 31 times is abstractable by any standard. The 11%
 figure measured the wrong thing.
@@ -143,37 +143,37 @@ abstraction WFF lacks.
 
 ```ts
 export type Node =
-  | { k: 'el';      tag: string; attrs: Attrs; children: Node[] }
-  | { k: 'comment'; text: string; verbatim?: boolean }
-  | { k: 'raw';     text: string }   // migration escape hatch
+	| { k: 'el'; tag: string; attrs: Attrs; children: Node[] }
+	| { k: 'comment'; text: string; verbatim?: boolean }
+	| { k: 'raw'; text: string }; // migration escape hatch
 ```
 
 ### Constants — the point of the exercise
 
 ```ts
 // geometry.ts — each box named once, used everywhere it is used today
-export const CANVAS    = { x: 0,  y: 0,  width: 450, height: 450 } as const  // 26 sites
-export const HERO_BOX  = { x: 14, y: 36, width: 72,  height: 80  } as const  // 31 sites
-export const MINI_BOX  = { x: 8,  y: 20, width: 44,  height: 42  } as const  // 30 sites
-export const DRIP_BOX  = { x: 0,  y: 0,  width: 106, height: 132 } as const  // 20 sites
+export const CANVAS = { x: 0, y: 0, width: 450, height: 450 } as const; // 26 sites
+export const HERO_BOX = { x: 14, y: 36, width: 72, height: 80 } as const; // 31 sites
+export const MINI_BOX = { x: 8, y: 20, width: 44, height: 42 } as const; // 30 sites
+export const DRIP_BOX = { x: 0, y: 0, width: 106, height: 132 } as const; // 20 sites
 ```
 
 ```ts
 // expr.ts — the idioms the comments already name, each written once
 export const ramp = (v: Expr, lo: number, hi: number): Expr =>
-  `clamp((${v} - ${lo}) / ${hi - lo}, 0, 1)` as Expr
+	`clamp((${v} - ${lo}) / ${hi - lo}, 0, 1)` as Expr;
 
 /** 73 verbatim copies today. */
-export const PRECIP = ramp(src('WEATHER.CHANCE_OF_PRECIPITATION'), 50, 100)
+export const PRECIP = ramp(src('WEATHER.CHANCE_OF_PRECIPITATION'), 50, 100);
 
 /** fract() is VERIFIED on hardware; it is what made per-drop rain phases possible. */
 export const phase = (hz: number, offset: number): Expr =>
-  `fract([SECOND_MILLISECOND] * ${hz} + ${offset})` as Expr
+	`fract([SECOND_MILLISECOND] * ${hz} + ${offset})` as Expr;
 
 /** Triangle over a 0..1 phase, ZERO at both ends, so a sawtooth reset in y
  *  happens at alpha 0 rather than as a visible snap. */
 export const triangleAlpha = (p: Expr): Expr =>
-  `255 * (clamp(4 * ${p}, 0, 1) - clamp(4 * ${p} - 3, 0, 1))` as Expr
+	`255 * (clamp(4 * ${p}, 0, 1) - clamp(4 * ${p} - 3, 0, 1))` as Expr;
 ```
 
 ### Types that catch what the validator cannot
@@ -188,7 +188,7 @@ export const triangleAlpha = (p: Expr): Expr =>
   SEVERE with a line number; here it is an error naming the element and telling you to move the
   fraction into the primitive inside.
 - **`Record<Weekday, Hex>`** over a seven-member union — adding or dropping a day fails to compile at
-  all eleven sites at once. Body and mask take the *same* argument, so the desync `TODO.md` calls
+  all eleven sites at once. Body and mask take the _same_ argument, so the desync `TODO.md` calls
   "a dark bar across a face on exactly one weekday" becomes unrepresentable.
 
 ### Comments
@@ -198,7 +198,7 @@ things measured on hardware that cannot be re-derived.
 
 - Comments are first-class nodes and sit in the children array where they sit today. The importer
   captures each one **verbatim**, so the migration never has to reproduce reflow — only indentation.
-- Prose that is duplicated *because the markup is* (the nine copies of the nine-times note) collapses
+- Prose that is duplicated _because the markup is_ (the nine copies of the nine-times note) collapses
   to one canonical copy in the owning module, plus a short provenance stub at each emitted site, so
   someone reading the XML on the wrist is still pointed at the reason.
 - The header palette table is **generated from `palette.ts`**, so the documentation of the colours
@@ -211,14 +211,14 @@ things measured on hardware that cannot be re-derived.
 ## Migration: the semantic differ is the gate
 
 **Superseded 2026-08-08.** The first plan gated on byte-identical output. That was dropped once the
-requirement was stated properly: the generated XML does not need to *look* like the hand-authored
-file, it needs to *render* the same. Byte comparison cannot express that — it fires on every
+requirement was stated properly: the generated XML does not need to _look_ like the hand-authored
+file, it needs to _render_ the same. Byte comparison cannot express that — it fires on every
 reflowed attribute — and chasing it would have meant reproducing 128 inline elements, 61
 hand-aligned wrapped attribute lines and a stray odd indent, forever.
 
 What replaced it is stronger. `tools/gen/model.ts` reduces a face to what actually reaches the
-screen — element order (which *is* draw order in WFF), tag, attributes, text — normalises away what
-does not (comments, whitespace, attribute order, `1.0` vs `1`, including numeric literals *inside*
+screen — element order (which _is_ draw order in WFF), tag, attributes, text — normalises away what
+does not (comments, whitespace, attribute order, `1.0` vs `1`, including numeric literals _inside_
 expressions), and compares. `node tools/gen/build.ts --diff` must report zero differences against
 the baseline.
 
@@ -226,7 +226,7 @@ During the migration that baseline was a frozen copy of the pre-migration `watch
 generated face had been validated, memory-checked and shot across all 25 states on the wrist, the
 copy was replaced by **`tools/gen/face.model.json`** — a committed semantic snapshot of the same
 thing. It answers the identical question at a fraction of the size, and unlike the frozen XML it
-keeps answering it for every *future* change rather than only for the migration. An intended
+keeps answering it for every _future_ change rather than only for the migration. An intended
 rendering change is accepted with `--snapshot`, and the new baseline lands in the same commit as
 the change that caused it.
 
@@ -246,18 +246,18 @@ was converted mechanically in one pass — a throwaway emitter walked the parsed
 TypeScript builder calls, with repeated boxes and colours already swapped for named constants — and
 then the interesting regions were collapsed by hand on top of a base that was already known good.
 Each collapse was one commit with `--diff` clean. The emitter and its driver were deleted once the
-migration landed; they could only produce a *worse* result if re-run against the refactored source.
+migration landed; they could only produce a _worse_ result if re-run against the refactored source.
 
 For the record, on byte-identity, which was the original plan and would have been affordable:
 
-| | |
-|---|---|
+|                                 |                                                               |
+| ------------------------------- | ------------------------------------------------------------- |
 | Markup, attribute order, indent | **yes** — the file is already machine-regular, 2-space indent |
-| Comments | **yes**, via verbatim capture |
-| The 21 derived colours | **yes — verified 21/21** |
-| Rain width/height extras | **yes** — `w*0.3` exact; `h*0.35` needs banker's rounding |
-| Rain fall distances | **no** — 2 of 9 sampled were hand-nudged; table them |
-| Numeric formatting | **yes, fiddly** — `fmt()` must not normalise `1.0` to `1` |
+| Comments                        | **yes**, via verbatim capture                                 |
+| The 21 derived colours          | **yes — verified 21/21**                                      |
+| Rain width/height extras        | **yes** — `w*0.3` exact; `h*0.35` needs banker's rounding     |
+| Rain fall distances             | **no** — 2 of 9 sampled were hand-nudged; table them          |
+| Numeric formatting              | **yes, fiddly** — `fmt()` must not normalise `1.0` to `1`     |
 
 Expect 2-3 places where a one-line non-identical diff is accepted deliberately and justified in the
 commit message.
@@ -275,26 +275,26 @@ Every commit boundary is a working repo.
 **2189** generated ones plus TypeScript, and the semantic differ reports zero differences against
 the pre-migration face.
 
-| Module | What it holds |
-|---|---|
-| `palette.ts` | the 7 chosen weekday hexes, the HSL derivations, and 30 named fixed colours |
-| `geometry.ts` | every repeated box — `HERO_BOX` was 31 literal copies, `MINI_BOX` 30, `CANVAS` 26 |
-| `expr.ts` | the closed `Source` union and the ramp/phase/triangle idioms |
-| `weekday.ts` | `byWeekday()` — the seven-way fan-out, written once instead of eleven times |
-| `blob.ts` | shared blob primitives taking explicit geometry |
-| `crossfade.ts` | `FADE_OUT`/`FADE_IN`, one binding for four hand-written `Variant` window sets |
-| `meetings.ts` | the meeting windows (added after the migration — see below) |
-| `face/*.ts` | 17 section modules, one per Scene child, in draw order |
+| Module         | What it holds                                                                     |
+| -------------- | --------------------------------------------------------------------------------- |
+| `palette.ts`   | the 7 chosen weekday hexes, the HSL derivations, and 30 named fixed colours       |
+| `geometry.ts`  | every repeated box — `HERO_BOX` was 31 literal copies, `MINI_BOX` 30, `CANVAS` 26 |
+| `expr.ts`      | the closed `Source` union and the ramp/phase/triangle idioms                      |
+| `weekday.ts`   | `byWeekday()` — the seven-way fan-out, written once instead of eleven times       |
+| `blob.ts`      | shared blob primitives taking explicit geometry                                   |
+| `crossfade.ts` | `FADE_OUT`/`FADE_IN`, one binding for four hand-written `Variant` window sets     |
+| `meetings.ts`  | the meeting windows (added after the migration — see below)                       |
+| `face/*.ts`    | 17 section modules, one per Scene child, in draw order                            |
 
 Measured effect on the duplication that motivated this:
 
-| | before | after |
-|---|---|---|
-| weekday fan-out sites | 11 hand-written tables | 1 `byWeekday()` |
-| precipitation ramp | 73 verbatim copies | 1 binding (`PRECIP`) |
-| hero body box | 31 literal copies | 1 constant |
-| rain field | 282 lines | 126, of which 24 are the drop table |
-| `blob-hero` | 816 lines | 552 |
+|                       | before                 | after                               |
+| --------------------- | ---------------------- | ----------------------------------- |
+| weekday fan-out sites | 11 hand-written tables | 1 `byWeekday()`                     |
+| precipitation ramp    | 73 verbatim copies     | 1 binding (`PRECIP`)                |
+| hero body box         | 31 literal copies      | 1 constant                          |
+| rain field            | 282 lines              | 126, of which 24 are the drop table |
+| `blob-hero`           | 816 lines              | 552                                 |
 
 The audit that came free with the tree found nothing wrong but is worth keeping: **228 part names,
 all unique**. It initially reported duplicates — `hero_eyes_startled` and two salute palms — which
@@ -323,7 +323,7 @@ $ node tools/gen/build.ts --check
 keep it. `tools/gen/face.model.json` is the sole baseline now — it is the flattened semantic model
 of the same tree, which is what the differ actually compares against, so the raw copy answered
 nothing the model does not. Retiring it did retire one question permanently: "does this render the
-same as the *hand-authored* file" is no longer askable, only "does it render the same as the last
+same as the _hand-authored_ file" is no longer askable, only "does it render the same as the last
 accepted baseline". That trade was made deliberately, and every `--snapshot` since is the audit
 trail.
 
@@ -361,7 +361,7 @@ wired into `assembleDebug`, and `build.ts` aborts if a mock backup exists.
 It still broke, and finding out how was worth the trip. `mock-state.ts` matches a whole
 `<Template>` as one exact string when it swaps in literal text, and the serialiser had been
 indenting `Template`'s CDATA onto its own line. `node tools/mock-state.ts on rainy` refused:
-*"ABORT: a [DAY_OF_WEEK_S] Template was not in the swap table — watchface.xml has changed."* That is
+_"ABORT: a [DAY_OF_WEEK_S] Template was not in the swap table — watchface.xml has changed."_ That is
 the script working exactly as designed; its header says every substitution asserts something so an
 edit fails loudly instead of silently producing a wrong snapshot. The fix went into the serialiser,
 not into `mock-state.ts`: any element with text or CDATA content now renders inline, which also
@@ -378,7 +378,7 @@ exact problem that already lets a clean clone report BUILD SUCCESSFUL having ver
 
 ## After the migration
 
-Everything above is about *moving* a finished face into a generator. Design pass 7 — retiring the
+Everything above is about _moving_ a finished face into a generator. Design pass 7 — retiring the
 salute and replacing it with a headset, a coffee cup and a game controller, 2026-08-08 — was the
 first feature **authored** in it, and it is the better test: the migration only had to reproduce
 something that already worked, whereas a new feature has to be right the first time in a language
@@ -391,7 +391,7 @@ proved nothing else moved. Adding three palette entries and removing two was a c
 every use site until it was consistent.
 
 Worth being accurate about the window duplication, because it is the headline claim and it is
-currently *latent* rather than demonstrated: `meetings.ts` holds three bindings, and each is emitted
+currently _latent_ rather than demonstrated: `meetings.ts` holds three bindings, and each is emitted
 **exactly once** today. The copies that would prove the point disappeared when the companion's
 headset was scrapped mid-pass — `HEADSET_WINDOW` was briefly emitted twice, once per blob. It
 returns to two the moment that headset comes back, which is the open item at the end of `TODO.md`.
@@ -406,21 +406,21 @@ composing expressions:
    `a || b || c || d` with no parentheses of its own. Passed straight into
    `and(days, hourTest, minuteTest)` it parses as `a || b || (d && hourTest && minuteTest)`, because
    `&&` binds tighter than `||` and nothing stops the last OR term reaching past its own boundary.
-   The symptom was two weekdays showing a headset at *every* hour of the day. **Reading the
+   The symptom was two weekdays showing a headset at _every_ hour of the day. **Reading the
    expression looks correct**; it was caught by evaluating the emitted text at midnight. The helpers
    return strings, so **any `or()` later combined with `and()` needs `group()` around it** — the
    type system brands `Expr` but cannot express associativity. This is the one place where the
-   generator is *more* dangerous than writing the parenthesis by hand, because composition hides it.
+   generator is _more_ dangerous than writing the parenthesis by hand, because composition hides it.
 2. **`--snapshot` is a ratchet, not a review.** It accepts whatever the generator currently emits.
    The gate only works if the diff is read before it is accepted, and a large intended change (this
    pass opened with ~900 differences) is exactly when skimming is tempting. The `--selftest` proves
-   the differ *can* fail; nothing proves the human looked.
+   the differ _can_ fail; nothing proves the human looked.
 
 **An architectural finding worth recording next to the section modules.** A `PartDraw` cannot start
 left of its parent group's origin — content there is clipped, as the companion's left hand
 demonstrates (its cream cap is drawn from `x-2` and arrives flat-sided). The hero's raised hand sits
 at group-local `x10.5`, so a prop wider than 21px could not be centred on it — and a round of art
-was shipped 3.5px off-centre on the strength of that, *and documented as unfixable*, which is the
+was shipped 3.5px off-centre on the strength of that, _and documented as unfixable_, which is the
 part worth flinching at: a correct premise had been carried to a false conclusion and then written
 down as a constraint. **The group is not the only coordinate space available.** The umbrella, the
 bolt, the burst and both sets of Zzz are already siblings of the blob rather than children,
@@ -433,10 +433,10 @@ asserted in a check and confirmed by reshooting `3-sunny`. Generalised: **anythi
 overhang a blob belongs beside it, not inside it**, and `heroGyro()` is what makes that free.
 
 **Where the generator does not help, and what did.** It has nothing to say about whether a shape
-*reads* at 426×426 — that still costs a build, an install and a look at a wrist, and this pass took
+_reads_ at 426×426 — that still costs a build, an install and a look at a wrist, and this pass took
 four rounds of it. What shortened the last two was borrowing the generator's own habit: writing a
 throwaway script that asserted the claims the code comments were making (buttons contained against
-a shell's rounded *corner arcs* rather than its bounding box, a handle tangent at 16.97 against a
+a shell's rounded _corner arcs_ rather than its bounding box, a handle tangent at 16.97 against a
 wall at 17, steam wisps' stroke-inflated bands not touching, a band's clearance over the head
 sampled across its whole span, and — the one that would never have been checked by eye — that the
 band's colour differed from the arms' by a luma of 2.8, i.e. was the same colour). Thirty
@@ -449,7 +449,7 @@ confirm."
 ## The data-driven pass, and the second compilation target
 
 The migration got the magic numbers out of the **output** and stopped there. It transliterated the
-XML into `el()` calls, so the numbers moved into TypeScript without ever becoming *data* — six
+XML into `el()` calls, so the numbers moved into TypeScript without ever becoming _data_ — six
 section modules still carried the literal header `// GENERATED SCAFFOLD`, the night window
 `[HOUR_0_23] >= 23 || 7 > [HOUR_0_23]` was written out **nine times** as a pre-escaped string
 literal that bypassed `expr.ts`'s closed `Source` union entirely, and the twelve canvas anchors that
@@ -467,7 +467,7 @@ So three things were done, and a fourth deliberately was not:
 
 - **Named** — a value with one meaning gets one binding (`T.NIGHT_FROM`, `GYRO_CLAMP`, `MOON.synodicDays`).
 - **Tabulated** — a list of things becomes rows in `data/*.ts`, read by a builder.
-- **Derived** — a value that *follows* from another is computed, and the derivation is asserted.
+- **Derived** — a value that _follows_ from another is computed, and the derivation is asserted.
 - **Not** collapsed into parameterised mega-builders. `blob.ts` argues at length that the companion
   is not the hero scaled down, and that argument still holds; the two blobs get two row sets and two
   call sequences. A helper has to remove a repetition or a hazard to earn its place. One I wrote —
@@ -479,24 +479,24 @@ So three things were done, and a fourth deliberately was not:
 Greps over `tools/gen/face/*.ts`, before (`ab278a9`) and after. Literal counts strip `//` comments
 and block-comment body lines, then count numeric tokens not part of an identifier.
 
-| grep | before | after |
-|---|---|---|
-| `el('Condition'` scaffolds | 32 | **0** |
-| `text('` pre-escaped expression literals | 37 | **0** |
-| `&gt;` / `&lt;` / `&amp;` in source | 96 | **0** |
-| `mode: 'AMBIENT'` bags | 15 | **0** |
-| `family: 'SYNC_TO_DEVICE'` | 15 | **0** |
-| hand-written `value: '...'` transforms | 15 | **0** |
-| `// GENERATED SCAFFOLD` headers | 11 | **0** |
-| numeric literals, all 19 section modules | 1806 | **596** |
-| &nbsp;&nbsp;`hero-props.ts` | 173 | 3 |
-| &nbsp;&nbsp;`freeze-mark.ts` | 86 | 3 |
-| &nbsp;&nbsp;`companion-burst.ts` | 75 | 3 |
-| &nbsp;&nbsp;`sleep-zzz.ts` | 85 | 2 |
-| &nbsp;&nbsp;`blob-hero.ts` | 410 | 133 |
-| &nbsp;&nbsp;`blob-companion.ts` | 309 | 88 |
-| &nbsp;&nbsp;`chip-weather.ts` | 138 | 72 |
-| &nbsp;&nbsp;`rain.ts` — *already right* | 260 | 257 |
+| grep                                     | before | after   |
+| ---------------------------------------- | ------ | ------- |
+| `el('Condition'` scaffolds               | 32     | **0**   |
+| `text('` pre-escaped expression literals | 37     | **0**   |
+| `&gt;` / `&lt;` / `&amp;` in source      | 96     | **0**   |
+| `mode: 'AMBIENT'` bags                   | 15     | **0**   |
+| `family: 'SYNC_TO_DEVICE'`               | 15     | **0**   |
+| hand-written `value: '...'` transforms   | 15     | **0**   |
+| `// GENERATED SCAFFOLD` headers          | 11     | **0**   |
+| numeric literals, all 19 section modules | 1806   | **596** |
+| &nbsp;&nbsp;`hero-props.ts`              | 173    | 3       |
+| &nbsp;&nbsp;`freeze-mark.ts`             | 86     | 3       |
+| &nbsp;&nbsp;`companion-burst.ts`         | 75     | 3       |
+| &nbsp;&nbsp;`sleep-zzz.ts`               | 85     | 2       |
+| &nbsp;&nbsp;`blob-hero.ts`               | 410    | 133     |
+| &nbsp;&nbsp;`blob-companion.ts`          | 309    | 88      |
+| &nbsp;&nbsp;`chip-weather.ts`            | 138    | 72      |
+| &nbsp;&nbsp;`rain.ts` — _already right_  | 260    | 257     |
 
 `blob-hero`, `blob-companion` and `chip-weather` are the three that did not reach the plan's rough
 targets. What is left in them is the shapes that are genuinely one-of-a-kind: the X-ray skeleton,
@@ -506,7 +506,7 @@ not evidence one is owed.
 
 **`--audit`'s output-side numbers did not improve, and must not.** WFF has no variables, so the
 emitted duplication — 31 copies of `HERO_BOX`, 2562 literals, 35 repeated expressions — is
-unavoidable and is *supposed* to stay exactly where it is. An improving `--audit` would mean the
+unavoidable and is _supposed_ to stay exactly where it is. An improving `--audit` would mean the
 output had changed.
 
 ### The gate: byte-identity, not just semantics
@@ -527,19 +527,19 @@ step: reshooting the states showed the step-goal flag floating with no arm to ho
 The flag's pole is authored to be gripped — it runs down x93, the exact centre of `rightOut`'s
 cream cap, and spans y19..74, bracketing that cap's centre at y60.5. Until 1.1.0 the flag and the
 right arm were **two independent `<Condition>` elements**, so both drew and the hero held it.
-Removing the salute merged them into one dispatch, which made the flag *exclusive* with the arm —
+Removing the salute merged them into one dispatch, which made the flag _exclusive_ with the arm —
 so from 1.2.0 the goal state drew a pole in mid-air, and on a cold day a mitten floating beside it
 with no arm to sit on.
 
 **Every check in this repo passed throughout, and none of them could have caught it.** `--check`
 compares bytes to the committed file, `--diff` compares to `face.model.json`, and both baselines
-were taken *after* the merge. The gate's question is "did the output change", and the answer was
+were taken _after_ the merge. The gate's question is "did the output change", and the answer was
 correctly "no" — it has no way to ask "was it already wrong". The screenshot that would have shown
 it was committed in the same commit as the merge, having been shot before it.
 
 Two things follow, and both are now in place. The pole is recorded in `data/blobs.ts` next to the
 arm row it depends on, with an assertion that it passes through the fist — which fires in all three
-directions, including when the *arm* moves rather than the pole, the direction that actually caused
+directions, including when the _arm_ moves rather than the pole, the direction that actually caused
 this. And the path-based differ is worth distrusting on structural change: inserting one
 `<Condition>` shifts every sibling index and it reported 1176 differences for what was a four-element
 change. The verification that worked was behavioural — render all 29 states before and after and
@@ -553,8 +553,8 @@ reproducing all 21 derived colours — was applied to every new table. The rule 
 narrower than "assert things": **assert the property that makes the shape read as what it is**, and
 then go and watch it fail.
 
-- The heart is two lobes and a rotated square, and the square's upper corners must stay *hidden
-  behind the lobes* — that is what makes three shapes read as one heart instead of a diamond parked
+- The heart is two lobes and a rotated square, and the square's upper corners must stay _hidden
+  behind the lobes_ — that is what makes three shapes read as one heart instead of a diamond parked
   under two circles.
 - The snowflake's three axes must span all six arms exactly once; getting it wrong draws one axis
   twice and leaves a gap.
@@ -577,13 +577,13 @@ produce. All five are the shape the watch has been drawing, so all five are reco
 constant with the measurement, and none was quietly corrected — growing a box or nudging a
 coordinate is a design decision, not a tidy-up.
 
-| what | measured |
-|---|---|
-| companion's scarf tail | runs 11px past its part box, clipped |
-| companion's first limb cap | starts at local x-2, arrives flat-sided |
-| coffee cup's tallest steam wisp | round cap overshoots the box top by 0.2px |
+| what                              | measured                                               |
+| --------------------------------- | ------------------------------------------------------ |
+| companion's scarf tail            | runs 11px past its part box, clipped                   |
+| companion's first limb cap        | starts at local x-2, arrives flat-sided                |
+| coffee cup's tallest steam wisp   | round cap overshoots the box top by 0.2px              |
 | storm burst's four longest spokes | SQUARE caps reach 54.5 in a box whose half-width is 52 |
-| step icon's heel | centres on 14 where the ball and arch centre on 13 |
+| step icon's heel                  | centres on 14 where the ball and arch centre on 13     |
 
 Two documented facts also turned out to be wrong once the arithmetic was actually done. The
 controller's comment claimed the ABXY diamond and right stick were "pulled 1.5px apart" because the
@@ -609,7 +609,7 @@ so a second pure function of the same tree is a second target:
 otherwise need already existed. Everything above the seam is shared: every constant, every table,
 every predicate, every section builder. The split is the last function call, and
 `tools/preview/check.ts` asserts that the app renders byte-identical output to `renderSvg` fed the
-same values — so the preview is a *view* of the backend, not a third implementation of WFF
+same values — so the preview is a _view_ of the backend, not a third implementation of WFF
 semantics.
 
 `svg.ts` lives in `gen/` rather than under `tools/preview/` on purpose: it is a peer of `xml.ts`,
@@ -622,13 +622,13 @@ into anything not called `node_modules`.
 
 - **Text.** The family is `SYNC_TO_DEVICE`, so glyph advance belongs to the device. WFF exposes no
   text-width source either, which is why `geometry.ts` records that the date row is centred by
-  *estimate*. Anything text-shaped in the preview is indicative.
+  _estimate_. Anything text-shaped in the preview is indicative.
 - **Easing.** WFF names its interpolation curves and does not specify them. The preview honours the
-  *windows* faithfully and approximates the ramp inside each one.
+  _windows_ faithfully and approximates the ramp inside each one.
 - **Scale.** The design canvas is 450×450, hardware reports 426, the emulator 454. This adds a
   fourth geometry rather than settling the question.
 
-What it *is* good for is the thing screenshots cannot show. `crossfade.ts` argues that one pair of
+What it _is_ good for is the thing screenshots cannot show. `crossfade.ts` argues that one pair of
 `<Variant>` windows serves both directions, so going ambient leaves a 0.05 gap with neither clock
 copy drawn and coming back leaves an overlap with both, and that no timing avoids both. That was an
 argument until the scrubber; counting visible copies across the transition gives
@@ -691,20 +691,21 @@ Gradle pre-step is just this plan in a worse language.
    said "predicates only — no geometry, no compositing, no drawing." The evaluator is now the engine
    of the SVG backend, so it does all three. Building it properly rather than minimally was worth it
    for exactly that reason, and it is why `--selftest` carries 36 hand-computed cases: an evaluator
-   that is subtly wrong would be wrong *identically* in `--equiv` and in the preview, which is the
+   that is subtly wrong would be wrong _identically_ in `--equiv` and in the preview, which is the
    one failure mode that could mislead both at once.
 
    `node tools/gen/build.ts --equiv "<a>" "<b>"` answers whether two expressions agree over a
    783-row grid, and reports where they first diverge. **The first version of that grid was
    vacuous**, in this project's signature way: it varied one source at a time, and
-   `a || b && c` differs from `(a || b) && c` only when `a` is true *and* `c` is false — so it
+   `a || b && c` differs from `(a || b) && c` only when `a` is true _and_ `c` is false — so it
    pronounced the documented `or()`/`and()` mis-binding EQUIVALENT. The grid is now named states,
    plus one-factor sweeps over every threshold's boundary values, plus 600 seeded combinations, and
    `--selftest` asserts it still catches that mis-binding so it cannot regress.
 
-   The same lesson landed a second time on a *negative* control: `>= 7` and `> 7` disagree on
+   The same lesson landed a second time on a _negative_ control: `>= 7` and `> 7` disagree on
    exactly one integer, and a grid holding 3 and 9 "proves" a changed operator harmless. Every
    threshold in `fixtures.ts` now appears with its neighbour.
+
 3. ~~**The date crossfade disagrees with its own documentation.**~~ **Closed 2026-08-08**, judged on
    the wrist — the only way it was ever visible, since the transition lasts ~200 ms and every mock
    state is steady-state. The finding: a `<Variant>` window is used in **both** directions, so a gap

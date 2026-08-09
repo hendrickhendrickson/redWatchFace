@@ -11,12 +11,12 @@
  * two copies: weight, colour, and whether the chip is drawn.
  */
 
-import { el, cdata, type Node } from '../xml.ts'
-import { FONT_FAMILY, SIZE } from '../type.ts'
-import * as G from '../geometry.ts'
+import { el, cdata, type Node } from '../xml.ts';
+import { FONT_FAMILY, SIZE } from '../type.ts';
+import * as G from '../geometry.ts';
 
 /** The row's group box. Both copies, so the fade is over the same area. */
-export const DATE_GROUP = { x: 0, y: 0, width: 450, height: 80 }
+export const DATE_GROUP = { x: 0, y: 0, width: 450, height: 80 };
 
 /**
  * Same family and size in both modes; only the weight moves.
@@ -25,19 +25,19 @@ export const DATE_GROUP = { x: 0, y: 0, width: 450, height: 80 }
  * one: the two date copies spread it as `{ ...DATE_FONT, weight, color }`, which
  * puts slant before weight. See the note on font() in type.ts.
  */
-export const DATE_FONT = { family: FONT_FAMILY, size: SIZE.DATE, slant: 'NORMAL' } as const
+export const DATE_FONT = { family: FONT_FAMILY, size: SIZE.DATE, slant: 'NORMAL' } as const;
 
 /**
  * The chip's corners. Filled interactive, outlined ambient - so both copies
  * need them, and they have to agree or the shape visibly changes mid-fade.
  */
-export const CHIP_RADIUS = { cornerRadiusX: 11, cornerRadiusY: 11 }
+export const CHIP_RADIUS = { cornerRadiusX: 11, cornerRadiusY: 11 };
 
 /** Inset by CHIP_STROKE / 2. See DATE_CHIP_OUTLINE_SHAPE in geometry.ts. */
-export const CHIP_OUTLINE_RADIUS = { cornerRadiusX: 10, cornerRadiusY: 10 }
+export const CHIP_OUTLINE_RADIUS = { cornerRadiusX: 10, cornerRadiusY: 10 };
 
 /** 2 design px, so ~1.9 on the watch. Thin enough to stay a hairline. */
-export const CHIP_STROKE = 2
+export const CHIP_STROKE = 2;
 
 /**
  * A PartText whose content is one templated source, e.g. "%s" <- [DAY_OF_WEEK_S].
@@ -53,21 +53,21 @@ export const CHIP_STROKE = 2
  * 31st, which the single-string version did.
  */
 const glyph = (
-  box: G.Box,
-  align: 'START' | 'CENTER' | 'END',
-  name: string,
-  weight: 'BOLD' | 'NORMAL',
-  colour: string,
-  template: string,
-  expression: string,
+	box: G.Box,
+	align: 'START' | 'CENTER' | 'END',
+	name: string,
+	weight: 'BOLD' | 'NORMAL',
+	colour: string,
+	template: string,
+	expression: string
 ): Node =>
-  el('PartText', { ...box, name }, [
-    el('Text', { align }, [
-      el('Font', { ...DATE_FONT, weight, color: colour }, [
-        el('Template', {}, [cdata(template), el('Parameter', { expression })]),
-      ]),
-    ]),
-  ])
+	el('PartText', { ...box, name }, [
+		el('Text', { align }, [
+			el('Font', { ...DATE_FONT, weight, color: colour }, [
+				el('Template', {}, [cdata(template), el('Parameter', { expression })])
+			])
+		])
+	]);
 
 /**
  * The weekday. END-ALIGNED, which is the whole point of it having its own
@@ -90,8 +90,8 @@ const glyph = (
  * centre.
  */
 export const weekdayGlyph = (name: string, weight: 'BOLD' | 'NORMAL', colour: string): Node =>
-  glyph(G.DATE_WEEKDAY_BOX, 'END', name, weight, colour, '%s', '[DAY_OF_WEEK_S]')
+	glyph(G.DATE_WEEKDAY_BOX, 'END', name, weight, colour, '%s', '[DAY_OF_WEEK_S]');
 
 /** The day number, centred on the chip. Stays CENTER: 1 and 31 both sit on it. */
 export const dayGlyph = (name: string, weight: 'BOLD' | 'NORMAL', colour: string): Node =>
-  glyph(G.DATE_DAY_BOX, 'CENTER', name, weight, colour, '%d', '[DAY]')
+	glyph(G.DATE_DAY_BOX, 'CENTER', name, weight, colour, '%d', '[DAY]');

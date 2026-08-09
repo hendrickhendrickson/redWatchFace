@@ -14,18 +14,24 @@
  * mean a face reading 23:12 while its night predicate looked at hour 19.
  */
 
-import { DAY_OF_WEEK, WEEKDAYS, type Weekday } from '../../gen/palette.ts'
-import type { Display, NumericSource } from '../../gen/fixtures.ts'
+import { DAY_OF_WEEK, WEEKDAYS, type Weekday } from '../../gen/palette.ts';
+import type { Display, NumericSource } from '../../gen/fixtures.ts';
 
 /** Seconds in a day, the range the scrubber runs over. */
-export const DAY_SECONDS = 24 * 60 * 60
+export const DAY_SECONDS = 24 * 60 * 60;
 
-const pad = (v: number): string => String(Math.floor(v)).padStart(2, '0')
+const pad = (value: number): string => String(Math.floor(value)).padStart(2, '0');
 
 /** Short weekday label, matching what [DAY_OF_WEEK_S] renders on the watch. */
 const LABEL: Record<Weekday, string> = {
-  mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
-}
+	mon: 'Mon',
+	tue: 'Tue',
+	wed: 'Wed',
+	thu: 'Thu',
+	fri: 'Fri',
+	sat: 'Sat',
+	sun: 'Sun'
+};
 
 /**
  * Invert the face's own day map rather than restating 1..7.
@@ -35,12 +41,12 @@ const LABEL: Record<Weekday, string> = {
  * implementation six days out of seven. Deriving it means the preview and the face
  * cannot disagree about which number Tuesday is.
  */
-const BY_NUMBER = new Map<number, Weekday>(WEEKDAYS.map((d) => [DAY_OF_WEEK[d], d]))
+const BY_NUMBER = new Map<number, Weekday>(WEEKDAYS.map((day) => [DAY_OF_WEEK[day], day]));
 
 export const weekdayLabel = (dayOfWeek: number): string => {
-  const d = BY_NUMBER.get(dayOfWeek)
-  return d === undefined ? '???' : LABEL[d]
-}
+	const day = BY_NUMBER.get(dayOfWeek);
+	return day === undefined ? '???' : LABEL[day];
+};
 
 /**
  * Every clock-derived source, plus what the clock reads.
@@ -53,21 +59,23 @@ export const weekdayLabel = (dayOfWeek: number): string => {
  * exactly the artefact fract() was introduced to remove.
  */
 export const clockValues = (
-  secondsOfDay: number,
+	secondsOfDay: number
 ): { values: Partial<Record<NumericSource, number>>; time: string } => {
-  const t = ((secondsOfDay % DAY_SECONDS) + DAY_SECONDS) % DAY_SECONDS
-  const hour = Math.floor(t / 3600)
-  const minute = Math.floor((t % 3600) / 60)
-  return {
-    values: {
-      HOUR_0_23: hour,
-      MINUTE: minute,
-      SECOND: Math.floor(t % 60),
-      SECOND_MILLISECOND: t % 60,
-    },
-    time: `${pad(hour)}:${pad(minute)}`,
-  }
-}
+	const clamped = ((secondsOfDay % DAY_SECONDS) + DAY_SECONDS) % DAY_SECONDS;
+	const hour = Math.floor(clamped / 3600);
+	const minute = Math.floor((clamped % 3600) / 60);
+	return {
+		values: {
+			HOUR_0_23: hour,
+			MINUTE: minute,
+			SECOND: Math.floor(clamped % 60),
+			SECOND_MILLISECOND: clamped % 60
+		},
+		time: `${pad(hour)}:${pad(minute)}`
+	};
+};
 
-export const displayFor = (secondsOfDay: number, dayOfWeek: number): Display =>
-  ({ time: clockValues(secondsOfDay).time, weekday: weekdayLabel(dayOfWeek) })
+export const displayFor = (secondsOfDay: number, dayOfWeek: number): Display => ({
+	time: clockValues(secondsOfDay).time,
+	weekday: weekdayLabel(dayOfWeek)
+});

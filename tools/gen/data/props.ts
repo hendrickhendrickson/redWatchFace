@@ -25,8 +25,8 @@
  * per row is not a derivation.
  */
 
-import * as G from '../geometry.ts'
-import { HERO_ARMS } from './blobs.ts'
+import * as G from '../geometry.ts';
+import { HERO_ARMS } from './blobs.ts';
 
 /**
  * Round to one decimal place.
@@ -36,18 +36,22 @@ import { HERO_ARMS } from './blobs.ts'
  * makes byte-identity with the hand-written values achievable at all - and it is
  * also the resolution the design was traced at, so it is not merely cosmetic.
  */
-const r1 = (n: number): number => Math.round(n * 10) / 10
+const r1 = (value: number): number => Math.round(value * 10) / 10;
 
 /** A stroked segment. */
-export interface Seg {
-  startX: number
-  startY: number
-  endX: number
-  endY: number
-}
+export type Seg = {
+	startX: number;
+	startY: number;
+	endX: number;
+	endY: number;
+};
 
-const seg = (startX: number, startY: number, endX: number, endY: number): Seg =>
-  ({ startX, startY, endX, endY })
+const seg = (startX: number, startY: number, endX: number, endY: number): Seg => ({
+	startX,
+	startY,
+	endX,
+	endY
+});
 
 // --- The hand ---------------------------------------------------------------
 
@@ -59,12 +63,12 @@ const seg = (startX: number, startY: number, endX: number, endY: number): Seg =>
  * the dependency is visible from both ends.
  */
 export const HAND = (() => {
-  const cap = HERO_ARMS.leftUp.cream
-  return {
-    x: G.ANCHORS.HERO.x + cap.x + cap.width / 2 - G.ANCHORS.HERO_PROPS.x,
-    y: G.ANCHORS.HERO.y + cap.y + cap.height / 2 - G.ANCHORS.HERO_PROPS.y,
-  }
-})()
+	const cap = HERO_ARMS.leftUp.cream;
+	return {
+		x: G.ANCHORS.HERO.x + cap.x + cap.width / 2 - G.ANCHORS.HERO_PROPS.x,
+		y: G.ANCHORS.HERO.y + cap.y + cap.height / 2 - G.ANCHORS.HERO_PROPS.y
+	};
+})();
 
 /**
  * The value the props were authored against.
@@ -73,14 +77,14 @@ export const HAND = (() => {
  * rule palette.ts's SHIPPED table set. If the hero moves, this fires and the
  * message says which of the three inputs changed under it.
  */
-const HAND_SHIPPED = { x: 18.5, y: 35 }
+const HAND_SHIPPED = { x: 18.5, y: 35 };
 
 if (HAND.x !== HAND_SHIPPED.x || HAND.y !== HAND_SHIPPED.y) {
-  throw new Error(
-    `the hero's fist is now at prop-local (${HAND.x},${HAND.y}), not ` +
-      `(${HAND_SHIPPED.x},${HAND_SHIPPED.y}) - ANCHORS.HERO, ANCHORS.HERO_PROPS or ` +
-      'HERO_ARMS.leftUp.cream moved, and every prop in this file is placed against it',
-  )
+	throw new Error(
+		`the hero's fist is now at prop-local (${HAND.x},${HAND.y}), not ` +
+			`(${HAND_SHIPPED.x},${HAND_SHIPPED.y}) - ANCHORS.HERO, ANCHORS.HERO_PROPS or ` +
+			'HERO_ARMS.leftUp.cream moved, and every prop in this file is placed against it'
+	);
 }
 
 // --- The Wednesday coffee cup -----------------------------------------------
@@ -95,56 +99,56 @@ if (HAND.x !== HAND_SHIPPED.x || HAND.y !== HAND_SHIPPED.y) {
  * lands on the rectangle's bottom edge. Written out, that was three independent
  * y values and three independent widths, and nothing said they were the same cup.
  */
-export interface Cup {
-  x: number
-  width: number
-  /** The rim ellipse's box top. */
-  top: number
-  topH: number
-  /** The straight-sided body, from the rim's centre down. */
-  bodyH: number
-  baseH: number
-  /** How far the coffee is inset inside the rim. */
-  inset: { x: number; y: number }
-}
+export type Cup = {
+	x: number;
+	width: number;
+	/** The rim ellipse's box top. */
+	top: number;
+	topH: number;
+	/** The straight-sided body, from the rim's centre down. */
+	bodyH: number;
+	baseH: number;
+	/** How far the coffee is inset inside the rim. */
+	inset: { x: number; y: number };
+};
 
 export const CUP: Cup = {
-  x: 4,
-  width: 13,
-  top: 8.5,
-  topH: 5,
-  bodyH: 9.75,
-  baseH: 4.5,
-  inset: { x: 1.75, y: 1 },
-}
+	x: 4,
+	width: 13,
+	top: 8.5,
+	topH: 5,
+	bodyH: 9.75,
+	baseH: 4.5,
+	inset: { x: 1.75, y: 1 }
+};
 
 /** The rim's vertical centre, which is where the straight sides begin. */
-const CUP_SHOULDER = CUP.top + CUP.topH / 2
+const CUP_SHOULDER = CUP.top + CUP.topH / 2;
 /** The bottom of the base ellipse - the point that sits on the hand. */
-const CUP_BASE_BOTTOM = CUP_SHOULDER + CUP.bodyH + CUP.baseH / 2
-const CUP_CENTRE_X = CUP.x + CUP.width / 2
+const CUP_BASE_BOTTOM = CUP_SHOULDER + CUP.bodyH + CUP.baseH / 2;
+const CUP_CENTRE_X = CUP.x + CUP.width / 2;
 /** The right-hand wall. The handle is positioned off this. */
-const CUP_WALL_X = CUP.x + CUP.width
+const CUP_WALL_X = CUP.x + CUP.width;
 
 export const CUP_SHAPES = {
-  /** The white base, drawn first of the three. */
-  base: G.box(CUP.x, CUP_BASE_BOTTOM - CUP.baseH, CUP.width, CUP.baseH),
-  body: G.box(CUP.x, CUP_SHOULDER, CUP.width, CUP.bodyH),
-  rim: G.box(CUP.x, CUP.top, CUP.width, CUP.topH),
-  /**
-   * The coffee, inset inside the rim so a white wall is left on both sides.
-   *
-   * DERIVED FROM THE RIM RATHER THAN PLACED. Drawing the liquid at its own
-   * coordinates is how it ended up touching open background on the left and
-   * right, which read as a bowl of brown rather than a mug.
-   */
-  coffee: G.box(
-    CUP.x + CUP.inset.x,
-    CUP.top + CUP.inset.y,
-    CUP.width - 2 * CUP.inset.x,
-    CUP.topH - 2 * CUP.inset.y,
-  ),
-}
+	/** The white base, drawn first of the three. */
+	base: G.box(CUP.x, CUP_BASE_BOTTOM - CUP.baseH, CUP.width, CUP.baseH),
+	body: G.box(CUP.x, CUP_SHOULDER, CUP.width, CUP.bodyH),
+	rim: G.box(CUP.x, CUP.top, CUP.width, CUP.topH),
+	/**
+	 * The coffee, inset inside the rim so a white wall is left on both sides.
+	 *
+	 * DERIVED FROM THE RIM RATHER THAN PLACED. Drawing the liquid at its own
+	 * coordinates is how it ended up touching open background on the left and
+	 * right, which read as a bowl of brown rather than a mug.
+	 */
+	coffee: G.box(
+		CUP.x + CUP.inset.x,
+		CUP.top + CUP.inset.y,
+		CUP.width - 2 * CUP.inset.x,
+		CUP.topH - 2 * CUP.inset.y
+	)
+};
 
 /**
  * The handle: a ring with a 60-degree gap, and the gap faces the cup.
@@ -160,18 +164,18 @@ export const CUP_SHAPES = {
  * side of the wall read twice as thick as the other. So the centre is derived
  * from the wall and the assertion below checks the landing.
  */
-export const HANDLE = { r: 3.5, thickness: 2, gap: 60, centerY: 16 }
+export const HANDLE = { r: 3.5, thickness: 2, gap: 60, centerY: 16 };
 
-const HALF_GAP_RAD = ((HANDLE.gap / 2) * Math.PI) / 180
+const HALF_GAP_RAD = ((HANDLE.gap / 2) * Math.PI) / 180;
 
 export const HANDLE_ARC = {
-  centerX: Math.round(CUP_WALL_X + HANDLE.r * Math.cos(HALF_GAP_RAD) + HANDLE.thickness / 2),
-  centerY: HANDLE.centerY,
-  width: 2 * HANDLE.r,
-  height: 2 * HANDLE.r,
-  startAngle: 270 + HANDLE.gap / 2,
-  endAngle: 270 + HANDLE.gap / 2 + (360 - HANDLE.gap),
-}
+	centerX: Math.round(CUP_WALL_X + HANDLE.r * Math.cos(HALF_GAP_RAD) + HANDLE.thickness / 2),
+	centerY: HANDLE.centerY,
+	width: 2 * HANDLE.r,
+	height: 2 * HANDLE.r,
+	startAngle: 270 + HANDLE.gap / 2,
+	endAngle: 270 + HANDLE.gap / 2 + (360 - HANDLE.gap)
+};
 
 /**
  * Three wisps of steam, each with two direction changes.
@@ -185,39 +189,41 @@ export const HANDLE_ARC = {
  * `sway` is WHICH WAY THE FIRST BEND GOES. The left wisp bends left first and the
  * other two bend right first, which is why the three do not read as one wave.
  */
-export interface Wisp {
-  /** The centreline. */
-  x: number
-  /** Rise per segment. The middle wisp's is larger, so it tops out higher. */
-  dy: number
-  sway: 1 | -1
-}
+export type Wisp = {
+	/** The centreline. */
+	x: number;
+	/** Rise per segment. The middle wisp's is larger, so it tops out higher. */
+	dy: number;
+	sway: 1 | -1;
+};
 
 export const STEAM = {
-  /** Where the wisps start, just above the rim. */
-  y0: 8,
-  /** How far each bend leaves the centreline. */
-  sway: 1,
-  segments: 3,
-  thickness: 1.4,
-  wisps: [
-    { x: 6, dy: 2.3, sway: -1 },
-    { x: 10.5, dy: 2.5, sway: 1 },
-    { x: 15, dy: 2.3, sway: 1 },
-  ] as Wisp[],
-}
+	/** Where the wisps start, just above the rim. */
+	y0: 8,
+	/** How far each bend leaves the centreline. */
+	sway: 1,
+	segments: 3,
+	thickness: 1.4,
+	// `satisfies`, not `as`: it checks the rows against Wisp AND keeps `sway` at its literal
+	// 1 / -1 rather than widening it to number, which the assertion form threw away.
+	wisps: [
+		{ x: 6, dy: 2.3, sway: -1 },
+		{ x: 10.5, dy: 2.5, sway: 1 },
+		{ x: 15, dy: 2.3, sway: 1 }
+	] satisfies Wisp[]
+};
 
 /** A wisp's four points, bending sway / -sway / back to the centreline. */
-const wispPoints = (w: Wisp): { x: number; y: number }[] =>
-  [0, 1, 2, 3].map((i) => ({
-    x: r1(w.x + (i === 1 ? w.sway : i === 2 ? -w.sway : 0) * STEAM.sway),
-    y: r1(STEAM.y0 - i * w.dy),
-  }))
+const wispPoints = (wisp: Wisp): { x: number; y: number }[] =>
+	[0, 1, 2, 3].map((i) => ({
+		x: r1(wisp.x + (i === 1 ? wisp.sway : i === 2 ? -wisp.sway : 0) * STEAM.sway),
+		y: r1(STEAM.y0 - i * wisp.dy)
+	}));
 
-export const STEAM_SEGMENTS: Seg[] = STEAM.wisps.flatMap((w) => {
-  const p = wispPoints(w)
-  return [0, 1, 2].map((i) => seg(p[i]!.x, p[i]!.y, p[i + 1]!.x, p[i + 1]!.y))
-})
+export const STEAM_SEGMENTS: Seg[] = STEAM.wisps.flatMap((wisp) => {
+	const points = wispPoints(wisp);
+	return [0, 1, 2].map((i) => seg(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y));
+});
 
 /**
  * The cup's part box.
@@ -228,61 +234,82 @@ export const STEAM_SEGMENTS: Seg[] = STEAM.wisps.flatMap((w) => {
  * than tight, and the three assertions after it are what keep it honest, since
  * anything that outgrows this box is silently clipped.
  */
-export const CUP_BOX = G.box(HAND.x - CUP_CENTRE_X, HAND.y - CUP_BASE_BOTTOM, 28, 24)
+export const CUP_BOX = G.box(HAND.x - CUP_CENTRE_X, HAND.y - CUP_BASE_BOTTOM, 28, 24);
 
 {
-  const handleRight = HANDLE_ARC.centerX + HANDLE.r + HANDLE.thickness / 2
-  const steamTop = Math.min(...STEAM_SEGMENTS.map((s) => Math.min(s.startY, s.endY)))
-  const problems: string[] = []
+	const handleRight = HANDLE_ARC.centerX + HANDLE.r + HANDLE.thickness / 2;
+	const steamTop = Math.min(
+		...STEAM_SEGMENTS.map((segment) => Math.min(segment.startY, segment.endY))
+	);
+	const problems: string[] = [];
 
-  // The ring must touch the wall, not cross it and not float clear of it. Half a
-  // tenth of a pixel either way - tighter than the 1dp the shape is authored at.
-  const leftmost = HANDLE_ARC.centerX - HANDLE.r * Math.cos(HALF_GAP_RAD) - HANDLE.thickness / 2
-  if (Math.abs(leftmost - CUP_WALL_X) > 0.05) {
-    problems.push(`the handle's leftmost pixel is at ${r1(leftmost)}, not on the wall at ${CUP_WALL_X}`)
-  }
-  if (handleRight > CUP_BOX.width) problems.push(`the handle reaches ${handleRight}, past the box's ${CUP_BOX.width}`)
-  if (CUP_BASE_BOTTOM > CUP_BOX.height) problems.push(`the base reaches ${CUP_BASE_BOTTOM}, past the box's ${CUP_BOX.height}`)
-  /**
-   * THE TALLEST WISP'S CAP IS CLIPPED, BY 0.2px, AND THAT IS THE SHIPPED SHAPE.
-   *
-   * The middle wisp's centreline tops out at y0.5 inside a box that starts at 0,
-   * and a 1.4-thick round cap reaches 0.7 past the endpoint - so its last 0.2px
-   * arrives flat instead of round. Recorded rather than quietly fixed, the same
-   * call MINI_SCARF_BOX makes about the companion's scarf tail: growing the box
-   * changes what the watch has been drawing.
-   *
-   * What is asserted is the line itself, not the cap. A centreline outside the
-   * box would lose a whole segment, which is a bug; a shaved cap is a detail.
-   */
-  if (steamTop < 0) {
-    problems.push(`a steam centreline reaches ${r1(steamTop)}, outside the box - a whole segment would be lost`)
-  } else if (steamTop - STEAM.thickness / 2 < -0.25) {
-    problems.push(
-      `the steam's cap now overshoots the box top by ${r1(STEAM.thickness / 2 - steamTop)}px, ` +
-        'against the 0.2 that shipped - it would read as a flat-topped wisp',
-    )
-  }
+	// The ring must touch the wall, not cross it and not float clear of it. Half a
+	// tenth of a pixel either way - tighter than the 1dp the shape is authored at.
+	const leftmost = HANDLE_ARC.centerX - HANDLE.r * Math.cos(HALF_GAP_RAD) - HANDLE.thickness / 2;
+	if (Math.abs(leftmost - CUP_WALL_X) > 0.05) {
+		problems.push(
+			`the handle's leftmost pixel is at ${r1(leftmost)}, not on the wall at ${CUP_WALL_X}`
+		);
+	}
+	if (handleRight > CUP_BOX.width) {
+		problems.push(`the handle reaches ${handleRight}, past the box's ${CUP_BOX.width}`);
+	}
+	if (CUP_BASE_BOTTOM > CUP_BOX.height) {
+		problems.push(`the base reaches ${CUP_BASE_BOTTOM}, past the box's ${CUP_BOX.height}`);
+	}
+	/**
+	 * THE TALLEST WISP'S CAP IS CLIPPED, BY 0.2px, AND THAT IS THE SHIPPED SHAPE.
+	 *
+	 * The middle wisp's centreline tops out at y0.5 inside a box that starts at 0,
+	 * and a 1.4-thick round cap reaches 0.7 past the endpoint - so its last 0.2px
+	 * arrives flat instead of round. Recorded rather than quietly fixed, the same
+	 * call MINI_SCARF_BOX makes about the companion's scarf tail: growing the box
+	 * changes what the watch has been drawing.
+	 *
+	 * What is asserted is the line itself, not the cap. A centreline outside the
+	 * box would lose a whole segment, which is a bug; a shaved cap is a detail.
+	 */
+	if (steamTop < 0) {
+		problems.push(
+			`a steam centreline reaches ${r1(steamTop)}, outside the box - a whole segment would be lost`
+		);
+	} else if (steamTop - STEAM.thickness / 2 < -0.25) {
+		problems.push(
+			`the steam's cap now overshoots the box top by ${r1(STEAM.thickness / 2 - steamTop)}px, ` +
+				'against the 0.2 that shipped - it would read as a flat-topped wisp'
+		);
+	}
 
-  // The three claims the steam comment makes, as checks.
-  const bands = STEAM.wisps.map((w) => [
-    r1(w.x - STEAM.sway - STEAM.thickness / 2),
-    r1(w.x + STEAM.sway + STEAM.thickness / 2),
-  ] as const)
-  for (let i = 1; i < bands.length; i++) {
-    if (bands[i]![0] <= bands[i - 1]![1]) {
-      problems.push(`steam wisps ${i - 1} and ${i} overlap: ${bands[i - 1]![1]} then ${bands[i]![0]}`)
-    }
-  }
-  const outer = STEAM.wisps.filter((_, i) => i !== 1)
-  if ((outer[0]!.x + outer[1]!.x) / 2 !== CUP_CENTRE_X) {
-    problems.push(`the outer wisps mirror about ${(outer[0]!.x + outer[1]!.x) / 2}, not the cup's ${CUP_CENTRE_X}`)
-  }
-  if (STEAM.wisps[1]!.dy <= STEAM.wisps[0]!.dy) {
-    problems.push('the middle wisp no longer rises higher than the outer two - the group reads as a fence')
-  }
+	// The three claims the steam comment makes, as checks.
+	const bands = STEAM.wisps.map(
+		(wisp) =>
+			[
+				r1(wisp.x - STEAM.sway - STEAM.thickness / 2),
+				r1(wisp.x + STEAM.sway + STEAM.thickness / 2)
+			] as const
+	);
+	for (let i = 1; i < bands.length; i++) {
+		if (bands[i][0] <= bands[i - 1][1]) {
+			problems.push(
+				`steam wisps ${i - 1} and ${i} overlap: ${bands[i - 1][1]} then ${bands[i][0]}`
+			);
+		}
+	}
+	const outer = STEAM.wisps.filter((_, i) => i !== 1);
+	if ((outer[0].x + outer[1].x) / 2 !== CUP_CENTRE_X) {
+		problems.push(
+			`the outer wisps mirror about ${(outer[0].x + outer[1].x) / 2}, not the cup's ${CUP_CENTRE_X}`
+		);
+	}
+	if (STEAM.wisps[1].dy <= STEAM.wisps[0].dy) {
+		problems.push(
+			'the middle wisp no longer rises higher than the outer two - the group reads as a fence'
+		);
+	}
 
-  if (problems.length) throw new Error(`the coffee cup no longer holds together:\n  ${problems.join('\n  ')}`)
+	if (problems.length) {
+		throw new Error(`the coffee cup no longer holds together:\n  ${problems.join('\n  ')}`);
+	}
 }
 
 // --- The Friday game controller ---------------------------------------------
@@ -297,24 +324,25 @@ export const CUP_BOX = G.box(HAND.x - CUP_CENTRE_X, HAND.y - CUP_BASE_BOTTOM, 28
  * own origin is an integer. The comment said so; every affected coordinate then
  * carried the 0.5 by hand.
  */
-const SILHOUETTE = { left: 0.5, width: 28 }
-const SILHOUETTE_CENTRE = SILHOUETTE.left + SILHOUETTE.width / 2
+const SILHOUETTE = { left: 0.5, width: 28 };
+const SILHOUETTE_CENTRE = SILHOUETTE.left + SILHOUETTE.width / 2;
 
 /** A position traced off the photograph, as a fraction of the silhouette's width. */
-export interface Traced {
-  frac: number
-  /**
-   * A measured departure from the traced position, in px. Present only where the
-   * fraction does not reproduce the shipped shape, and always with a reason.
-   */
-  off?: number
-}
+export type Traced = {
+	frac: number;
+	/**
+	 * A measured departure from the traced position, in px. Present only where the
+	 * fraction does not reproduce the shipped shape, and always with a reason.
+	 */
+	off?: number;
+};
 
 /** Across the silhouette, from its left edge. */
-const across = (t: Traced): number => r1(SILHOUETTE.left + t.frac * SILHOUETTE.width + (t.off ?? 0))
+const across = (traced: Traced): number =>
+	r1(SILHOUETTE.left + traced.frac * SILHOUETTE.width + (traced.off ?? 0));
 /** Down from the silhouette's top. Fractions are of the WIDTH in both axes -
  *  that is how the trace was taken, and it is why nothing here divides by 20. */
-const down = (t: Traced): number => r1(t.frac * SILHOUETTE.width + (t.off ?? 0))
+const down = (traced: Traced): number => r1(traced.frac * SILHOUETTE.width + (traced.off ?? 0));
 
 /**
  * The traced layout.
@@ -342,28 +370,28 @@ const down = (t: Traced): number => r1(t.frac * SILHOUETTE.width + (t.off ?? 0))
  * of the trace, but a fraction that needs correcting to a tenth is not carrying
  * its weight.
  */
-const STICK_D = r1(0.164 * SILHOUETTE.width)
+const STICK_D = r1(0.164 * SILHOUETTE.width);
 
 export const CONTROLLER = {
-  shell: { width: 24, height: 15, radius: 4.5 },
-  /** The grips ARE the silhouette's outer edges, so they are flush by construction.
-   *  The traced 0.145/0.855 would put their centres at 4.6 and 24.4 against a
-   *  shipped 5.5 and 23.5; the shipped pair is symmetric about the silhouette and
-   *  the traced one is not, so the silhouette wins and the fractions are dropped. */
-  grip: { d: 10, top: 7, bottom: { frac: 0.717 } },
-  leftStick: { x: { frac: 0.204 }, y: { frac: 0.191 }, d: STICK_D },
-  dpad: { x: { frac: 0.355 }, y: { frac: 0.388 }, arm: 5.4, bar: 2 },
-  rightStick: { x: { frac: 0.691, off: -0.8 }, y: { frac: 0.382, off: 0.8 }, d: STICK_D },
-  /** Y, X, B, A on a diamond. `spacing` is the same in both axes. */
-  diamond: { x: { frac: 0.822, off: -1.5 }, y: { frac: 0.204 }, spacing: 2.6, d: 3.2 },
-}
+	shell: { width: 24, height: 15, radius: 4.5 },
+	/** The grips ARE the silhouette's outer edges, so they are flush by construction.
+	 *  The traced 0.145/0.855 would put their centres at 4.6 and 24.4 against a
+	 *  shipped 5.5 and 23.5; the shipped pair is symmetric about the silhouette and
+	 *  the traced one is not, so the silhouette wins and the fractions are dropped. */
+	grip: { d: 10, top: 7, bottom: { frac: 0.717 } },
+	leftStick: { x: { frac: 0.204 }, y: { frac: 0.191 }, d: STICK_D },
+	dpad: { x: { frac: 0.355 }, y: { frac: 0.388 }, arm: 5.4, bar: 2 },
+	rightStick: { x: { frac: 0.691, off: -0.8 }, y: { frac: 0.382, off: 0.8 }, d: STICK_D },
+	/** Y, X, B, A on a diamond. `spacing` is the same in both axes. */
+	diamond: { x: { frac: 0.822, off: -1.5 }, y: { frac: 0.204 }, spacing: 2.6, d: 3.2 }
+};
 
 /** A circle placed by its centre. */
 const dot = (cx: number, cy: number, d: number): G.Box =>
-  G.box(r1(cx - d / 2), r1(cy - d / 2), d, d)
+	G.box(r1(cx - d / 2), r1(cy - d / 2), d, d);
 
 /** The grips' bottom edge, which is also the part box's height. */
-const GRIP_BOTTOM = Math.round(down(CONTROLLER.grip.bottom))
+const GRIP_BOTTOM = Math.round(down(CONTROLLER.grip.bottom));
 
 /**
  * The part box.
@@ -374,39 +402,57 @@ const GRIP_BOTTOM = Math.round(down(CONTROLLER.grip.bottom))
  * fist is a judgement about how the controller is held, not a derivation.
  */
 export const CONTROLLER_BOX = G.box(
-  HAND.x - SILHOUETTE_CENTRE,
-  25,
-  Math.ceil(SILHOUETTE.left + SILHOUETTE.width),
-  GRIP_BOTTOM,
-)
+	HAND.x - SILHOUETTE_CENTRE,
+	25,
+	Math.ceil(SILHOUETTE.left + SILHOUETTE.width),
+	GRIP_BOTTOM
+);
 
-const DPAD_C = { x: across(CONTROLLER.dpad.x), y: down(CONTROLLER.dpad.y) }
-const DIAMOND_C = { x: across(CONTROLLER.diamond.x), y: down(CONTROLLER.diamond.y) }
+const DPAD_C = { x: across(CONTROLLER.dpad.x), y: down(CONTROLLER.dpad.y) };
+const DIAMOND_C = { x: across(CONTROLLER.diamond.x), y: down(CONTROLLER.diamond.y) };
 
 export const CONTROLLER_SHAPES = {
-  /** Drawn before the shell, so the shell covers where they join it. */
-  grips: [SILHOUETTE.left, SILHOUETTE.left + SILHOUETTE.width - CONTROLLER.grip.d].map((x) =>
-    G.box(x, CONTROLLER.grip.top, CONTROLLER.grip.d, GRIP_BOTTOM - CONTROLLER.grip.top),
-  ),
-  shell: {
-    ...G.box(
-      SILHOUETTE_CENTRE - CONTROLLER.shell.width / 2,
-      0,
-      CONTROLLER.shell.width,
-      CONTROLLER.shell.height,
-    ),
-    cornerRadiusX: CONTROLLER.shell.radius,
-    cornerRadiusY: CONTROLLER.shell.radius,
-  },
-  leftStick: dot(across(CONTROLLER.leftStick.x), down(CONTROLLER.leftStick.y), CONTROLLER.leftStick.d),
-  /** Both bars centre on the same point, so the cross is symmetric about itself
-   *  by construction. It was four independent coordinate pairs. */
-  dpad: [
-    G.box(r1(DPAD_C.x - CONTROLLER.dpad.bar / 2), r1(DPAD_C.y - CONTROLLER.dpad.arm / 2), CONTROLLER.dpad.bar, CONTROLLER.dpad.arm),
-    G.box(r1(DPAD_C.x - CONTROLLER.dpad.arm / 2), r1(DPAD_C.y - CONTROLLER.dpad.bar / 2), CONTROLLER.dpad.arm, CONTROLLER.dpad.bar),
-  ],
-  rightStick: dot(across(CONTROLLER.rightStick.x), down(CONTROLLER.rightStick.y), CONTROLLER.rightStick.d),
-}
+	/** Drawn before the shell, so the shell covers where they join it. */
+	grips: [SILHOUETTE.left, SILHOUETTE.left + SILHOUETTE.width - CONTROLLER.grip.d].map((x) =>
+		G.box(x, CONTROLLER.grip.top, CONTROLLER.grip.d, GRIP_BOTTOM - CONTROLLER.grip.top)
+	),
+	shell: {
+		...G.box(
+			SILHOUETTE_CENTRE - CONTROLLER.shell.width / 2,
+			0,
+			CONTROLLER.shell.width,
+			CONTROLLER.shell.height
+		),
+		cornerRadiusX: CONTROLLER.shell.radius,
+		cornerRadiusY: CONTROLLER.shell.radius
+	},
+	leftStick: dot(
+		across(CONTROLLER.leftStick.x),
+		down(CONTROLLER.leftStick.y),
+		CONTROLLER.leftStick.d
+	),
+	/** Both bars centre on the same point, so the cross is symmetric about itself
+	 *  by construction. It was four independent coordinate pairs. */
+	dpad: [
+		G.box(
+			r1(DPAD_C.x - CONTROLLER.dpad.bar / 2),
+			r1(DPAD_C.y - CONTROLLER.dpad.arm / 2),
+			CONTROLLER.dpad.bar,
+			CONTROLLER.dpad.arm
+		),
+		G.box(
+			r1(DPAD_C.x - CONTROLLER.dpad.arm / 2),
+			r1(DPAD_C.y - CONTROLLER.dpad.bar / 2),
+			CONTROLLER.dpad.arm,
+			CONTROLLER.dpad.bar
+		)
+	],
+	rightStick: dot(
+		across(CONTROLLER.rightStick.x),
+		down(CONTROLLER.rightStick.y),
+		CONTROLLER.rightStick.d
+	)
+};
 
 /**
  * The diamond's four buttons, by compass point.
@@ -419,15 +465,19 @@ export const CONTROLLER_SHAPES = {
  * come off one centre and one spacing.
  */
 const DIAMOND_AT = (dx: number, dy: number) =>
-  dot(r1(DIAMOND_C.x + dx * CONTROLLER.diamond.spacing), r1(DIAMOND_C.y + dy * CONTROLLER.diamond.spacing), CONTROLLER.diamond.d)
+	dot(
+		r1(DIAMOND_C.x + dx * CONTROLLER.diamond.spacing),
+		r1(DIAMOND_C.y + dy * CONTROLLER.diamond.spacing),
+		CONTROLLER.diamond.d
+	);
 
 export const DIAMOND = {
-  /** Draw order: top, left, right. */
-  top: DIAMOND_AT(0, -1),
-  left: DIAMOND_AT(-1, 0),
-  right: DIAMOND_AT(1, 0),
-  bottom: DIAMOND_AT(0, 1),
-}
+	/** Draw order: top, left, right. */
+	top: DIAMOND_AT(0, -1),
+	left: DIAMOND_AT(-1, 0),
+	right: DIAMOND_AT(1, 0),
+	bottom: DIAMOND_AT(0, 1)
+};
 
 /**
  * The pulsing A button, which lives in its own Group so a Transform can fade it.
@@ -437,24 +487,24 @@ export const DIAMOND = {
  * to the same centre the other three buttons are placed against. Both halves are
  * derived from that centre here, which is the only way the split cannot drift.
  */
-const PULSE_SIZE = 5
+const PULSE_SIZE = 5;
 const A_CENTRE = {
-  x: CONTROLLER_BOX.x + DIAMOND_C.x,
-  y: r1(CONTROLLER_BOX.y + DIAMOND_C.y + CONTROLLER.diamond.spacing),
-}
+	x: CONTROLLER_BOX.x + DIAMOND_C.x,
+	y: r1(CONTROLLER_BOX.y + DIAMOND_C.y + CONTROLLER.diamond.spacing)
+};
 
 export const PULSE_BOX = G.box(
-  Math.round(A_CENTRE.x - PULSE_SIZE / 2),
-  Math.round(A_CENTRE.y - PULSE_SIZE / 2),
-  PULSE_SIZE,
-  PULSE_SIZE,
-)
+	Math.round(A_CENTRE.x - PULSE_SIZE / 2),
+	Math.round(A_CENTRE.y - PULSE_SIZE / 2),
+	PULSE_SIZE,
+	PULSE_SIZE
+);
 
 export const PULSE_BUTTON = dot(
-  r1(A_CENTRE.x - PULSE_BOX.x),
-  r1(A_CENTRE.y - PULSE_BOX.y),
-  CONTROLLER.diamond.d,
-)
+	r1(A_CENTRE.x - PULSE_BOX.x),
+	r1(A_CENTRE.y - PULSE_BOX.y),
+	CONTROLLER.diamond.d
+);
 
 /**
  * WHY THE DIAMOND CARRIES A 1.5px NUDGE.
@@ -469,19 +519,21 @@ export const PULSE_BUTTON = dot(
  * nudge looks like an unexplained fudge and the next person removes it.
  */
 {
-  const shellRight = CONTROLLER_SHAPES.shell.x + CONTROLLER_SHAPES.shell.width
-  const bRight = DIAMOND.right.x + DIAMOND.right.width
-  if (bRight > shellRight) {
-    throw new Error(`the B button reaches ${r1(bRight)}, past the shell's right edge at ${shellRight}`)
-  }
-  const untraced = across({ frac: CONTROLLER.diamond.x.frac })
-  const wouldReach = r1(untraced + CONTROLLER.diamond.spacing + CONTROLLER.diamond.d / 2)
-  if (wouldReach <= shellRight) {
-    throw new Error(
-      `the diamond's ${CONTROLLER.diamond.x.off}px nudge is no longer needed: untouched, B would ` +
-        `reach ${wouldReach} and the shell ends at ${shellRight}. Drop the off and say why.`,
-    )
-  }
+	const shellRight = CONTROLLER_SHAPES.shell.x + CONTROLLER_SHAPES.shell.width;
+	const bRight = DIAMOND.right.x + DIAMOND.right.width;
+	if (bRight > shellRight) {
+		throw new Error(
+			`the B button reaches ${r1(bRight)}, past the shell's right edge at ${shellRight}`
+		);
+	}
+	const untraced = across({ frac: CONTROLLER.diamond.x.frac });
+	const wouldReach = r1(untraced + CONTROLLER.diamond.spacing + CONTROLLER.diamond.d / 2);
+	if (wouldReach <= shellRight) {
+		throw new Error(
+			`the diamond's ${CONTROLLER.diamond.x.off}px nudge is no longer needed: untouched, B would ` +
+				`reach ${wouldReach} and the shell ends at ${shellRight}. Drop the off and say why.`
+		);
+	}
 }
 
 // --- The warm-day cocktail --------------------------------------------------
@@ -495,38 +547,42 @@ export const PULSE_BUTTON = dot(
  * coordinates that happened to agree. Only the straw is asymmetric, deliberately.
  */
 export const COCKTAIL = {
-  /** Where the glass is held. The part box is placed so this lands on the fist. */
-  stemX: 10.5,
-  rimY: 9,
-  rimHalf: 6.5,
-  apexY: 19,
-  stemBottom: 27,
-  footY: 27.5,
-  footHalf: 4,
-  thickness: 2,
-  straw: { fromX: 12.5, toX: 17.5, toY: 0 },
-  liquid: { y: 6, width: 16, height: 6 },
-}
+	/** Where the glass is held. The part box is placed so this lands on the fist. */
+	stemX: 10.5,
+	rimY: 9,
+	rimHalf: 6.5,
+	apexY: 19,
+	stemBottom: 27,
+	footY: 27.5,
+	footHalf: 4,
+	thickness: 2,
+	straw: { fromX: 12.5, toX: 17.5, toY: 0 },
+	liquid: { y: 6, width: 16, height: 6 }
+};
 
 /** Unchanged since it shipped; `y` is tabulated, `x` puts the stem on the fist. */
-export const COCKTAIL_BOX = G.box(HAND.x - COCKTAIL.stemX, 6, 20, 30)
+export const COCKTAIL_BOX = G.box(HAND.x - COCKTAIL.stemX, 6, 20, 30);
 
-const STEM_X = COCKTAIL.stemX
+const STEM_X = COCKTAIL.stemX;
 
-export const COCKTAIL_STRAW: Seg =
-  seg(COCKTAIL.straw.fromX, COCKTAIL.rimY, COCKTAIL.straw.toX, COCKTAIL.straw.toY)
+export const COCKTAIL_STRAW: Seg = seg(
+	COCKTAIL.straw.fromX,
+	COCKTAIL.rimY,
+	COCKTAIL.straw.toX,
+	COCKTAIL.straw.toY
+);
 
 /** Draw order: the two rim sides, the stem, then the foot. */
 export const COCKTAIL_GLASS: Seg[] = [
-  seg(STEM_X - COCKTAIL.rimHalf, COCKTAIL.rimY, STEM_X, COCKTAIL.apexY),
-  seg(STEM_X + COCKTAIL.rimHalf, COCKTAIL.rimY, STEM_X, COCKTAIL.apexY),
-  seg(STEM_X, COCKTAIL.apexY, STEM_X, COCKTAIL.stemBottom),
-  seg(STEM_X - COCKTAIL.footHalf, COCKTAIL.footY, STEM_X + COCKTAIL.footHalf, COCKTAIL.footY),
-]
+	seg(STEM_X - COCKTAIL.rimHalf, COCKTAIL.rimY, STEM_X, COCKTAIL.apexY),
+	seg(STEM_X + COCKTAIL.rimHalf, COCKTAIL.rimY, STEM_X, COCKTAIL.apexY),
+	seg(STEM_X, COCKTAIL.apexY, STEM_X, COCKTAIL.stemBottom),
+	seg(STEM_X - COCKTAIL.footHalf, COCKTAIL.footY, STEM_X + COCKTAIL.footHalf, COCKTAIL.footY)
+];
 
 export const COCKTAIL_LIQUID = G.box(
-  STEM_X - COCKTAIL.liquid.width / 2,
-  COCKTAIL.liquid.y,
-  COCKTAIL.liquid.width,
-  COCKTAIL.liquid.height,
-)
+	STEM_X - COCKTAIL.liquid.width / 2,
+	COCKTAIL.liquid.y,
+	COCKTAIL.liquid.width,
+	COCKTAIL.liquid.height
+);

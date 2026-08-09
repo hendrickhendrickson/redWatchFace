@@ -16,24 +16,24 @@
  * Each trio repeats its own blob's Gyro gain, since both are top-level siblings.
  */
 
-import { el, cdata, type Node } from '../xml.ts'
-import * as G from '../geometry.ts'
-import { AMBIENT_HIDE } from '../crossfade.ts'
-import { when } from '../condition.ts'
-import { NIGHT } from '../states.ts'
-import { drift, driftAlpha, group, secondPhase } from '../expr.ts'
-import { font } from '../type.ts'
-import { heroGyro, companionGyro } from '../blob.ts'
-import { ZZZ_SETS, type Zed, type ZzzSet } from '../data/zzz.ts'
+import { el, cdata, type Node } from '../xml.ts';
+import * as G from '../geometry.ts';
+import { AMBIENT_HIDE } from '../crossfade.ts';
+import { when } from '../condition.ts';
+import { NIGHT } from '../states.ts';
+import { drift, driftAlpha, group, secondPhase } from '../expr.ts';
+import { font } from '../type.ts';
+import { heroGyro, companionGyro } from '../blob.ts';
+import { ZZZ_SETS, type Zed, type ZzzSet } from '../data/zzz.ts';
 
-const GYRO = { hero: heroGyro, companion: companionGyro }
+const GYRO = { hero: heroGyro, companion: companionGyro };
 
 const zed = (part: string, z: Zed): Node =>
-  el('PartText', { name: `${part}_${z.tier}`, ...z.box }, [
-    el('Text', { align: 'START' }, [
-      el('Font', font(z.size, 'BOLD', z.colour, 'ITALIC'), [cdata('z')]),
-    ]),
-  ])
+	el('PartText', { name: `${part}_${z.tier}`, ...z.box }, [
+		el('Text', { align: 'START' }, [
+			el('Font', font(z.size, 'BOLD', z.colour, 'ITALIC'), [cdata('z')])
+		])
+	]);
 
 /**
  * One trio: the anchored group, its Gyro, and the drifting group inside it.
@@ -43,16 +43,20 @@ const zed = (part: string, z: Zed): Node =>
  * would have faded a z out somewhere other than the top of its arc.
  */
 const trio = (s: ZzzSet): Node => {
-  const p = group(secondPhase(s.period, s.offset))
-  return el('Group', { name: s.group, ...s.anchor, alpha: 255 }, [
-    GYRO[s.gyro](),
-    el('Variant', AMBIENT_HIDE),
-    el('Group', { name: `${s.group}_drift`, ...G.at(s.anchor.width, s.anchor.height), alpha: 255 }, [
-      el('Transform', { target: 'y', value: drift(s.rise, p) }),
-      el('Transform', { target: 'alpha', value: driftAlpha(p) }),
-      ...s.zeds.map((z) => zed(s.part, z)),
-    ]),
-  ])
-}
+	const p = group(secondPhase(s.period, s.offset));
+	return el('Group', { name: s.group, ...s.anchor, alpha: 255 }, [
+		GYRO[s.gyro](),
+		el('Variant', AMBIENT_HIDE),
+		el(
+			'Group',
+			{ name: `${s.group}_drift`, ...G.at(s.anchor.width, s.anchor.height), alpha: 255 },
+			[
+				el('Transform', { target: 'y', value: drift(s.rise, p) }),
+				el('Transform', { target: 'alpha', value: driftAlpha(p) }),
+				...s.zeds.map((z) => zed(s.part, z))
+			]
+		)
+	]);
+};
 
-export const sleepZzz = (): Node => when('prop_night', NIGHT, ZZZ_SETS.map(trio))
+export const sleepZzz = (): Node => when('prop_night', NIGHT, ZZZ_SETS.map(trio));

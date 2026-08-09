@@ -17,8 +17,8 @@
  * derive them from - see the note in type.ts. They stay named fields.
  */
 
-import * as G from '../geometry.ts'
-import { n, src, type Source } from '../expr.ts'
+import * as G from '../geometry.ts';
+import { n, src, type Source } from '../expr.ts';
 
 /**
  * A chip's text box: from `x` to the chip's right edge, full height.
@@ -27,16 +27,15 @@ import { n, src, type Source } from '../expr.ts'
  * of them - the heart rate's - written out twice for the value and the placeholder,
  * which must stay the same box or the number jumps when the sensor loses contact.
  */
-export const valueBox = (chip: G.Box, x: number): G.Box =>
-  G.box(x, 0, chip.width - x, chip.height)
+export const valueBox = (chip: G.Box, x: number): G.Box => G.box(x, 0, chip.width - x, chip.height);
 
 /** Where each chip's number begins, measured against its icon. */
 export const TEXT_X = {
-  HEART_RATE: 28,
-  STEPS: 28,
-  BATTERY: 33,
-  WEATHER: 32,
-}
+	HEART_RATE: 28,
+	STEPS: 28,
+	BATTERY: 33,
+	WEATHER: 32
+};
 
 // --- The heart --------------------------------------------------------------
 
@@ -53,62 +52,64 @@ export const TEXT_X = {
  * invisible; the corners that matter are hidden anyway.
  */
 export const HEART = {
-  lobe: 13,
-  /** How far the second lobe is offset from the first. */
-  spread: 9,
-  lobesAt: { x: 0, y: 8 },
-  point: { box: 18, angle: 45 },
-  /** How far the point's centre sits below the lobes' centre. */
-  drop: 4.5,
-}
+	lobe: 13,
+	/** How far the second lobe is offset from the first. */
+	spread: 9,
+	lobesAt: { x: 0, y: 8 },
+	point: { box: 18, angle: 45 },
+	/** How far the point's centre sits below the lobes' centre. */
+	drop: 4.5
+};
 
-const HEART_WIDTH = HEART.lobe + HEART.spread
+const HEART_WIDTH = HEART.lobe + HEART.spread;
 
-export const HEART_LOBES_BOX = G.box(HEART.lobesAt.x, HEART.lobesAt.y, HEART_WIDTH, HEART.lobe)
+export const HEART_LOBES_BOX = G.box(HEART.lobesAt.x, HEART.lobesAt.y, HEART_WIDTH, HEART.lobe);
 
 export const HEART_LOBES: G.Box[] = [0, HEART.spread].map((dx) =>
-  G.box(dx, 0, HEART.lobe, HEART.lobe),
-)
+	G.box(dx, 0, HEART.lobe, HEART.lobe)
+);
 
 const POINT_CENTRE = {
-  x: HEART.lobesAt.x + HEART_WIDTH / 2,
-  y: HEART.lobesAt.y + HEART.lobe / 2 + HEART.drop,
-}
+	x: HEART.lobesAt.x + HEART_WIDTH / 2,
+	y: HEART.lobesAt.y + HEART.lobe / 2 + HEART.drop
+};
 
 export const HEART_POINT_BOX = {
-  ...G.box(
-    POINT_CENTRE.x - HEART.point.box / 2,
-    POINT_CENTRE.y - HEART.point.box / 2,
-    HEART.point.box,
-    HEART.point.box,
-  ),
-  pivotX: 0.5,
-  pivotY: 0.5,
-  angle: HEART.point.angle,
-}
+	...G.box(
+		POINT_CENTRE.x - HEART.point.box / 2,
+		POINT_CENTRE.y - HEART.point.box / 2,
+		HEART.point.box,
+		HEART.point.box
+	),
+	pivotX: 0.5,
+	pivotY: 0.5,
+	angle: HEART.point.angle
+};
 
 /** Centred in the part box, so the rotation pivot and the square agree. */
 export const HEART_POINT = G.box(
-  (HEART.point.box - HEART.lobe) / 2,
-  (HEART.point.box - HEART.lobe) / 2,
-  HEART.lobe,
-  HEART.lobe,
-)
+	(HEART.point.box - HEART.lobe) / 2,
+	(HEART.point.box - HEART.lobe) / 2,
+	HEART.lobe,
+	HEART.lobe
+);
 
 {
-  if (HEART.spread >= HEART.lobe) {
-    throw new Error(`the heart's lobes are ${HEART.spread} apart at ${HEART.lobe} wide - they no longer touch`)
-  }
-  // Half the diagonal of the rotated square: how far its top corner reaches up.
-  const reach = (HEART.lobe * Math.SQRT2) / 2
-  const pointTop = POINT_CENTRE.y - reach
-  const lobesBottom = HEART.lobesAt.y + HEART.lobe
-  if (pointTop >= lobesBottom) {
-    throw new Error(
-      `the heart's point starts at y${pointTop.toFixed(2)}, below the lobes' bottom edge at ` +
-        `${lobesBottom} - its corners would show and it would read as a diamond, not a heart`,
-    )
-  }
+	if (HEART.spread >= HEART.lobe) {
+		throw new Error(
+			`the heart's lobes are ${HEART.spread} apart at ${HEART.lobe} wide - they no longer touch`
+		);
+	}
+	// Half the diagonal of the rotated square: how far its top corner reaches up.
+	const reach = (HEART.lobe * Math.SQRT2) / 2;
+	const pointTop = POINT_CENTRE.y - reach;
+	const lobesBottom = HEART.lobesAt.y + HEART.lobe;
+	if (pointTop >= lobesBottom) {
+		throw new Error(
+			`the heart's point starts at y${pointTop.toFixed(2)}, below the lobes' bottom edge at ` +
+				`${lobesBottom} - its corners would show and it would read as a diamond, not a heart`
+		);
+	}
 }
 
 // --- The footprint ----------------------------------------------------------
@@ -126,50 +127,55 @@ export const HEART_POINT = G.box(
  * tilted 25 degrees anyway, and changing it changes what the watch has been drawing.
  */
 const COLUMNS = {
-  ball: { x: 7.5, width: 11 },
-  arch: { x: 9.25, width: 7.5 },
-  heel: { x: 10.5, width: 7 },
-}
+	ball: { x: 7.5, width: 11 },
+	arch: { x: 9.25, width: 7.5 },
+	heel: { x: 10.5, width: 7 }
+};
 
 export const FOOTPRINT = {
-  angle: -25,
-  columns: COLUMNS,
-  /** Order is draw order, heel last. */
-  rows: [
-    { tag: 'Ellipse', col: 'ball', y: 4.5, height: 13 },
-    { tag: 'Ellipse', col: 'arch', y: 11, height: 9 },
-    { tag: 'Rectangle', col: 'arch', y: 15.5, height: 4 },
-    { tag: 'Rectangle', col: 'heel', y: 21.5, height: 3.5 },
-    { tag: 'Ellipse', col: 'heel', y: 22, height: 6.5 },
-  ] as const satisfies readonly { tag: 'Ellipse' | 'Rectangle'; col: keyof typeof COLUMNS; y: number; height: number }[],
-}
+	angle: -25,
+	columns: COLUMNS,
+	/** Order is draw order, heel last. */
+	rows: [
+		{ tag: 'Ellipse', col: 'ball', y: 4.5, height: 13 },
+		{ tag: 'Ellipse', col: 'arch', y: 11, height: 9 },
+		{ tag: 'Rectangle', col: 'arch', y: 15.5, height: 4 },
+		{ tag: 'Rectangle', col: 'heel', y: 21.5, height: 3.5 },
+		{ tag: 'Ellipse', col: 'heel', y: 22, height: 6.5 }
+	] as const satisfies readonly {
+		tag: 'Ellipse' | 'Rectangle';
+		col: keyof typeof COLUMNS;
+		y: number;
+		height: number;
+	}[]
+};
 
 export const FOOTPRINT_BOX = {
-  ...G.box(0, 1, 28, 34),
-  pivotX: 0.5,
-  pivotY: 0.5,
-  angle: FOOTPRINT.angle,
-}
+	...G.box(0, 1, 28, 34),
+	pivotX: 0.5,
+	pivotY: 0.5,
+	angle: FOOTPRINT.angle
+};
 
-export const FOOTPRINT_SHAPES = FOOTPRINT.rows.map((r) => {
-  const c = COLUMNS[r.col]
-  return { tag: r.tag, box: G.box(c.x, r.y, c.width, r.height) }
-})
+export const FOOTPRINT_SHAPES = FOOTPRINT.rows.map((row) => {
+	const column = COLUMNS[row.col];
+	return { tag: row.tag, box: G.box(column.x, row.y, column.width, row.height) };
+});
 
 {
-  const centre = (c: { x: number; width: number }) => c.x + c.width / 2
-  if (centre(COLUMNS.ball) !== centre(COLUMNS.arch)) {
-    throw new Error(
-      `the footprint's ball centres on ${centre(COLUMNS.ball)} and its arch on ${centre(COLUMNS.arch)} - ` +
-        'the sole would kink at the arch',
-    )
-  }
-  // Every row's column must exist, and the widths must narrow toward the heel or
-  // the sole reads as a club.
-  const widths = FOOTPRINT.rows.map((r) => COLUMNS[r.col].width)
-  if (widths.some((w, i) => i > 0 && w > widths[i - 1]!)) {
-    throw new Error(`the footprint widens toward the heel: ${widths.join(' -> ')}`)
-  }
+	const centre = (column: { x: number; width: number }) => column.x + column.width / 2;
+	if (centre(COLUMNS.ball) !== centre(COLUMNS.arch)) {
+		throw new Error(
+			`the footprint's ball centres on ${centre(COLUMNS.ball)} and its arch on ${centre(COLUMNS.arch)} - ` +
+				'the sole would kink at the arch'
+		);
+	}
+	// Every row's column must exist, and the widths must narrow toward the heel or
+	// the sole reads as a club.
+	const widths = FOOTPRINT.rows.map((row) => COLUMNS[row.col].width);
+	if (widths.some((width, i) => i > 0 && width > widths[i - 1])) {
+		throw new Error(`the footprint widens toward the heel: ${widths.join(' -> ')}`);
+	}
 }
 
 // --- The battery cell -------------------------------------------------------
@@ -187,47 +193,50 @@ export const FOOTPRINT_SHAPES = FOOTPRINT.rows.map((r) => {
  * own bounds and a fill flush to those bounds would paint over it.
  */
 export const BATTERY = {
-  shell: { x: 1, y: 1, width: 20, height: 13, radius: 3.5, thickness: 2 },
-  nub: { x: 21.5, y: 4.5, width: 3, height: 6 },
-  fill: { x: 3.5, y: 3.5, width: 15.5, height: 8, radius: 1.5 },
-  /** How wide the bar is at 0%, so an empty battery still reads as a battery. */
-  empty: 1,
-  full: 100,
-}
+	shell: { x: 1, y: 1, width: 20, height: 13, radius: 3.5, thickness: 2 },
+	nub: { x: 21.5, y: 4.5, width: 3, height: 6 },
+	fill: { x: 3.5, y: 3.5, width: 15.5, height: 8, radius: 1.5 },
+	/** How wide the bar is at 0%, so an empty battery still reads as a battery. */
+	empty: 1,
+	full: 100
+};
 
 export const BATTERY_SHELL = {
-  ...G.box(BATTERY.shell.x, BATTERY.shell.y, BATTERY.shell.width, BATTERY.shell.height),
-  cornerRadiusX: BATTERY.shell.radius,
-  cornerRadiusY: BATTERY.shell.radius,
-}
+	...G.box(BATTERY.shell.x, BATTERY.shell.y, BATTERY.shell.width, BATTERY.shell.height),
+	cornerRadiusX: BATTERY.shell.radius,
+	cornerRadiusY: BATTERY.shell.radius
+};
 
 export const BATTERY_NUB = G.box(
-  BATTERY.nub.x,
-  BATTERY.nub.y,
-  BATTERY.nub.width,
-  BATTERY.nub.height,
-)
+	BATTERY.nub.x,
+	BATTERY.nub.y,
+	BATTERY.nub.width,
+	BATTERY.nub.height
+);
 
 export const BATTERY_FILL = {
-  ...G.box(BATTERY.fill.x, BATTERY.fill.y, BATTERY.fill.width, BATTERY.fill.height),
-  cornerRadiusX: BATTERY.fill.radius,
-  cornerRadiusY: BATTERY.fill.radius,
-}
+	...G.box(BATTERY.fill.x, BATTERY.fill.y, BATTERY.fill.width, BATTERY.fill.height),
+	cornerRadiusX: BATTERY.fill.radius,
+	cornerRadiusY: BATTERY.fill.radius
+};
 
 /** The bar's width, from `empty` at 0% to the full housing at 100%. */
 export const batteryFillWidth = (): string =>
-  `${n(BATTERY.empty)} + ${src('BATTERY_PERCENT')} * ${n((BATTERY.fill.width - BATTERY.empty) / BATTERY.full)}`
+	`${n(BATTERY.empty)} + ${src('BATTERY_PERCENT')} * ${n((BATTERY.fill.width - BATTERY.empty) / BATTERY.full)}`;
 
 {
-  const inset = BATTERY.shell.thickness / 2
-  const inner = { from: BATTERY.shell.x + inset, to: BATTERY.shell.x + BATTERY.shell.width - inset }
-  const bar = { from: BATTERY.fill.x, to: BATTERY.fill.x + BATTERY.fill.width }
-  if (bar.from < inner.from || bar.to > inner.to) {
-    throw new Error(
-      `the battery bar spans ${bar.from}..${bar.to} but the shell's inner edge is ` +
-        `${inner.from}..${inner.to} - a full charge would paint over the outline`,
-    )
-  }
+	const inset = BATTERY.shell.thickness / 2;
+	const inner = {
+		from: BATTERY.shell.x + inset,
+		to: BATTERY.shell.x + BATTERY.shell.width - inset
+	};
+	const bar = { from: BATTERY.fill.x, to: BATTERY.fill.x + BATTERY.fill.width };
+	if (bar.from < inner.from || bar.to > inner.to) {
+		throw new Error(
+			`the battery bar spans ${bar.from}..${bar.to} but the shell's inner edge is ` +
+				`${inner.from}..${inner.to} - a full charge would paint over the outline`
+		);
+	}
 }
 
 // --- Text -------------------------------------------------------------------
@@ -240,14 +249,14 @@ export const batteryFillWidth = (): string =>
  * name, colour, weight, alignment and what they format. That is a row, not a
  * shape, and the byte-identical heart-rate pair proves it.
  */
-export interface ChipValue {
-  name: string
-  /** Where the text starts. The box fills the chip from here. */
-  x: number
-  colour: string
-  weight?: 'BOLD' | 'NORMAL'
-  align?: 'START' | 'CENTER'
-  /** A printf-style format if `source` is set, otherwise a literal. */
-  text: string
-  source?: Source
-}
+export type ChipValue = {
+	name: string;
+	/** Where the text starts. The box fills the chip from here. */
+	x: number;
+	colour: string;
+	weight?: 'BOLD' | 'NORMAL';
+	align?: 'START' | 'CENTER';
+	/** A printf-style format if `source` is set, otherwise a literal. */
+	text: string;
+	source?: Source;
+};

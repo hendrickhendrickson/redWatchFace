@@ -15,24 +15,28 @@
  */
 
 /** A Part or Group box. WFF requires these four to be xs:integer on Part elements. */
-export interface Box {
-  x: number
-  y: number
-  width: number
-  height: number
-}
+export type Box = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
 
-export const box = (x: number, y: number, width: number, height: number): Box =>
-  ({ x, y, width, height })
+export const box = (x: number, y: number, width: number, height: number): Box => ({
+	x,
+	y,
+	width,
+	height
+});
 
 /** Local origin, sized to its parent. Used by primitives drawn inside a Part. */
-export const at = (width: number, height: number): Box => ({ x: 0, y: 0, width, height })
+export const at = (width: number, height: number): Box => ({ x: 0, y: 0, width, height });
 
 // --- The canvas -------------------------------------------------------------
 
-export const CANVAS = box(0, 0, 450, 450)
-export const CANVAS_W = 450
-export const CANVAS_H = 450
+export const CANVAS = box(0, 0, 450, 450);
+export const CANVAS_W = 450;
+export const CANVAS_H = 450;
 
 /**
  * Layout map, y in design space. Kept here rather than in prose so the numbers
@@ -67,11 +71,11 @@ export const CANVAS_H = 450
  * narrower one still sits slightly off-centre; accepted, the alternative is no
  * chip.
  */
-export const DATE_WEEKDAY_BOX = box(120, 42, 100, 32)
-export const DATE_CHIP_BOX = box(229, 41, 44, 34)
-export const DATE_DAY_BOX = box(229, 42, 44, 32)
+export const DATE_WEEKDAY_BOX = box(120, 42, 100, 32);
+export const DATE_CHIP_BOX = box(229, 41, 44, 34);
+export const DATE_DAY_BOX = box(229, 42, 44, 32);
 /** The chip's rounded rectangle, drawn at the chip box's own origin. */
-export const DATE_CHIP_SHAPE = at(44, 34)
+export const DATE_CHIP_SHAPE = at(44, 34);
 /**
  * The same chip as an outline, for ambient.
  *
@@ -83,21 +87,21 @@ export const DATE_CHIP_SHAPE = at(44, 34)
  *
  * Corner radius drops by the same 1, so the two curves stay concentric.
  */
-export const DATE_CHIP_OUTLINE_SHAPE = box(1, 1, 42, 32)
+export const DATE_CHIP_OUTLINE_SHAPE = box(1, 1, 42, 32);
 
 // --- Hero blob --------------------------------------------------------------
 
 /** The hero's body box. 31 sites in the hand-authored file. */
-export const HERO_BOX = box(14, 36, 72, 80)
+export const HERO_BOX = box(14, 36, 72, 80);
 /** Its body shape, at local origin. */
-export const HERO_BODY_SHAPE = at(72, 80)
-export const HERO_BODY_RADIUS = { cornerRadiusX: 36, cornerRadiusY: 34 }
+export const HERO_BODY_SHAPE = at(72, 80);
+export const HERO_BODY_RADIUS = { cornerRadiusX: 36, cornerRadiusY: 34 };
 
 /** Limbs, accessories and anything that reaches outside the body. */
-export const HERO_LIMB_BOX = box(0, 0, 106, 132)
+export const HERO_LIMB_BOX = box(0, 0, 106, 132);
 
-export const HERO_MOUTH_ROUND = box(30, 42, 11, 11)
-export const HERO_MOUTH_OPEN = box(24, 38, 22, 20)
+export const HERO_MOUTH_ROUND = box(30, 42, 11, 11);
+export const HERO_MOUTH_OPEN = box(24, 38, 22, 20);
 /**
  * The mask that repaints the open mouth's top half in the body colour.
  *
@@ -106,9 +110,9 @@ export const HERO_MOUTH_OPEN = box(24, 38, 22, 20)
  * sliver read convincingly as a little nose. Any mask built this way must
  * overshoot.
  */
-export const HERO_MOUTH_MASK = box(22, 35, 26, 13)
+export const HERO_MOUTH_MASK = box(22, 35, 26, 13);
 
-export const HERO_SWEAT_BOX = box(38, 40, 26, 11)
+export const HERO_SWEAT_BOX = box(38, 40, 26, 11);
 
 /**
  * The scarf, 16px TALLER than the body so the hanging tail has room.
@@ -117,25 +121,25 @@ export const HERO_SWEAT_BOX = box(38, 40, 26, 11)
  * sits on the body and a body that moves without it is a two-site edit that
  * nothing checks.
  */
-export const HERO_SCARF_BOX = box(HERO_BOX.x, HERO_BOX.y, HERO_BOX.width, HERO_BOX.height + 16)
+export const HERO_SCARF_BOX = box(HERO_BOX.x, HERO_BOX.y, HERO_BOX.width, HERO_BOX.height + 16);
 
 /** The sunglasses, across the eyes. */
-export const HERO_SHADES_BOX = box(24, 54, 50, 18)
+export const HERO_SHADES_BOX = box(24, 54, 50, 18);
 
 // --- Companion blob ---------------------------------------------------------
 
 /** The companion's body box. 30 sites in the hand-authored file. */
-export const MINI_BOX = box(8, 20, 44, 42)
-export const MINI_BODY_SHAPE = at(44, 42)
-export const MINI_BODY_RADIUS = { cornerRadiusX: 22, cornerRadiusY: 20 }
+export const MINI_BOX = box(8, 20, 44, 42);
+export const MINI_BODY_SHAPE = at(44, 42);
+export const MINI_BODY_RADIUS = { cornerRadiusX: 22, cornerRadiusY: 20 };
 
-export const MINI_LIMB_BOX = box(0, 0, 62, 72)
+export const MINI_LIMB_BOX = box(0, 0, 62, 72);
 
-export const MINI_MOUTH_ROUND = box(18.5, 26, 7, 7)
-export const MINI_MOUTH_OPEN = box(16, 24, 12, 11)
-export const MINI_MOUTH_MASK = box(15, 21, 14, 8)
+export const MINI_MOUTH_ROUND = box(18.5, 26, 7, 7);
+export const MINI_MOUTH_OPEN = box(16, 24, 12, 11);
+export const MINI_MOUTH_MASK = box(15, 21, 14, 8);
 
-export const MINI_SWEAT_BOX = box(21, 25, 18, 8)
+export const MINI_SWEAT_BOX = box(21, 25, 18, 8);
 
 /**
  * The companion's scarf, 2px SHORTER than its body - not taller, unlike the
@@ -147,22 +151,22 @@ export const MINI_SWEAT_BOX = box(21, 25, 18, 8)
  * Recorded here rather than quietly "fixed": growing the box would change what the
  * watch has been drawing, which is a design decision and not a tidy-up.
  */
-export const MINI_SCARF_BOX = box(MINI_BOX.x, MINI_BOX.y, MINI_BOX.width, MINI_BOX.height - 2)
+export const MINI_SCARF_BOX = box(MINI_BOX.x, MINI_BOX.y, MINI_BOX.width, MINI_BOX.height - 2);
 
 /** The companion's shades. 1px higher than its closed eyes, which is deliberate. */
-export const MINI_SHADES_BOX = box(16, 31, 28, 12)
+export const MINI_SHADES_BOX = box(16, 31, 28, 12);
 
 /** Closed eyes: a shallow box holding two short lines. */
-export const MINI_EYES_CLOSED_BOX = box(16, 32, 28, 12)
+export const MINI_EYES_CLOSED_BOX = box(16, 32, 28, 12);
 
 /** The companion's leaf tuft. Smaller and lower than the hero's LEAF_BOX. */
-export const MINI_LEAF_BOX = box(6, 0, 48, 48)
+export const MINI_LEAF_BOX = box(6, 0, 48, 48);
 
 // --- Chips and icons --------------------------------------------------------
 
-export const WX_ICON_BOX = box(0, 3, 26, 26)
-export const BATTERY_BOX = box(0, 10, 26, 16)
-export const LEAF_BOX = box(10, 0, 80, 80)
+export const WX_ICON_BOX = box(0, 3, 26, 26);
+export const BATTERY_BOX = box(0, 10, 26, 16);
+export const LEAF_BOX = box(10, 0, 80, 80);
 
 // --- Where the sections sit on the canvas ------------------------------------
 
@@ -184,56 +188,56 @@ export const LEAF_BOX = box(10, 0, 80, 80)
  * decision, twice, in two files.
  */
 export const ANCHORS = {
-  /** The hero blob. Its size IS HERO_LIMB_BOX; hero_props is placed against it. */
-  HERO: box(207, 262, HERO_LIMB_BOX.width, HERO_LIMB_BOX.height),
-  /** The companion. Size IS MINI_LIMB_BOX. */
-  COMPANION: box(143, 322, MINI_LIMB_BOX.width, MINI_LIMB_BOX.height),
+	/** The hero blob. Its size IS HERO_LIMB_BOX; hero_props is placed against it. */
+	HERO: box(207, 262, HERO_LIMB_BOX.width, HERO_LIMB_BOX.height),
+	/** The companion. Size IS MINI_LIMB_BOX. */
+	COMPANION: box(143, 322, MINI_LIMB_BOX.width, MINI_LIMB_BOX.height),
 
-  /**
-   * Whatever the hero is holding.
-   *
-   * A SIBLING OF THE HERO, NOT A CHILD, and 8px to its left on purpose: a
-   * PartDraw cannot start left of its parent group's origin without being
-   * clipped, and a prop centred on the hero's raised hand would have to. See the
-   * header of face/hero-props.ts, and note that the hand's position in THIS
-   * group's coordinates is derived from these two anchors rather than typed.
-   */
-  HERO_PROPS: box(199, 262, 38, 50),
+	/**
+	 * Whatever the hero is holding.
+	 *
+	 * A SIBLING OF THE HERO, NOT A CHILD, and 8px to its left on purpose: a
+	 * PartDraw cannot start left of its parent group's origin without being
+	 * clipped, and a prop centred on the hero's raised hand would have to. See the
+	 * header of face/hero-props.ts, and note that the hand's position in THIS
+	 * group's coordinates is derived from these two anchors rather than typed.
+	 */
+	HERO_PROPS: box(199, 262, 38, 50),
 
-  /** The storm burst behind the companion. */
-  COMPANION_BURST: box(123, 306, 104, 104),
-  /** The bolt. */
-  COMPANION_LIGHTNING: box(133, 264, 56, 68),
-  /** The umbrella the hero holds up in the rain. */
-  HERO_UMBRELLA: box(137, 250, 164, 70),
+	/** The storm burst behind the companion. */
+	COMPANION_BURST: box(123, 306, 104, 104),
+	/** The bolt. */
+	COMPANION_LIGHTNING: box(133, 264, 56, 68),
+	/** The umbrella the hero holds up in the rain. */
+	HERO_UMBRELLA: box(137, 250, 164, 70),
 
-  /**
-   * The sky mark, above and between the blobs.
-   *
-   * ONE BOX, TWO SECTIONS. freeze_mark and moon_mark both draw here and are
-   * mutually exclusive - states.ts asserts that they can never both fire. They
-   * had this box typed out separately, which is how a snowflake behind a moon
-   * would have happened.
-   */
-  SKY_MARK: box(156, 278, 36, 36),
+	/**
+	 * The sky mark, above and between the blobs.
+	 *
+	 * ONE BOX, TWO SECTIONS. freeze_mark and moon_mark both draw here and are
+	 * mutually exclusive - states.ts asserts that they can never both fire. They
+	 * had this box typed out separately, which is how a snowflake behind a moon
+	 * would have happened.
+	 */
+	SKY_MARK: box(156, 278, 36, 36),
 
-  /** The hero's sleep z's, up and to its right. */
-  SLEEP_ZZZ: box(294, 304, 64, 55),
-  /** The companion's, smaller and lower. */
-  MINI_SLEEP_ZZZ: box(105, 338, 46, 44),
+	/** The hero's sleep z's, up and to its right. */
+	SLEEP_ZZZ: box(294, 304, 64, 55),
+	/** The companion's, smaller and lower. */
+	MINI_SLEEP_ZZZ: box(105, 338, 46, 44),
 
-  /**
-   * The stat row and the weather chip above it.
-   *
-   * FOUR ORIGINS THAT MAKE ONE ROW. The three stat chips share y216 and h36 and
-   * are only readable as a row if they keep doing so; the weather chip sits above
-   * them at y184. The widths differ because the content does.
-   */
-  CHIP_WEATHER: box(190, 184, 90, 32),
-  CHIP_HEART_RATE: box(92, 216, 70, 36),
-  CHIP_STEPS: box(172, 216, 98, 36),
-  CHIP_BATTERY: box(280, 216, 110, 36),
-} as const
+	/**
+	 * The stat row and the weather chip above it.
+	 *
+	 * FOUR ORIGINS THAT MAKE ONE ROW. The three stat chips share y216 and h36 and
+	 * are only readable as a row if they keep doing so; the weather chip sits above
+	 * them at y184. The widths differ because the content does.
+	 */
+	CHIP_WEATHER: box(190, 184, 90, 32),
+	CHIP_HEART_RATE: box(92, 216, 70, 36),
+	CHIP_STEPS: box(172, 216, 98, 36),
+	CHIP_BATTERY: box(280, 216, 110, 36)
+} as const;
 
 /**
  * A blob's group is exactly as big as its limbs.
@@ -243,23 +247,23 @@ export const ANCHORS = {
  * and forgets the group - which clips the limbs, on the wrist, silently.
  */
 for (const [name, anchor, limb] of [
-  ['HERO', ANCHORS.HERO, HERO_LIMB_BOX],
-  ['COMPANION', ANCHORS.COMPANION, MINI_LIMB_BOX],
+	['HERO', ANCHORS.HERO, HERO_LIMB_BOX],
+	['COMPANION', ANCHORS.COMPANION, MINI_LIMB_BOX]
 ] as const) {
-  if (anchor.width !== limb.width || anchor.height !== limb.height) {
-    throw new Error(
-      `ANCHORS.${name} is ${anchor.width}x${anchor.height} but its limb box is ` +
-        `${limb.width}x${limb.height} - the limbs would be clipped`,
-    )
-  }
+	if (anchor.width !== limb.width || anchor.height !== limb.height) {
+		throw new Error(
+			`ANCHORS.${name} is ${anchor.width}x${anchor.height} but its limb box is ` +
+				`${limb.width}x${limb.height} - the limbs would be clipped`
+		);
+	}
 }
 
 /** The three stat chips are a row, so they share a baseline and a height. */
 {
-  const row = [ANCHORS.CHIP_HEART_RATE, ANCHORS.CHIP_STEPS, ANCHORS.CHIP_BATTERY]
-  if (new Set(row.map((c) => `${c.y}:${c.height}`)).size !== 1) {
-    throw new Error('the three stat chips no longer share a y and a height - the row would step')
-  }
+	const row = [ANCHORS.CHIP_HEART_RATE, ANCHORS.CHIP_STEPS, ANCHORS.CHIP_BATTERY];
+	if (new Set(row.map((c) => `${c.y}:${c.height}`)).size !== 1) {
+		throw new Error('the three stat chips no longer share a y and a height - the row would step');
+	}
 }
 
 // --- Gyro -------------------------------------------------------------------
@@ -274,9 +278,9 @@ for (const [name, anchor, limb] of [
  * makes the pair read as sitting at different depths rather than as one flat
  * layer sliding about.
  */
-export const GYRO_HERO = { x: 0.229, y: 0.143 } as const
-export const GYRO_COMPANION = { x: 0.157, y: 0.1 } as const
+export const GYRO_HERO = { x: 0.229, y: 0.143 } as const;
+export const GYRO_COMPANION = { x: 0.157, y: 0.1 } as const;
 
 /** Wrist tilt is clamped before it is scaled, so a sharp turn cannot fling a
  *  blob off the canvas. */
-export const GYRO_CLAMP = 35
+export const GYRO_CLAMP = 35;

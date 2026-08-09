@@ -29,25 +29,27 @@
  * byte-identical.
  */
 
-import * as G from '../geometry.ts'
-import { n, src, type Expr } from '../expr.ts'
-import { evaluate } from '../eval.ts'
+import * as G from '../geometry.ts';
+import { n, raw, src, type Expr } from '../expr.ts';
+import { evaluate } from '../eval.ts';
 
-const r2 = (v: number): number => Math.round(v * 100) / 100
-const rad = (deg: number): number => (deg * Math.PI) / 180
+const r2 = (v: number): number => Math.round(v * 100) / 100;
+const rad = (deg: number): number => (deg * Math.PI) / 180;
 
 /** A stroked segment. */
-export interface Seg {
-  startX: number
-  startY: number
-  endX: number
-  endY: number
-}
+export type Seg = {
+	startX: number;
+	startY: number;
+	endX: number;
+	endY: number;
+};
 
 /** A point at `r` from (`cx`,`cy`) along `deg`, measured clockwise from 3 o'clock
  *  with y growing downward - screen convention, not WFF's arc convention. */
-const polar = (cx: number, cy: number, r: number, deg: number) =>
-  ({ x: cx + r * Math.cos(rad(deg)), y: cy + r * Math.sin(rad(deg)) })
+const polar = (cx: number, cy: number, r: number, deg: number) => ({
+	x: cx + r * Math.cos(rad(deg)),
+	y: cy + r * Math.sin(rad(deg))
+});
 
 /**
  * A segment written the way this face writes segments: ascending y, then
@@ -59,19 +61,23 @@ const polar = (cx: number, cy: number, r: number, deg: number) =>
  * comparison picks one arbitrarily and swaps the pair. Comparing at the
  * resolution the shape is authored at is both correct and stable.
  */
-type Pt = { x: number; y: number }
+type Pt = { x: number; y: number };
 
 /** Ascending y, then ascending x, both compared at 2dp. */
-const upFirst = (a: Pt, b: Pt): number => r2(a.y) - r2(b.y) || r2(a.x) - r2(b.x)
+const upFirst = (a: Pt, b: Pt): number => r2(a.y) - r2(b.y) || r2(a.x) - r2(b.x);
 
 const ordered = (a: Pt, b: Pt): Seg => {
-  const [p, q] = upFirst(a, b) <= 0 ? [a, b] : [b, a]
-  return { startX: r2(p.x), startY: r2(p.y), endX: r2(q.x), endY: r2(q.y) }
-}
+	const [p, q] = upFirst(a, b) <= 0 ? [a, b] : [b, a];
+	return { startX: r2(p.x), startY: r2(p.y), endX: r2(q.x), endY: r2(q.y) };
+};
 
 /** A segment that always runs from `p`, whatever direction that is. */
-const from = (p: Pt, q: Pt): Seg =>
-  ({ startX: r2(p.x), startY: r2(p.y), endX: r2(q.x), endY: r2(q.y) })
+const from = (p: Pt, q: Pt): Seg => ({
+	startX: r2(p.x),
+	startY: r2(p.y),
+	endX: r2(q.x),
+	endY: r2(q.y)
+});
 
 // --- The snowflake ----------------------------------------------------------
 
@@ -85,23 +91,23 @@ const from = (p: Pt, q: Pt): Seg =>
  * lines follows from this block plus `AXIS` and `BARB`, checked below.
  */
 export const FLAKE = {
-  /** Centre of ANCHORS.SKY_MARK's 36x36 box. */
-  centre: 18,
-  arms: [0, 1, 2, 3, 4, 5].map((k) => 30 + 60 * k),
-  axis: { r: 15, thickness: 2.6 },
-  /** A barb: a node out along the arm, and two tips splayed off it. */
-  barb: { at: 9, r: 5, splay: 50, thickness: 2 },
-  /**
-   * Which arm each axis is named by. Each axis spans an arm AND its opposite, so
-   * these three have to cover all six exactly once - asserted below, because
-   * getting it wrong draws one axis twice and leaves a gap.
-   */
-  axes: [90, 30, 330],
-  /** Shipped draw order for the six barb pairs. Arbitrary; see the file header. */
-  barbOrder: [270, 90, 330, 30, 210, 150],
-}
+	/** Centre of ANCHORS.SKY_MARK's 36x36 box. */
+	centre: 18,
+	arms: [0, 1, 2, 3, 4, 5].map((k) => 30 + 60 * k),
+	axis: { r: 15, thickness: 2.6 },
+	/** A barb: a node out along the arm, and two tips splayed off it. */
+	barb: { at: 9, r: 5, splay: 50, thickness: 2 },
+	/**
+	 * Which arm each axis is named by. Each axis spans an arm AND its opposite, so
+	 * these three have to cover all six exactly once - asserted below, because
+	 * getting it wrong draws one axis twice and leaves a gap.
+	 */
+	axes: [90, 30, 330],
+	/** Shipped draw order for the six barb pairs. Arbitrary; see the file header. */
+	barbOrder: [270, 90, 330, 30, 210, 150]
+};
 
-const flakeArm = (deg: number, r: number) => polar(FLAKE.centre, FLAKE.centre, r, deg)
+const flakeArm = (deg: number, r: number) => polar(FLAKE.centre, FLAKE.centre, r, deg);
 
 /**
  * Each axis runs from its opposite arm's tip, through the centre, to its own.
@@ -112,8 +118,8 @@ const flakeArm = (deg: number, r: number) => polar(FLAKE.centre, FLAKE.centre, r
  * to be sorted.
  */
 export const FLAKE_AXES: Seg[] = FLAKE.axes.map((deg) =>
-  from(flakeArm(deg, -FLAKE.axis.r), flakeArm(deg, FLAKE.axis.r)),
-)
+	from(flakeArm(deg, -FLAKE.axis.r), flakeArm(deg, FLAKE.axis.r))
+);
 
 /**
  * Two barbs per arm, upper tip first.
@@ -123,33 +129,46 @@ export const FLAKE_AXES: Seg[] = FLAKE.axes.map((deg) =>
  * is the PAIR that is ordered by tip, upper before lower.
  */
 export const FLAKE_BARBS: Seg[] = FLAKE.barbOrder.flatMap((deg) => {
-  const node = flakeArm(deg, FLAKE.barb.at)
-  return [deg - FLAKE.barb.splay, deg + FLAKE.barb.splay]
-    .map((t) => polar(node.x, node.y, FLAKE.barb.r, t))
-    .sort(upFirst)
-    .map((tip) => from(node, tip))
-})
+	const node = flakeArm(deg, FLAKE.barb.at);
+	return [deg - FLAKE.barb.splay, deg + FLAKE.barb.splay]
+		.map((angle) => polar(node.x, node.y, FLAKE.barb.r, angle))
+		.sort(upFirst)
+		.map((tip) => from(node, tip));
+});
 
 {
-  const problems: string[] = []
-  const spanned = FLAKE.axes.flatMap((a) => [a, (a + 180) % 360]).sort((a, b) => a - b)
-  if (spanned.join(' ') !== [...FLAKE.arms].sort((a, b) => a - b).join(' ')) {
-    problems.push(`the three axes span ${spanned.join('/')}, not the six arms ${FLAKE.arms.join('/')}`)
-  }
-  if ([...FLAKE.barbOrder].sort((a, b) => a - b).join(' ') !== [...FLAKE.arms].sort((a, b) => a - b).join(' ')) {
-    problems.push('barbOrder is not a permutation of the six arms - an arm would be barbed twice or not at all')
-  }
-  // The barbs have to sit ON the axes, not float beside them.
-  if (FLAKE.barb.at >= FLAKE.axis.r) {
-    problems.push(`the barb node at ${FLAKE.barb.at} is at or past the axis tip at ${FLAKE.axis.r}`)
-  }
-  // Nothing may leave the 36x36 box: an axis tip plus its round cap is the
-  // furthest-out thing in the shape.
-  const reach = FLAKE.axis.r + FLAKE.axis.thickness / 2
-  if (FLAKE.centre - reach < 0 || FLAKE.centre + reach > 2 * FLAKE.centre) {
-    problems.push(`the flake reaches ${r2(reach)} from centre, outside its ${2 * FLAKE.centre}px box`)
-  }
-  if (problems.length) throw new Error(`the snowflake lost its symmetry:\n  ${problems.join('\n  ')}`)
+	const problems: string[] = [];
+	const spanned = FLAKE.axes.flatMap((axis) => [axis, (axis + 180) % 360]).sort((a, b) => a - b);
+	if (spanned.join(' ') !== [...FLAKE.arms].sort((a, b) => a - b).join(' ')) {
+		problems.push(
+			`the three axes span ${spanned.join('/')}, not the six arms ${FLAKE.arms.join('/')}`
+		);
+	}
+	if (
+		[...FLAKE.barbOrder].sort((a, b) => a - b).join(' ') !==
+		[...FLAKE.arms].sort((a, b) => a - b).join(' ')
+	) {
+		problems.push(
+			'barbOrder is not a permutation of the six arms - an arm would be barbed twice or not at all'
+		);
+	}
+	// The barbs have to sit ON the axes, not float beside them.
+	if (FLAKE.barb.at >= FLAKE.axis.r) {
+		problems.push(
+			`the barb node at ${FLAKE.barb.at} is at or past the axis tip at ${FLAKE.axis.r}`
+		);
+	}
+	// Nothing may leave the 36x36 box: an axis tip plus its round cap is the
+	// furthest-out thing in the shape.
+	const reach = FLAKE.axis.r + FLAKE.axis.thickness / 2;
+	if (FLAKE.centre - reach < 0 || FLAKE.centre + reach > 2 * FLAKE.centre) {
+		problems.push(
+			`the flake reaches ${r2(reach)} from centre, outside its ${2 * FLAKE.centre}px box`
+		);
+	}
+	if (problems.length) {
+		throw new Error(`the snowflake lost its symmetry:\n  ${problems.join('\n  ')}`);
+	}
 }
 
 // --- The storm burst --------------------------------------------------------
@@ -171,44 +190,57 @@ export const FLAKE_BARBS: Seg[] = FLAKE.barbOrder.flatMap((deg) => {
  * Order is clockwise from 12 o'clock, which is the shipped draw order.
  */
 export const BURST = {
-  centre: 52,
-  hub: 30,
-  thickness: 9,
-  /** From 270 (12 o'clock) clockwise in 30-degree steps. */
-  from: 270,
-  step: 30,
-  radii: [50, 35.9, 41.7, 36, 49.7, 35.9, 50, 35.9, 49.7, 36, 49.7, 35.9],
-}
+	centre: 52,
+	hub: 30,
+	thickness: 9,
+	/** From 270 (12 o'clock) clockwise in 30-degree steps. */
+	from: 270,
+	step: 30,
+	radii: [50, 35.9, 41.7, 36, 49.7, 35.9, 50, 35.9, 49.7, 36, 49.7, 35.9]
+};
 
 export const BURST_HUB = G.box(
-  BURST.centre - BURST.hub / 2,
-  BURST.centre - BURST.hub / 2,
-  BURST.hub,
-  BURST.hub,
-)
+	BURST.centre - BURST.hub / 2,
+	BURST.centre - BURST.hub / 2,
+	BURST.hub,
+	BURST.hub
+);
 
 /** Every spoke starts at the centre, so these are not `ordered()`. */
-export const BURST_SPOKES: Seg[] = BURST.radii.map((r, i) => {
-  const p = polar(BURST.centre, BURST.centre, r, BURST.from + i * BURST.step)
-  return { startX: BURST.centre, startY: BURST.centre, endX: Math.round(p.x), endY: Math.round(p.y) }
-})
+export const BURST_SPOKES: Seg[] = BURST.radii.map((radius, i) => {
+	const tip = polar(BURST.centre, BURST.centre, radius, BURST.from + i * BURST.step);
+	return {
+		startX: BURST.centre,
+		startY: BURST.centre,
+		endX: Math.round(tip.x),
+		endY: Math.round(tip.y)
+	};
+});
 
 {
-  const problems: string[] = []
-  if (new Set(BURST.radii).size === 1) {
-    problems.push('every spoke is the same length - the burst would read as a gear, which is the one thing it must not')
-  }
-  if (BURST.radii.length !== 360 / BURST.step) {
-    problems.push(`${BURST.radii.length} radii for ${360 / BURST.step} spokes at a ${BURST.step}-degree step`)
-  }
-  // The longest spokes overshoot the part box by design; the SQUARE caps on the
-  // 50s reach 54.5 in a box whose half-width is 52, so four spoke tips arrive
-  // flat. That is the shipped shape - a flat tip on a flash is invisible - and it
-  // is recorded here rather than fixed. What must not happen is the CENTRELINE
-  // leaving the box, which would cut a spoke short.
-  const worst = Math.max(...BURST.radii)
-  if (worst > BURST.centre) problems.push(`a spoke centreline reaches ${worst}, past the box's ${BURST.centre}`)
-  if (problems.length) throw new Error(`the storm burst no longer reads as a burst:\n  ${problems.join('\n  ')}`)
+	const problems: string[] = [];
+	if (new Set(BURST.radii).size === 1) {
+		problems.push(
+			'every spoke is the same length - the burst would read as a gear, which is the one thing it must not'
+		);
+	}
+	if (BURST.radii.length !== 360 / BURST.step) {
+		problems.push(
+			`${BURST.radii.length} radii for ${360 / BURST.step} spokes at a ${BURST.step}-degree step`
+		);
+	}
+	// The longest spokes overshoot the part box by design; the SQUARE caps on the
+	// 50s reach 54.5 in a box whose half-width is 52, so four spoke tips arrive
+	// flat. That is the shipped shape - a flat tip on a flash is invisible - and it
+	// is recorded here rather than fixed. What must not happen is the CENTRELINE
+	// leaving the box, which would cut a spoke short.
+	const worst = Math.max(...BURST.radii);
+	if (worst > BURST.centre) {
+		problems.push(`a spoke centreline reaches ${worst}, past the box's ${BURST.centre}`);
+	}
+	if (problems.length) {
+		throw new Error(`the storm burst no longer reads as a burst:\n  ${problems.join('\n  ')}`);
+	}
 }
 
 // --- The bolt ---------------------------------------------------------------
@@ -221,19 +253,19 @@ export const BURST_SPOKES: Seg[] = BURST.radii.map((r, i) => {
  * what this actually is.
  */
 export const BOLT = {
-  thickness: 6,
-  points: [
-    { x: 22, y: 0 },
-    { x: 38, y: 28 },
-    { x: 24, y: 32 },
-    { x: 42, y: 64 },
-  ],
-}
+	thickness: 6,
+	points: [
+		{ x: 22, y: 0 },
+		{ x: 38, y: 28 },
+		{ x: 24, y: 32 },
+		{ x: 42, y: 64 }
+	]
+};
 
-export const BOLT_SEGMENTS: Seg[] = BOLT.points.slice(0, -1).map((p, i) => {
-  const q = BOLT.points[i + 1]!
-  return { startX: p.x, startY: p.y, endX: q.x, endY: q.y }
-})
+export const BOLT_SEGMENTS: Seg[] = BOLT.points.slice(0, -1).map((point, i) => {
+	const next = BOLT.points[i + 1];
+	return { startX: point.x, startY: point.y, endX: next.x, endY: next.y };
+});
 
 // --- The umbrella -----------------------------------------------------------
 
@@ -252,76 +284,88 @@ export const BOLT_SEGMENTS: Seg[] = BOLT.points.slice(0, -1).map((p, i) => {
  * quietly "fix" the thing that makes them visible.
  */
 export const UMBRELLA = {
-  span: { width: 160, height: 10, y: 12, radius: 4 },
-  lobeWidth: 45,
-  lobes: [
-    { x: 0, y: 9, height: 13 },
-    { x: 38, y: 1, height: 21 },
-    { x: 77, y: 1, height: 21 },
-    { x: 115, y: 9, height: 13 },
-  ],
-  rib: { xs: [39, 80, 120], from: 13, to: 21, thickness: 1.8 },
-  shaft: {
-    x: 80,
-    thickness: 3,
-    /** Two straight runs, with the hook's arc between them. */
-    upper: { from: 18, to: 38 },
-    lower: { from: 56, to: 60 },
-    /** The hook is an Arc so the curve stays a curve at any scale. */
-    hook: { centerX: 74, centerY: 60, r: 6, startAngle: 90, endAngle: 270 },
-  },
-}
+	span: { width: 160, height: 10, y: 12, radius: 4 },
+	lobeWidth: 45,
+	lobes: [
+		{ x: 0, y: 9, height: 13 },
+		{ x: 38, y: 1, height: 21 },
+		{ x: 77, y: 1, height: 21 },
+		{ x: 115, y: 9, height: 13 }
+	],
+	rib: { xs: [39, 80, 120], from: 13, to: 21, thickness: 1.8 },
+	shaft: {
+		x: 80,
+		thickness: 3,
+		/** Two straight runs, with the hook's arc between them. */
+		upper: { from: 18, to: 38 },
+		lower: { from: 56, to: 60 },
+		/** The hook is an Arc so the curve stays a curve at any scale. */
+		hook: { centerX: 74, centerY: 60, r: 6, startAngle: 90, endAngle: 270 }
+	}
+};
 
 export const UMBRELLA_SPAN = {
-  ...G.box(0, UMBRELLA.span.y, UMBRELLA.span.width, UMBRELLA.span.height),
-  cornerRadiusX: UMBRELLA.span.radius,
-  cornerRadiusY: UMBRELLA.span.radius,
-}
+	...G.box(0, UMBRELLA.span.y, UMBRELLA.span.width, UMBRELLA.span.height),
+	cornerRadiusX: UMBRELLA.span.radius,
+	cornerRadiusY: UMBRELLA.span.radius
+};
 
-export const UMBRELLA_LOBES: G.Box[] = UMBRELLA.lobes.map((l) =>
-  G.box(l.x, l.y, UMBRELLA.lobeWidth, l.height),
-)
+export const UMBRELLA_LOBES: G.Box[] = UMBRELLA.lobes.map((lobe) =>
+	G.box(lobe.x, lobe.y, UMBRELLA.lobeWidth, lobe.height)
+);
 
-export const UMBRELLA_RIBS: Seg[] = UMBRELLA.rib.xs.map((x) =>
-  ({ startX: x, startY: UMBRELLA.rib.from, endX: x, endY: UMBRELLA.rib.to }),
-)
+export const UMBRELLA_RIBS: Seg[] = UMBRELLA.rib.xs.map((x) => ({
+	startX: x,
+	startY: UMBRELLA.rib.from,
+	endX: x,
+	endY: UMBRELLA.rib.to
+}));
 
-export const UMBRELLA_SHAFT: Seg[] = [UMBRELLA.shaft.upper, UMBRELLA.shaft.lower].map((r) =>
-  ({ startX: UMBRELLA.shaft.x, startY: r.from, endX: UMBRELLA.shaft.x, endY: r.to }),
-)
+export const UMBRELLA_SHAFT: Seg[] = [UMBRELLA.shaft.upper, UMBRELLA.shaft.lower].map((run) => ({
+	startX: UMBRELLA.shaft.x,
+	startY: run.from,
+	endX: UMBRELLA.shaft.x,
+	endY: run.to
+}));
 
 export const UMBRELLA_HOOK = {
-  centerX: UMBRELLA.shaft.hook.centerX,
-  centerY: UMBRELLA.shaft.hook.centerY,
-  width: 2 * UMBRELLA.shaft.hook.r,
-  height: 2 * UMBRELLA.shaft.hook.r,
-  startAngle: UMBRELLA.shaft.hook.startAngle,
-  endAngle: UMBRELLA.shaft.hook.endAngle,
-}
+	centerX: UMBRELLA.shaft.hook.centerX,
+	centerY: UMBRELLA.shaft.hook.centerY,
+	width: 2 * UMBRELLA.shaft.hook.r,
+	height: 2 * UMBRELLA.shaft.hook.r,
+	startAngle: UMBRELLA.shaft.hook.startAngle,
+	endAngle: UMBRELLA.shaft.hook.endAngle
+};
 
 {
-  const problems: string[] = []
-  const seams = UMBRELLA.lobes.slice(1).map((l) => l.x)
-  for (const x of UMBRELLA.rib.xs) {
-    if (seams.includes(x)) problems.push(`the rib at ${x} sits exactly on a lobe seam and would vanish into it`)
-  }
-  // The lobes must cover the bar they sit on, or the canopy shows a notch.
-  const covered = Math.max(...UMBRELLA.lobes.map((l) => l.x + UMBRELLA.lobeWidth))
-  if (UMBRELLA.lobes[0]!.x > 0 || covered < UMBRELLA.span.width) {
-    problems.push(`the lobes cover ${UMBRELLA.lobes[0]!.x}..${covered} of a ${UMBRELLA.span.width}-wide bar`)
-  }
-  // The shaft and the hook have to JOIN, in both axes. The arc runs 90 to 270 -
-  // clockwise from 3 o'clock round the bottom to 9 o'clock - so its right-hand end
-  // is at (centerX + r, centerY), and the straight run has to finish exactly
-  // there or the handle shows a gap at the turn.
-  const { lower, hook, x } = UMBRELLA.shaft
-  if (lower.to !== hook.centerY || x !== hook.centerX + hook.r) {
-    problems.push(
-      `the shaft ends at (${x},${lower.to}) but the hook's rim starts at ` +
-        `(${hook.centerX + hook.r},${hook.centerY})`,
-    )
-  }
-  if (problems.length) throw new Error(`the umbrella no longer holds together:\n  ${problems.join('\n  ')}`)
+	const problems: string[] = [];
+	const seams = UMBRELLA.lobes.slice(1).map((lobe) => lobe.x);
+	for (const x of UMBRELLA.rib.xs) {
+		if (seams.includes(x)) {
+			problems.push(`the rib at ${x} sits exactly on a lobe seam and would vanish into it`);
+		}
+	}
+	// The lobes must cover the bar they sit on, or the canopy shows a notch.
+	const covered = Math.max(...UMBRELLA.lobes.map((lobe) => lobe.x + UMBRELLA.lobeWidth));
+	if (UMBRELLA.lobes[0].x > 0 || covered < UMBRELLA.span.width) {
+		problems.push(
+			`the lobes cover ${UMBRELLA.lobes[0].x}..${covered} of a ${UMBRELLA.span.width}-wide bar`
+		);
+	}
+	// The shaft and the hook have to JOIN, in both axes. The arc runs 90 to 270 -
+	// clockwise from 3 o'clock round the bottom to 9 o'clock - so its right-hand end
+	// is at (centerX + r, centerY), and the straight run has to finish exactly
+	// there or the handle shows a gap at the turn.
+	const { lower, hook, x } = UMBRELLA.shaft;
+	if (lower.to !== hook.centerY || x !== hook.centerX + hook.r) {
+		problems.push(
+			`the shaft ends at (${x},${lower.to}) but the hook's rim starts at ` +
+				`(${hook.centerX + hook.r},${hook.centerY})`
+		);
+	}
+	if (problems.length) {
+		throw new Error(`the umbrella no longer holds together:\n  ${problems.join('\n  ')}`);
+	}
 }
 
 // --- The sun ----------------------------------------------------------------
@@ -338,54 +382,53 @@ export const UMBRELLA_HOOK = {
  * visible.
  */
 export const SUN = {
-  centre: 13,
-  disc: 12,
-  ray: {
-    thickness: 2.2,
-    /** Radii, for the four rays on the axes. */
-    axis: { from: 8.5, to: 12 },
-    /** Per-coordinate offsets, for the four on the diagonals. */
-    diagonal: { from: 5.9, to: 8.4 },
-  },
-  /** Shipped draw order. Arbitrary; see the file header. */
-  order: [270, 90, 180, 0, 225, 45, 315, 135],
-}
+	centre: 13,
+	disc: 12,
+	ray: {
+		thickness: 2.2,
+		/** Radii, for the four rays on the axes. */
+		axis: { from: 8.5, to: 12 },
+		/** Per-coordinate offsets, for the four on the diagonals. */
+		diagonal: { from: 5.9, to: 8.4 }
+	},
+	/** Shipped draw order. Arbitrary; see the file header. */
+	order: [270, 90, 180, 0, 225, 45, 315, 135]
+};
 
 export const SUN_DISC = G.box(
-  SUN.centre - SUN.disc / 2,
-  SUN.centre - SUN.disc / 2,
-  SUN.disc,
-  SUN.disc,
-)
+	SUN.centre - SUN.disc / 2,
+	SUN.centre - SUN.disc / 2,
+	SUN.disc,
+	SUN.disc
+);
 
 export const SUN_RAYS: Seg[] = SUN.order.map((deg) => {
-  const diagonal = deg % 90 !== 0
-  const step = Math.SQRT2
-  const { from, to } = diagonal
-    ? { from: SUN.ray.diagonal.from * step, to: SUN.ray.diagonal.to * step }
-    : SUN.ray.axis
-  return ordered(
-    polar(SUN.centre, SUN.centre, from, deg),
-    polar(SUN.centre, SUN.centre, to, deg),
-  )
-})
+	const diagonal = deg % 90 !== 0;
+	const step = Math.SQRT2;
+	const { from, to } = diagonal
+		? { from: SUN.ray.diagonal.from * step, to: SUN.ray.diagonal.to * step }
+		: SUN.ray.axis;
+	return ordered(polar(SUN.centre, SUN.centre, from, deg), polar(SUN.centre, SUN.centre, to, deg));
+});
 
 {
-  // How far the diagonals fall short of the axis rays. Visible above a few
-  // percent, so the tolerance is deliberately tight.
-  const drift = Math.max(
-    Math.abs(SUN.ray.diagonal.from * Math.SQRT2 - SUN.ray.axis.from) / SUN.ray.axis.from,
-    Math.abs(SUN.ray.diagonal.to * Math.SQRT2 - SUN.ray.axis.to) / SUN.ray.axis.to,
-  )
-  if (drift > 0.02) {
-    throw new Error(
-      `the sun's diagonal rays are now ${(drift * 100).toFixed(1)}% off the length of its axis rays - ` +
-        'past the ~1.2% that shipped, the eight stop reading as one set',
-    )
-  }
-  if (SUN.ray.axis.from <= SUN.disc / 2) {
-    throw new Error(`the rays start at radius ${SUN.ray.axis.from}, inside the disc's own ${SUN.disc / 2}`)
-  }
+	// How far the diagonals fall short of the axis rays. Visible above a few
+	// percent, so the tolerance is deliberately tight.
+	const drift = Math.max(
+		Math.abs(SUN.ray.diagonal.from * Math.SQRT2 - SUN.ray.axis.from) / SUN.ray.axis.from,
+		Math.abs(SUN.ray.diagonal.to * Math.SQRT2 - SUN.ray.axis.to) / SUN.ray.axis.to
+	);
+	if (drift > 0.02) {
+		throw new Error(
+			`the sun's diagonal rays are now ${(drift * 100).toFixed(1)}% off the length of its axis rays - ` +
+				'past the ~1.2% that shipped, the eight stop reading as one set'
+		);
+	}
+	if (SUN.ray.axis.from <= SUN.disc / 2) {
+		throw new Error(
+			`the rays start at radius ${SUN.ray.axis.from}, inside the disc's own ${SUN.disc / 2}`
+		);
+	}
 }
 
 // --- The moon ---------------------------------------------------------------
@@ -411,15 +454,15 @@ export const SUN_RAYS: Seg[] = SUN.order.map((deg) => {
  * arithmetic on the rate, because what matters is where the shadow actually lands.
  */
 export const MOON = {
-  disc: 24,
-  /** Days per synodic month, to the two decimals the shipped rate was built from. */
-  synodicDays: 29.53,
-}
+	disc: 24,
+	/** Days per synodic month, to the two decimals the shipped rate was built from. */
+	synodicDays: 29.53
+};
 
-export const MOON_DISC = G.box(6, 6, MOON.disc, MOON.disc)
+export const MOON_DISC = G.box(6, 6, MOON.disc, MOON.disc);
 
 /** How many px of shadow travel per day. Out and back, hence the doubling. */
-export const MOON_SHADOW_RATE = Number(((2 * MOON.disc) / MOON.synodicDays).toFixed(4))
+export const MOON_SHADOW_RATE = Number(((2 * MOON.disc) / MOON.synodicDays).toFixed(4));
 
 /**
  * The shadow's x.
@@ -430,32 +473,43 @@ export const MOON_SHADOW_RATE = Number(((2 * MOON.disc) / MOON.synodicDays).toFi
  * fold like this is how a triangle wave gets written at all.
  */
 export const moonShadowX = (): Expr => {
-  const travel = `${n(MOON_SHADOW_RATE)} * ${src('MOON_PHASE_POSITION')}`
-  const span = n(MOON.disc)
-  return `${n(MOON_DISC.x)} + clamp(${travel}, 0, ${span}) + ` +
-    `clamp(${span} - ${travel}, -${span}, 0)` as Expr
-}
+	const travel = `${n(MOON_SHADOW_RATE)} * ${src('MOON_PHASE_POSITION')}`;
+	const span = n(MOON.disc);
+	// `raw()`, not `as Expr`. expr.ts owns the brand and is the only module that mints one;
+	// minting it here would mean any file can call a bare string an Expr, which is the exact
+	// thing the brand exists to stop.
+	return raw(
+		`${n(MOON_DISC.x)} + clamp(${travel}, 0, ${span}) + ` +
+			`clamp(${span} - ${travel}, -${span}, 0)`
+	);
+};
 
 {
-  // Where the shadow sits at new moon, full moon and the next new moon. The disc
-  // is at x6, so 6 means "fully covering" and 30 means "fully clear".
-  const at = (days: number) => evaluate(moonShadowX(), { MOON_PHASE_POSITION: days })
-  const newMoon = at(0)
-  const full = at(MOON.synodicDays / 2)
-  const wrap = at(MOON.synodicDays)
-  const problems: string[] = []
+	// Where the shadow sits at new moon, full moon and the next new moon. The disc
+	// is at x6, so 6 means "fully covering" and 30 means "fully clear".
+	const at = (days: number) => evaluate(moonShadowX(), { MOON_PHASE_POSITION: days });
+	const newMoon = at(0);
+	const full = at(MOON.synodicDays / 2);
+	const wrap = at(MOON.synodicDays);
+	const problems: string[] = [];
 
-  if (newMoon !== MOON_DISC.x) problems.push(`at day 0 the shadow is at ${newMoon}, not covering the disc at ${MOON_DISC.x}`)
-  if (Math.abs(full - (MOON_DISC.x + MOON.disc)) > 0.01) {
-    problems.push(`at half a month the shadow is at ${r2(full)}, not clear of the disc at ${MOON_DISC.x + MOON.disc}`)
-  }
-  // The rate is rounded to 4dp, so the return does not land exactly. A tenth of a
-  // pixel of snap at new moon is invisible; a whole pixel would not be.
-  if (Math.abs(wrap - MOON_DISC.x) > 0.1) {
-    problems.push(
-      `after a full month the shadow is at ${r2(wrap)} instead of ${MOON_DISC.x}, so it would snap ` +
-        `${r2(Math.abs(wrap - MOON_DISC.x))}px when the phase wraps`,
-    )
-  }
-  if (problems.length) throw new Error(`the moon's shadow no longer completes its cycle:\n  ${problems.join('\n  ')}`)
+	if (newMoon !== MOON_DISC.x) {
+		problems.push(`at day 0 the shadow is at ${newMoon}, not covering the disc at ${MOON_DISC.x}`);
+	}
+	if (Math.abs(full - (MOON_DISC.x + MOON.disc)) > 0.01) {
+		problems.push(
+			`at half a month the shadow is at ${r2(full)}, not clear of the disc at ${MOON_DISC.x + MOON.disc}`
+		);
+	}
+	// The rate is rounded to 4dp, so the return does not land exactly. A tenth of a
+	// pixel of snap at new moon is invisible; a whole pixel would not be.
+	if (Math.abs(wrap - MOON_DISC.x) > 0.1) {
+		problems.push(
+			`after a full month the shadow is at ${r2(wrap)} instead of ${MOON_DISC.x}, so it would snap ` +
+				`${r2(Math.abs(wrap - MOON_DISC.x))}px when the phase wraps`
+		);
+	}
+	if (problems.length) {
+		throw new Error(`the moon's shadow no longer completes its cycle:\n  ${problems.join('\n  ')}`);
+	}
 }

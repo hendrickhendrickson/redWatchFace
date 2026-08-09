@@ -1,50 +1,72 @@
 {
-  // Node 22.18+ strips type annotations natively, with no flag and no build step.
-  // It does NOT type-check, so `tsc --noEmit` is the only thing making the types
-  // real - which is the entire justification for authoring in TypeScript at all.
-  //
-  // erasableSyntaxOnly is load-bearing: it turns "do not use enum / namespace /
-  // parameter properties" from a convention someone has to remember into a
-  // compiler error. Without it the first `enum` ships and node throws
-  // ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX at whoever runs the generator next.
-  "compilerOptions": {
-    "target": "es2023",
-    "lib": ["es2023"],
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "types": ["node"],
+	// Node 22.18+ strips type annotations natively, with no flag and no build step.
+	// It does NOT type-check, so `tsc --noEmit` is the only thing making the types
+	// real - which is the entire justification for authoring in TypeScript at all.
+	//
+	// erasableSyntaxOnly is load-bearing: it turns "do not use enum / namespace /
+	// parameter properties" from a convention someone has to remember into a
+	// compiler error. Without it the first `enum` ships and node throws
+	// ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX at whoever runs the generator next.
+	"compilerOptions": {
+		"target": "es2023",
+		"lib": ["es2023"],
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"types": ["node"],
 
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "exactOptionalPropertyTypes": true,
+		// The bare specifier `hhson-lib` resolves to the submodule's barrel. Exact match, no
+		// wildcard, so `hhson-lib/anything` fails to resolve rather than silently half-working -
+		// there is one entry point. Node does not read this file, so it resolves the same specifier
+		// through the `file:` dependency in package.json instead; both land on the same source file.
+		"paths": { "hhson-lib": ["./submodules/hhson-lib/src/index.ts"] },
 
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true,
-    "allowImportingTsExtensions": true,
-    "noEmit": true,
+		"strict": true,
+		"noImplicitOverride": true,
 
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["tools/**/*.ts"],
+		// BOTH DELIBERATELY OFF, matching submodules/hhson-lib/tsconfig.json.
+		//
+		// noUncheckedIndexedAccess does not apply to `Record<TKey, V>` where TKey is a generic type
+		// parameter - those reads stay `V`, unchecked - so it protects concrete records and arrays
+		// while silently skipping every generic container. Partial coverage that looks total is worse
+		// than none: you stop reading carefully in exactly the places it does not help. Turning it on
+		// here would also put the imported library's own source in error, since it is written against
+		// the convention rather than the flag.
+		//
+		// What replaces them is convention, from /hhson-typescript, and it holds everywhere the flags
+		// did not: bracket-index only where the SURROUNDING code guarantees the element exists (a loop
+		// that produced the index, a bound established in the same scope - never an assumption about a
+		// caller's data), and wrap an infinite-key Record in `Partial` so a read is honestly
+		// `V | undefined`. A Record over a finite key union stays unwrapped, because every key
+		// provably exists.
+		"noUncheckedIndexedAccess": false,
+		"exactOptionalPropertyTypes": false,
 
-  // The preview's LOGIC is type-checked here, deliberately: src/frame.ts and
-  // src/clock.ts import the generator directly, so if a data table changes shape
-  // the root typecheck is what says the preview no longer compiles against it.
-  //
-  // Only the two files that need a toolchain are excluded. src/main.ts touches
-  // `document` and imports a .svelte file; vite.config.ts imports vite and the
-  // svelte plugin. Both would drag the DOM lib and tools/preview/node_modules into
-  // the generator's gate, and `npm run verify` has to keep passing on a clone that
-  // has never run `npm install` inside tools/preview. Those two, plus every
-  // .svelte file, are covered by `npm run check` in tools/preview instead.
-  //
-  // node_modules IS LISTED ON PURPOSE. Setting `exclude` at all replaces its
-  // default value, which was exactly ["node_modules", ...] - and vite ships .ts
-  // SOURCES, so a wildcard include that reaches them produces hundreds of TS1295
-  // errors from other people's code. TypeScript happens to skip a directory called
-  // node_modules in wildcards regardless, which is precisely what makes the omission
-  // invisible until something renames or relocates it. Say it.
-  "exclude": ["**/node_modules", "tools/preview/src/main.ts", "tools/preview/vite.config.ts"]
+		"erasableSyntaxOnly": true,
+		"verbatimModuleSyntax": true,
+		"allowImportingTsExtensions": true,
+		"noEmit": true,
+
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	"include": ["tools/**/*.ts"],
+
+	// The preview's LOGIC is type-checked here, deliberately: src/frame.ts and
+	// src/clock.ts import the generator directly, so if a data table changes shape
+	// the root typecheck is what says the preview no longer compiles against it.
+	//
+	// Only the two files that need a toolchain are excluded. src/main.ts touches
+	// `document` and imports a .svelte file; vite.config.ts imports vite and the
+	// svelte plugin. Both would drag the DOM lib and tools/preview/node_modules into
+	// the generator's gate, and `npm run verify` has to keep passing on a clone that
+	// has never run `npm install` inside tools/preview. Those two, plus every
+	// .svelte file, are covered by `npm run check` in tools/preview instead.
+	//
+	// node_modules IS LISTED ON PURPOSE. Setting `exclude` at all replaces its
+	// default value, which was exactly ["node_modules", ...] - and vite ships .ts
+	// SOURCES, so a wildcard include that reaches them produces hundreds of TS1295
+	// errors from other people's code. TypeScript happens to skip a directory called
+	// node_modules in wildcards regardless, which is precisely what makes the omission
+	// invisible until something renames or relocates it. Say it.
+	"exclude": ["**/node_modules", "tools/preview/src/main.ts", "tools/preview/vite.config.ts"]
 }

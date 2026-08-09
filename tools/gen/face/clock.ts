@@ -8,11 +8,11 @@
  * weight morph instead of as doubled text. See crossfade.ts.
  */
 
-import { el, type Node } from '../xml.ts'
-import { C } from '../palette.ts'
-import { FADE_IN, FADE_OUT } from '../crossfade.ts'
-import { FONT_FAMILY, SIZE } from '../type.ts'
-import * as G from '../geometry.ts'
+import { el, type Node } from '../xml.ts';
+import { C } from '../palette.ts';
+import { FADE_IN, FADE_OUT } from '../crossfade.ts';
+import { FONT_FAMILY, SIZE } from '../type.ts';
+import * as G from '../geometry.ts';
 
 /**
  * TWO DIFFERENT THINGS ARE BOTH CALLED SYNC_TO_DEVICE and only one of them is
@@ -24,9 +24,14 @@ import * as G from '../geometry.ts'
  * were a typographic decision.
  */
 const TIME = {
-  format: 'hh:mm', hourFormat: 'SYNC_TO_DEVICE', align: 'CENTER',
-  x: 0, y: 68, width: 450, height: 120,
-} as const
+	format: 'hh:mm',
+	hourFormat: 'SYNC_TO_DEVICE',
+	align: 'CENTER',
+	x: 0,
+	y: 68,
+	width: 450,
+	height: 120
+} as const;
 
 /**
  * Kept as a local bag rather than built with type.ts's font(), because these two
@@ -34,16 +39,16 @@ const TIME = {
  * SLANT, weight, color, a different attribute order from the chips. See the note
  * on font() in type.ts.
  */
-const FONT = { family: FONT_FAMILY, size: SIZE.CLOCK, slant: 'NORMAL' } as const
+const FONT = { family: FONT_FAMILY, size: SIZE.CLOCK, slant: 'NORMAL' } as const;
 
 export const clock = (): Node =>
-  el('DigitalClock', { ...G.CANVAS }, [
-    el('TimeText', { ...TIME, alpha: 255 }, [
-      el('Variant', FADE_OUT),
-      el('Font', { ...FONT, weight: 'BOLD', color: C.CREAM }),
-    ]),
-    el('TimeText', { ...TIME, alpha: 0 }, [
-      el('Variant', FADE_IN),
-      el('Font', { ...FONT, weight: 'LIGHT', color: C.WHITE }),
-    ]),
-  ])
+	el('DigitalClock', { ...G.CANVAS }, [
+		el('TimeText', { ...TIME, alpha: 255 }, [
+			el('Variant', FADE_OUT),
+			el('Font', { ...FONT, weight: 'BOLD', color: C.CREAM })
+		]),
+		el('TimeText', { ...TIME, alpha: 0 }, [
+			el('Variant', FADE_IN),
+			el('Font', { ...FONT, weight: 'LIGHT', color: C.WHITE })
+		])
+	]);

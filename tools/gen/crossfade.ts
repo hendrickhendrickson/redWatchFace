@@ -39,7 +39,7 @@
  * back, with nothing reporting it. 0.50 + 0.50 sits exactly at the limit.
  */
 
-import type { Attrs } from './xml.ts'
+import type { Attrs } from './xml.ts';
 
 /**
  * Not drawn in ambient at all. FIFTEEN sites, one per non-essential section.
@@ -60,7 +60,7 @@ import type { Attrs } from './xml.ts'
  * nothing to hand over to, and giving it a window would fade decoration out over
  * half a second while the clock had already changed weight.
  */
-export const AMBIENT_HIDE: Attrs = { mode: 'AMBIENT', target: 'alpha', value: 0 }
+export const AMBIENT_HIDE: Attrs = { mode: 'AMBIENT', target: 'alpha', value: 0 };
 
 /**
  * The copy that is visible interactive: alpha 255 -> 0.
@@ -68,13 +68,13 @@ export const AMBIENT_HIDE: Attrs = { mode: 'AMBIENT', target: 'alpha', value: 0 
  * Duration is deliberately SHORTER than the in copy's offset, by 0.05.
  */
 export const FADE_OUT: Attrs = {
-  mode: 'AMBIENT',
-  target: 'alpha',
-  value: 0,
-  duration: 0.45,
-  startOffset: 0,
-  interpolation: 'EASE_IN',
-}
+	mode: 'AMBIENT',
+	target: 'alpha',
+	value: 0,
+	duration: 0.45,
+	startOffset: 0,
+	interpolation: 'EASE_IN'
+};
 
 /**
  * The copy that is visible ambient: alpha 0 -> 255.
@@ -84,26 +84,26 @@ export const FADE_OUT: Attrs = {
  * expressions, so this is presentation only.
  */
 export const FADE_IN: Attrs = {
-  mode: 'AMBIENT',
-  target: 'alpha',
-  value: 255,
-  duration: '0.50',
-  startOffset: '0.50',
-  interpolation: 'EASE_OUT',
-}
+	mode: 'AMBIENT',
+	target: 'alpha',
+	value: 255,
+	duration: '0.50',
+	startOffset: '0.50',
+	interpolation: 'EASE_OUT'
+};
 
-const num = (v: string | number | undefined): number => Number(v)
+const num = (v: string | number | undefined): number => Number(v);
 
 /**
  * Build-time proof of the one property WFF will not check and the eye cannot
  * see until it is on a wrist for 200ms.
  */
 if (num(FADE_OUT.startOffset) + num(FADE_OUT.duration) > 1) {
-  throw new Error('FADE_OUT: startOffset + duration > 1.0, offset would be ignored')
+	throw new Error('FADE_OUT: startOffset + duration > 1.0, offset would be ignored');
 }
 if (num(FADE_IN.startOffset) + num(FADE_IN.duration) > 1) {
-  throw new Error('FADE_IN: startOffset + duration > 1.0, offset would be ignored')
+	throw new Error('FADE_IN: startOffset + duration > 1.0, offset would be ignored');
 }
 if (num(FADE_OUT.duration) > num(FADE_IN.startOffset)) {
-  throw new Error('the fade windows overlap going into ambient: both copies would be drawn')
+	throw new Error('the fade windows overlap going into ambient: both copies would be drawn');
 }

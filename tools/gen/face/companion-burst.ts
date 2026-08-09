@@ -10,27 +10,27 @@
  * A top-level sibling of the companion, repeating its Gyro gain. See blob.ts.
  */
 
-import { el, type Node } from '../xml.ts'
-import { C } from '../palette.ts'
-import * as G from '../geometry.ts'
-import { AMBIENT_HIDE } from '../crossfade.ts'
-import { when } from '../condition.ts'
-import { STORM } from '../states.ts'
-import { companionGyro } from '../blob.ts'
-import { BURST, BURST_HUB, BURST_SPOKES } from '../data/weather.ts'
+import { el, type Node } from '../xml.ts';
+import { C } from '../palette.ts';
+import * as G from '../geometry.ts';
+import { AMBIENT_HIDE } from '../crossfade.ts';
+import { when } from '../condition.ts';
+import { STORM } from '../states.ts';
+import { companionGyro } from '../blob.ts';
+import { BURST, BURST_HUB, BURST_SPOKES } from '../data/weather.ts';
 
 export const companionBurst = (): Node =>
-  when('zap_burst', STORM, [
-    el('Group', { name: 'companion_burst', ...G.ANCHORS.COMPANION_BURST, alpha: 255 }, [
-      companionGyro(),
-      el('Variant', AMBIENT_HIDE),
-      el('PartDraw', { name: 'burst', ...G.at(2 * BURST.centre, 2 * BURST.centre) }, [
-        el('Ellipse', { ...BURST_HUB }, [el('Fill', { color: C.BURST })]),
-        ...BURST_SPOKES.map((s) =>
-          el('Line', { ...s }, [
-            el('Stroke', { color: C.BURST, thickness: BURST.thickness, cap: 'SQUARE' }),
-          ]),
-        ),
-      ]),
-    ]),
-  ])
+	when('zap_burst', STORM, [
+		el('Group', { name: 'companion_burst', ...G.ANCHORS.COMPANION_BURST, alpha: 255 }, [
+			companionGyro(),
+			el('Variant', AMBIENT_HIDE),
+			el('PartDraw', { name: 'burst', ...G.at(2 * BURST.centre, 2 * BURST.centre) }, [
+				el('Ellipse', { ...BURST_HUB }, [el('Fill', { color: C.BURST })]),
+				...BURST_SPOKES.map((s) =>
+					el('Line', { ...s }, [
+						el('Stroke', { color: C.BURST, thickness: BURST.thickness, cap: 'SQUARE' })
+					])
+				)
+			])
+		])
+	]);

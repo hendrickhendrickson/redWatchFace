@@ -36,6 +36,9 @@
   /** Drag anywhere on the pad to tilt. Bounded by the face's own GYRO_CLAMP. */
   const onPad = (e: PointerEvent) => {
     if (e.buttons === 0 && e.type !== 'pointerdown') return
+    // currentTarget is typed EventTarget because a listener can be attached to anything; this
+    // one is attached to the pad <div> right below, in this same component, so the element type
+    // is guaranteed here and nowhere assumed about a caller.
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const to = (v: number, size: number) => Math.round((v / size * 2 - 1) * TILT_RANGE)
     c.tiltX = to(e.clientX - r.left, r.width)

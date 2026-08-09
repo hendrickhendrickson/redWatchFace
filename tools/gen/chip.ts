@@ -6,11 +6,11 @@
  * text, which had its five-element structure written out six times.
  */
 
-import { el, cdata, type Node } from './xml.ts'
-import type { Box } from './geometry.ts'
-import { src } from './expr.ts'
-import { SIZE, font } from './type.ts'
-import { valueBox, type ChipValue } from './data/chips.ts'
+import { el, cdata, type Node } from './xml.ts';
+import type { Box } from './geometry.ts';
+import { src } from './expr.ts';
+import { SIZE, font } from './type.ts';
+import { valueBox, type ChipValue } from './data/chips.ts';
 
 /**
  * A chip's number, or its placeholder.
@@ -25,12 +25,12 @@ import { valueBox, type ChipValue } from './data/chips.ts'
  * a format string with nothing to format.
  */
 export const chipValue = (chip: Box, v: ChipValue): Node =>
-  el('PartText', { name: v.name, ...valueBox(chip, v.x) }, [
-    el('Text', { align: v.align ?? 'START' }, [
-      el('Font', font(SIZE.CHIP, v.weight ?? 'BOLD', v.colour), [
-        v.source === undefined
-          ? cdata(v.text)
-          : el('Template', {}, [cdata(v.text), el('Parameter', { expression: src(v.source) })]),
-      ]),
-    ]),
-  ])
+	el('PartText', { name: v.name, ...valueBox(chip, v.x) }, [
+		el('Text', { align: v.align ?? 'START' }, [
+			el('Font', font(SIZE.CHIP, v.weight ?? 'BOLD', v.colour), [
+				v.source === undefined
+					? cdata(v.text)
+					: el('Template', {}, [cdata(v.text), el('Parameter', { expression: src(v.source) })])
+			])
+		])
+	]);

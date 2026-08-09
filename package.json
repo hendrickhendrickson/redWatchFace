@@ -1,28 +1,42 @@
 {
-  "name": "redwatchface-tools",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Build tooling for the redPlant Blob watch face. Not shipped in the APK.",
-  "scripts": {
-    "gen": "node tools/gen/build.ts",
-    "check": "node tools/gen/build.ts --check",
-    "diff": "node tools/gen/build.ts --diff",
-    "snapshot": "node tools/gen/build.ts --snapshot",
-    "selftest": "node tools/gen/build.ts --selftest",
-    "audit": "node tools/gen/build.ts --audit",
-    "equiv": "node tools/gen/build.ts --equiv",
-    "svg": "node tools/gen/build.ts --svg",
-    "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run selftest && npm run diff && npm run check",
-    "preview": "npm --prefix tools/preview run dev",
-    "preview:check": "node tools/preview/check.ts"
-  },
-  "devDependencies": {
-    "@types/node": "^26.2.0",
-    "typescript": "^5.9.2"
-  },
-  "engines": {
-    "node": ">=22.18"
-  }
+	"name": "redwatchface-tools",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Build tooling for the redPlant Blob watch face. Not shipped in the APK.",
+	"scripts": {
+		"gen": "node tools/gen/build.ts",
+		"check": "node tools/gen/build.ts --check",
+		"diff": "node tools/gen/build.ts --diff",
+		"snapshot": "node tools/gen/build.ts --snapshot",
+		"selftest": "node tools/gen/build.ts --selftest",
+		"audit": "node tools/gen/build.ts --audit",
+		"equiv": "node tools/gen/build.ts --equiv",
+		"svg": "node tools/gen/build.ts --svg",
+		"typecheck": "tsc --noEmit",
+		"lint": "prettier --check . && eslint .",
+		"format": "prettier --write .",
+		"test": "vitest run",
+		"verify": "npm run typecheck && npm run lint && npm run test && npm run selftest && npm run diff && npm run check",
+		"preview": "npm --prefix tools/preview run dev",
+		"preview:check": "node tools/preview/check.ts",
+		"postinstall": "node ./submodules/hhson-lib/scripts/link-skills.mjs"
+	},
+	"dependencies": {
+		"hhson-lib": "file:./submodules/hhson-lib"
+	},
+	"devDependencies": {
+		"@eslint/js": "10.0.1",
+		"@types/node": "^26.2.0",
+		"eslint": "10.0.2",
+		"eslint-config-prettier": "10.1.8",
+		"globals": "17.4.0",
+		"prettier": "3.8.1",
+		"typescript": "^5.9.2",
+		"typescript-eslint": "8.56.1",
+		"vitest": "4.1.10"
+	},
+	"engines": {
+		"node": ">=22.18"
+	}
 }

@@ -15,13 +15,13 @@
  * DATE_WEEKDAY_BOX in geometry.ts for what that costs.
  */
 
-import type { Attrs } from './xml.ts'
+import type { Attrs } from './xml.ts';
 
 /** The only family this face uses. */
-export const FONT_FAMILY = 'SYNC_TO_DEVICE'
+export const FONT_FAMILY = 'SYNC_TO_DEVICE';
 
-export type Weight = 'LIGHT' | 'NORMAL' | 'BOLD'
-export type Slant = 'NORMAL' | 'ITALIC'
+export type Weight = 'LIGHT' | 'NORMAL' | 'BOLD';
+export type Slant = 'NORMAL' | 'ITALIC';
 
 /**
  * The sizes, named by what they are for rather than by their number.
@@ -31,13 +31,13 @@ export type Slant = 'NORMAL' | 'ITALIC'
  * percentage have to look like a row.
  */
 export const SIZE = {
-  /** The clock. Set in face/clock.ts, which owns its own congruent pair. */
-  CLOCK: 100,
-  /** The date row. Set in face/date-common.ts, which both copies share. */
-  DATE: 26,
-  /** Every stat chip: weather temperature, heart rate, steps, battery. */
-  CHIP: 25,
-} as const
+	/** The clock. Set in face/clock.ts, which owns its own congruent pair. */
+	CLOCK: 100,
+	/** The date row. Set in face/date-common.ts, which both copies share. */
+	DATE: 26,
+	/** Every stat chip: weather temperature, heart rate, steps, battery. */
+	CHIP: 25
+} as const;
 
 /**
  * A Font attribute bag.
@@ -53,5 +53,9 @@ export const SIZE = {
  * keep their own bags and take FONT_FAMILY from here. Do not "unify" them without
  * expecting to regenerate.
  */
-export const font = (size: number, weight: Weight, color: string, slant: Slant = 'NORMAL'): Attrs =>
-  ({ family: FONT_FAMILY, size, weight, slant, color })
+export const font = (
+	size: number,
+	weight: Weight,
+	color: string,
+	slant: Slant = 'NORMAL'
+): Attrs => ({ family: FONT_FAMILY, size, weight, slant, color });

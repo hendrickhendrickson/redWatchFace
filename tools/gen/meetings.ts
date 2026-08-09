@@ -31,11 +31,11 @@
  * being separate strings in the output.
  */
 
-import { src, gte, gt, eq, and, or, group, type Expr } from './expr.ts'
+import { src, gte, gt, eq, and, or, group, type Expr } from './expr.ts';
 
-const DOW = src('DAY_OF_WEEK')
-const HOUR = src('HOUR_0_23')
-const MIN = src('MINUTE')
+const DOW = src('DAY_OF_WEEK');
+const HOUR = src('HOUR_0_23');
+const MIN = src('MINUTE');
 
 /**
  * [DAY_OF_WEEK] is 1 = SUNDAY, so Monday is 2 and Friday is 6 - see the note
@@ -52,37 +52,41 @@ const MIN = src('MINUTE')
  * real expression at midnight rather than by reading it - exactly the class
  * of bug group() exists to make impossible.
  */
-const MON_TUE_THU_FRI = group(or(eq(DOW, 2), eq(DOW, 3), eq(DOW, 5), eq(DOW, 6)))
-const MON_TUE_THU = group(or(eq(DOW, 2), eq(DOW, 3), eq(DOW, 5)))
+const MON_TUE_THU_FRI = group(or(eq(DOW, 2), eq(DOW, 3), eq(DOW, 5), eq(DOW, 6)));
+const MON_TUE_THU = group(or(eq(DOW, 2), eq(DOW, 3), eq(DOW, 5)));
 
 /** 09:05-09:20 - every digital-standup day, i.e. every weekday except Wednesday. */
-const MORNING_STANDUP = and(MON_TUE_THU_FRI, eq(HOUR, 9), gte(MIN, 5), gt(20, MIN))
+const MORNING_STANDUP = and(MON_TUE_THU_FRI, eq(HOUR, 9), gte(MIN, 5), gt(20, MIN));
 
 /** 16:00-16:30 - Mon, Tue, Thu only. Friday's afternoon is game time instead;
  *  Wednesday's is the in-person slot and has no digital counterpart at all. */
-const AFTERNOON_STANDUP = and(MON_TUE_THU, eq(HOUR, 16), gt(30, MIN))
+const AFTERNOON_STANDUP = and(MON_TUE_THU, eq(HOUR, 16), gt(30, MIN));
 
 /**
  * Friday's whole game-time hour, 15:00-16:00. The headset stays on for all of
  * it - unlike the old salute/drink pair, there is no pose change at :30, only
  * the controller appearing in the second half (`FRIDAY_GAME_ICON` below).
  */
-const FRIDAY_GAME = and(eq(DOW, 6), eq(HOUR, 15))
+const FRIDAY_GAME = and(eq(DOW, 6), eq(HOUR, 15));
 
 /** The controller half of Friday's game time, 15:30-16:00 - the same clock
  *  boundary the old Friday drink used, kept because the call itself still
  *  splits into "just arrived" and "actually playing" at that point. */
-export const FRIDAY_GAME_ICON: Expr = and(eq(DOW, 6), eq(HOUR, 15), gte(MIN, 30))
+export const FRIDAY_GAME_ICON: Expr = and(eq(DOW, 6), eq(HOUR, 15), gte(MIN, 30));
 
 /**
  * Every window that puts a headset on both blobs. Three copies in the
  * generated XML - one per blob, since <Gyro> and everything else about an
  * accessory group is not inherited between siblings either.
  */
-export const HEADSET_WINDOW: Expr = or(group(MORNING_STANDUP), group(AFTERNOON_STANDUP), group(FRIDAY_GAME))
+export const HEADSET_WINDOW: Expr = or(
+	group(MORNING_STANDUP),
+	group(AFTERNOON_STANDUP),
+	group(FRIDAY_GAME)
+);
 
 /**
  * Wednesday's in-person standup, 10:30-10:45. The only meeting window that
  * does NOT get a headset - see the coffee cup in blob-hero.ts instead.
  */
-export const WEDNESDAY_MEETING: Expr = and(eq(DOW, 4), eq(HOUR, 10), gte(MIN, 30), gt(45, MIN))
+export const WEDNESDAY_MEETING: Expr = and(eq(DOW, 4), eq(HOUR, 10), gte(MIN, 30), gt(45, MIN));

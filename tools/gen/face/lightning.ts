@@ -11,26 +11,26 @@
  * by hand. See blob.ts.
  */
 
-import { el, type Node } from '../xml.ts'
-import { C } from '../palette.ts'
-import * as G from '../geometry.ts'
-import { AMBIENT_HIDE } from '../crossfade.ts'
-import { when } from '../condition.ts'
-import { STORM } from '../states.ts'
-import { companionGyro } from '../blob.ts'
-import { BOLT, BOLT_SEGMENTS } from '../data/weather.ts'
+import { el, type Node } from '../xml.ts';
+import { C } from '../palette.ts';
+import * as G from '../geometry.ts';
+import { AMBIENT_HIDE } from '../crossfade.ts';
+import { when } from '../condition.ts';
+import { STORM } from '../states.ts';
+import { companionGyro } from '../blob.ts';
+import { BOLT, BOLT_SEGMENTS } from '../data/weather.ts';
 
 export const lightning = (): Node =>
-  when('prop_storm', STORM, [
-    el('Group', { name: 'companion_lightning', ...G.ANCHORS.COMPANION_LIGHTNING, alpha: 255 }, [
-      companionGyro(),
-      el('Variant', AMBIENT_HIDE),
-      el('PartDraw', { name: 'bolt', ...G.at(56, 68) }, [
-        ...BOLT_SEGMENTS.map((s) =>
-          el('Line', { ...s }, [
-            el('Stroke', { color: C.BOLT, thickness: BOLT.thickness, cap: 'SQUARE' }),
-          ]),
-        ),
-      ]),
-    ]),
-  ])
+	when('prop_storm', STORM, [
+		el('Group', { name: 'companion_lightning', ...G.ANCHORS.COMPANION_LIGHTNING, alpha: 255 }, [
+			companionGyro(),
+			el('Variant', AMBIENT_HIDE),
+			el('PartDraw', { name: 'bolt', ...G.at(56, 68) }, [
+				...BOLT_SEGMENTS.map((s) =>
+					el('Line', { ...s }, [
+						el('Stroke', { color: C.BOLT, thickness: BOLT.thickness, cap: 'SQUARE' })
+					])
+				)
+			])
+		])
+	]);

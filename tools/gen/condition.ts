@@ -26,17 +26,17 @@
  * is given and does nothing clever with it.
  */
 
-import { el, text, type Node } from './xml.ts'
-import type { Expr } from './expr.ts'
+import { el, text, type Node } from './xml.ts';
+import type { Expr } from './expr.ts';
 
-export interface Case {
-  /** The `<Expression>` name, used again as the `<Compare>` reference. */
-  name: string
-  /** The predicate. An Expr, so it came from expr.ts rather than a keyboard. */
-  when: Expr
-  /** What to draw when this case wins. */
-  then: Node[]
-}
+export type Case = {
+	/** The `<Expression>` name, used again as the `<Compare>` reference. */
+	name: string;
+	/** The predicate. An Expr, so it came from expr.ts rather than a keyboard. */
+	when: Expr;
+	/** What to draw when this case wins. */
+	then: Node[];
+};
 
 /**
  * A Condition with any number of ordered cases and an optional fallback.
@@ -56,40 +56,44 @@ export interface Case {
  * Omit it unless you have that situation; case order is the sane default.
  */
 export const switchOn = (cases: Case[], fallback?: Node[], declare?: string[]): Node => {
-  if (cases.length === 0) throw new Error('switchOn needs at least one case')
+	if (cases.length === 0) {
+		throw new Error('switchOn needs at least one case');
+	}
 
-  const byName = new Map<string, Case>()
-  for (const c of cases) {
-    // A duplicate name inside one Condition makes the second Compare unreachable,
-    // silently. build.ts's audit cannot catch this: Expression names are a
-    // separate namespace from part names and are excluded there on purpose.
-    if (byName.has(c.name)) {
-      throw new Error(`duplicate expression name "${c.name}" in one Condition`)
-    }
-    byName.set(c.name, c)
-  }
+	const byName = new Map<string, Case>();
+	for (const caseEntry of cases) {
+		// A duplicate name inside one Condition makes the second Compare unreachable,
+		// silently. build.ts's audit cannot catch this: Expression names are a
+		// separate namespace from part names and are excluded there on purpose.
+		if (byName.has(caseEntry.name)) {
+			throw new Error(`duplicate expression name "${caseEntry.name}" in one Condition`);
+		}
+		byName.set(caseEntry.name, caseEntry);
+	}
 
-  const declared = declare ?? cases.map((c) => c.name)
-  if (declared.length !== cases.length) {
-    throw new Error(`declare lists ${declared.length} names for ${cases.length} cases`)
-  }
-  const expressions = declared.map((name) => {
-    const c = byName.get(name)
-    if (c === undefined) throw new Error(`declare names "${name}", which is not a case`)
-    return el('Expression', { name }, [text(c.when)])
-  })
+	const declared = declare ?? cases.map((caseEntry) => caseEntry.name);
+	if (declared.length !== cases.length) {
+		throw new Error(`declare lists ${declared.length} names for ${cases.length} cases`);
+	}
+	const expressions = declared.map((name) => {
+		const caseEntry = byName.get(name);
+		if (caseEntry === undefined) {
+			throw new Error(`declare names "${name}", which is not a case`);
+		}
+		return el('Expression', { name }, [text(caseEntry.when)]);
+	});
 
-  return el('Condition', {}, [
-    el('Expressions', {}, expressions),
-    ...cases.map((c) => el('Compare', { expression: c.name }, c.then)),
-    ...(fallback ? [el('Default', {}, fallback)] : []),
-  ])
-}
+	return el('Condition', {}, [
+		el('Expressions', {}, expressions),
+		...cases.map((caseEntry) => el('Compare', { expression: caseEntry.name }, caseEntry.then)),
+		...(fallback ? [el('Default', {}, fallback)] : [])
+	]);
+};
 
 /** One case, no fallback: draw this only when the predicate holds. */
 export const when = (name: string, pred: Expr, then: Node[]): Node =>
-  switchOn([{ name, when: pred, then }])
+	switchOn([{ name, when: pred, then }]);
 
 /** One case with a fallback: this, or else that. */
 export const whenElse = (name: string, pred: Expr, then: Node[], otherwise: Node[]): Node =>
-  switchOn([{ name, when: pred, then }], otherwise)
+	switchOn([{ name, when: pred, then }], otherwise);

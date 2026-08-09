@@ -14,7 +14,9 @@
     "equiv": "node tools/gen/build.ts --equiv",
     "svg": "node tools/gen/build.ts --svg",
     "typecheck": "tsc --noEmit",
-    "verify": "npm run typecheck && npm run selftest && npm run diff && npm run check"
+    "verify": "npm run typecheck && npm run selftest && npm run diff && npm run check",
+    "preview": "npm --prefix tools/preview run dev",
+    "preview:check": "node tools/preview/check.ts"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

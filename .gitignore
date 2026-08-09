@@ -10,4 +10,9 @@ tools/*.jar
 
 # Generator toolchain. package-lock.json IS committed - the whole point of
 # pinning typescript is that the type check is the same on the next machine.
+# node_modules/ with no leading slash matches at any depth, so it covers
+# tools/preview's own install too.
 node_modules/
+
+# The preview is a dev server, never a build artefact.
+tools/preview/dist/

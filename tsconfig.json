@@ -27,5 +27,24 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["tools/**/*.ts"]
+  "include": ["tools/**/*.ts"],
+
+  // The preview's LOGIC is type-checked here, deliberately: src/frame.ts and
+  // src/clock.ts import the generator directly, so if a data table changes shape
+  // the root typecheck is what says the preview no longer compiles against it.
+  //
+  // Only the two files that need a toolchain are excluded. src/main.ts touches
+  // `document` and imports a .svelte file; vite.config.ts imports vite and the
+  // svelte plugin. Both would drag the DOM lib and tools/preview/node_modules into
+  // the generator's gate, and `npm run verify` has to keep passing on a clone that
+  // has never run `npm install` inside tools/preview. Those two, plus every
+  // .svelte file, are covered by `npm run check` in tools/preview instead.
+  //
+  // node_modules IS LISTED ON PURPOSE. Setting `exclude` at all replaces its
+  // default value, which was exactly ["node_modules", ...] - and vite ships .ts
+  // SOURCES, so a wildcard include that reaches them produces hundreds of TS1295
+  // errors from other people's code. TypeScript happens to skip a directory called
+  // node_modules in wildcards regardless, which is precisely what makes the omission
+  // invisible until something renames or relocates it. Say it.
+  "exclude": ["**/node_modules", "tools/preview/src/main.ts", "tools/preview/vite.config.ts"]
 }

@@ -49,6 +49,19 @@ export interface RenderOpts {
   /** Render the ambient face: <Variant mode="AMBIENT"> is applied. */
   ambient?: boolean
   /**
+   * Scrub the transition BETWEEN the two modes, `t` running 0..1.
+   *
+   * This is the only way to see the asymmetry crossfade.ts documents at length
+   * without putting a build on a wrist and watching 200ms go by. One pair of
+   * windows serves both directions, so going ambient leaves a 0.05 gap with
+   * neither copy drawn and coming back leaves an overlap with both - and the
+   * clock has never been reported as broken while the date was, because the
+   * clock's two copies are congruent and the date's were not.
+   *
+   * Set this INSTEAD of `ambient`; it supersedes it.
+   */
+  transition?: { t: number; toAmbient: boolean }
+  /**
    * What the clock and the date read. Text content cannot be derived from the
    * numeric sources: [DAY_OF_WEEK_S] is a string source, and TimeText renders the
    * system clock with no literal mode. mock-state.ts has the same problem and
@@ -151,15 +164,56 @@ const resolve = (e: Element, o: RenderOpts): Resolved => {
     }
   }
 
-  if (o.ambient) {
-    for (const c of e.children) {
-      if (c.k === 'el' && c.tag === 'Variant' && c.attrs['mode'] === 'AMBIENT') {
-        attrs[String(c.attrs['target'])] = c.attrs['value']
-      }
+  for (const c of e.children) {
+    if (c.k !== 'el' || c.tag !== 'Variant' || c.attrs['mode'] !== 'AMBIENT') continue
+    const target = String(c.attrs['target'])
+
+    if (o.transition === undefined) {
+      if (o.ambient) attrs[target] = c.attrs['value']
+      continue
     }
+
+    // The element's own value, post-Transform, IS its interactive value.
+    const live = num(attrs[target], target === 'alpha' ? 255 : 0)
+    const ambient = num(c.attrs['value'])
+    const duration = num(c.attrs['duration'], 0)
+
+    if (duration === 0) {
+      /**
+       * NO WINDOW: the fifteen AMBIENT_HIDE sites. crossfade.ts explains why they
+       * have no duration - a section that simply disappears has nothing to hand
+       * over to - but not WHEN in the transition they snap, and that is not
+       * recorded anywhere because it has never mattered.
+       *
+       * So this shows the DESTINATION value for the whole transition rather than
+       * inventing a snap point: decoration is simply absent while going ambient
+       * and present while coming back. If the snap point ever matters, the wrist
+       * is what settles it, not this.
+       */
+      attrs[target] = o.transition.toAmbient ? ambient : live
+      continue
+    }
+
+    const w = Math.min(1, Math.max(0, (o.transition.t - num(c.attrs['startOffset'], 0)) / duration))
+    const p = (EASE[String(c.attrs['interpolation'] ?? '')] ?? ((x: number) => x))(w)
+    attrs[target] = o.transition.toAmbient ? live + (ambient - live) * p : ambient + (live - ambient) * p
   }
 
   return { attrs, gyro, paint }
+}
+
+/**
+ * The two named curves, APPROXIMATED.
+ *
+ * WFF names its interpolations and does not specify them, so these are the
+ * conventional quadratics: EASE_IN holds then leaves, EASE_OUT arrives then
+ * settles. What the preview reproduces faithfully is the WINDOWS - which copy is
+ * moving when, and therefore the gap and the overlap. The shape of each ramp
+ * inside its window is indicative, like everything text-shaped here.
+ */
+const EASE: Record<string, (w: number) => number> = {
+  EASE_IN: (w) => w * w,
+  EASE_OUT: (w) => 1 - (1 - w) * (1 - w),
 }
 
 /** fill / stroke attributes for a drawn shape. */

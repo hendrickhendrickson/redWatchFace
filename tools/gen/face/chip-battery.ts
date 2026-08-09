@@ -4,7 +4,7 @@ import { el, text, cdata, type Node } from '../xml.ts'
 import { C } from '../palette.ts'
 import * as G from '../geometry.ts'
 export const chipBattery = (): Node =>
-  el('Group', { name: 'chip_battery', x: 280, y: 216, width: 90, height: 36, alpha: 255 }, [
+  el('Group', { name: 'chip_battery', x: 280, y: 216, width: 110, height: 36, alpha: 255 }, [
     el('Variant', { mode: 'AMBIENT', target: 'alpha', value: 0 }),
     el('PartDraw', { ...G.BATTERY_BOX, name: 'battery_shell' }, [
       el('RoundRectangle', { x: 1, y: 1, width: 20, height: 13, cornerRadiusX: 3.5, cornerRadiusY: 3.5 }, [
@@ -27,7 +27,7 @@ export const chipBattery = (): Node =>
             el('Fill', { color: C.CORAL }),
           ]),
         ]),
-        el('PartText', { name: 'battery_value_low', x: 33, y: 0, width: 57, height: 36 }, [
+        el('PartText', { name: 'battery_value_low', x: 33, y: 0, width: 77, height: 36 }, [
           el('Text', { align: 'START' }, [
             el('Font', { family: 'SYNC_TO_DEVICE', size: 25, weight: 'BOLD', slant: 'NORMAL', color: C.CORAL }, [
               el('Template', {}, [
@@ -45,7 +45,7 @@ export const chipBattery = (): Node =>
             el('Fill', { color: C.GREEN }),
           ]),
         ]),
-        el('PartText', { name: 'battery_value', x: 33, y: 0, width: 57, height: 36 }, [
+        el('PartText', { name: 'battery_value', x: 33, y: 0, width: 77, height: 36 }, [
           el('Text', { align: 'START' }, [
             el('Font', { family: 'SYNC_TO_DEVICE', size: 25, weight: 'BOLD', slant: 'NORMAL', color: C.CREAM }, [
               el('Template', {}, [

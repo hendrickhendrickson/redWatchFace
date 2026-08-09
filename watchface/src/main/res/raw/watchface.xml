@@ -396,7 +396,7 @@
         </Text>
       </PartText>
     </Group>
-    <Group name="chip_battery" x="280" y="216" width="90" height="36" alpha="255">
+    <Group name="chip_battery" x="280" y="216" width="110" height="36" alpha="255">
       <Variant mode="AMBIENT" target="alpha" value="0" />
       <PartDraw x="0" y="10" width="26" height="16" name="battery_shell">
         <RoundRectangle x="1" y="1" width="20" height="13" cornerRadiusX="3.5" cornerRadiusY="3.5">
@@ -417,7 +417,7 @@
               <Fill color="#e8543c" />
             </RoundRectangle>
           </PartDraw>
-          <PartText name="battery_value_low" x="33" y="0" width="57" height="36">
+          <PartText name="battery_value_low" x="33" y="0" width="77" height="36">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="25" weight="BOLD" slant="NORMAL" color="#e8543c">
                 <Template><![CDATA[%d%%]]><Parameter expression="[BATTERY_PERCENT]" /></Template>
@@ -432,7 +432,7 @@
               <Fill color="#5fb874" />
             </RoundRectangle>
           </PartDraw>
-          <PartText name="battery_value" x="33" y="0" width="57" height="36">
+          <PartText name="battery_value" x="33" y="0" width="77" height="36">
             <Text align="START">
               <Font family="SYNC_TO_DEVICE" size="25" weight="BOLD" slant="NORMAL" color="#fff6e8">
                 <Template><![CDATA[%d%%]]><Parameter expression="[BATTERY_PERCENT]" /></Template>

@@ -23,6 +23,7 @@ import { AMBIENT_HIDE } from '../crossfade.ts'
 import { switchOn, whenElse } from '../condition.ts'
 import { CLEAR_DAY, CLEAR_NIGHT, HAVE_FORECAST, PARTLY_CLOUDY, RAIN_ICON } from '../states.ts'
 import { SIZE, font } from '../type.ts'
+import { SUN, SUN_DISC, SUN_RAYS } from '../data/weather.ts'
 
 /**
  * All five icons share one box, and only that.
@@ -96,33 +97,14 @@ export const chipWeather = (): Node =>
                 when: CLEAR_DAY,
                 then: [
                   icon('wx_icon_sun', [
-                    el('Ellipse', { x: 7, y: 7, width: 12, height: 12 }, [
+                    el('Ellipse', { ...SUN_DISC }, [
                       el('Fill', { color: C.SUN }),
                     ]),
-                    el('Line', { startX: 13, startY: 1, endX: 13, endY: 4.5 }, [
-                      el('Stroke', { color: C.SUN, thickness: 2.2, cap: 'ROUND' }),
-                    ]),
-                    el('Line', { startX: 13, startY: 21.5, endX: 13, endY: 25 }, [
-                      el('Stroke', { color: C.SUN, thickness: 2.2, cap: 'ROUND' }),
-                    ]),
-                    el('Line', { startX: 1, startY: 13, endX: 4.5, endY: 13 }, [
-                      el('Stroke', { color: C.SUN, thickness: 2.2, cap: 'ROUND' }),
-                    ]),
-                    el('Line', { startX: 21.5, startY: 13, endX: 25, endY: 13 }, [
-                      el('Stroke', { color: C.SUN, thickness: 2.2, cap: 'ROUND' }),
-                    ]),
-                    el('Line', { startX: 4.6, startY: 4.6, endX: 7.1, endY: 7.1 }, [
-                      el('Stroke', { color: C.SUN, thickness: 2.2, cap: 'ROUND' }),
-                    ]),
-                    el('Line', { startX: 18.9, startY: 18.9, endX: 21.4, endY: 21.4 }, [
-                      el('Stroke', { color: C.SUN, thickness: 2.2, cap: 'ROUND' }),
-                    ]),
-                    el('Line', { startX: 21.4, startY: 4.6, endX: 18.9, endY: 7.1 }, [
-                      el('Stroke', { color: C.SUN, thickness: 2.2, cap: 'ROUND' }),
-                    ]),
-                    el('Line', { startX: 7.1, startY: 18.9, endX: 4.6, endY: 21.4 }, [
-                      el('Stroke', { color: C.SUN, thickness: 2.2, cap: 'ROUND' }),
-                    ]),
+                    ...SUN_RAYS.map((s) =>
+                      el('Line', { ...s }, [
+                        el('Stroke', { color: C.SUN, thickness: SUN.ray.thickness, cap: 'ROUND' }),
+                      ]),
+                    ),
                   ]),
                 ],
               },

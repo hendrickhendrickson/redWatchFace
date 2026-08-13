@@ -17,16 +17,20 @@ import { chipWeather } from './chip-weather.ts';
 import { chipHeartRate } from './chip-heart-rate.ts';
 import { chipSteps } from './chip-steps.ts';
 import { chipBattery } from './chip-battery.ts';
+import { christmasTree } from './christmas-tree.ts';
 import { blobHero } from './blob-hero.ts';
 import { heroPropsSection } from './hero-props.ts';
 import { companionBurst } from './companion-burst.ts';
 import { blobCompanion } from './blob-companion.ts';
+import { companionProps } from './companion-props.ts';
 import { rain } from './rain.ts';
 import { heroUmbrella } from './hero-umbrella.ts';
 import { lightning } from './lightning.ts';
 import { freezeMark } from './freeze-mark.ts';
 import { moonMark } from './moon-mark.ts';
 import { sleepZzz } from './sleep-zzz.ts';
+import { fireworks } from './fireworks.ts';
+import { confetti } from './confetti.ts';
 import type { Node } from '../xml.ts';
 
 export const sections = (): Node[] => [
@@ -37,6 +41,11 @@ export const sections = (): Node[] => [
 	chipHeartRate(),
 	chipSteps(),
 	chipBattery(),
+	// SCENERY, so it is painted before the cast. It shares no pixels with anything
+	// (asserted in data/celebrations.ts against the one thing whose corner it is
+	// near, the companion's sleep z's), but scenery-first is the order that stays
+	// right when something later moves.
+	christmasTree(),
 	blobHero(),
 	// Immediately after the hero, which is where these three Conditions used to
 	// sit as its last children - so the draw order is unchanged even though the
@@ -44,10 +53,19 @@ export const sections = (): Node[] => [
 	heroPropsSection(),
 	companionBurst(),
 	blobCompanion(),
+	// Immediately after the companion, for the reason hero_props sits immediately
+	// after the hero: a held object paints over the blob holding it.
+	companionProps(),
 	rain(),
 	heroUmbrella(),
 	lightning(),
 	freezeMark(),
 	moonMark(),
-	sleepZzz()
+	sleepZzz(),
+	// Last, so they draw over everything else - the same reason rain sits in
+	// front of both blobs rather than behind them. These two are the only
+	// sections meant to cover the clock, and they can never both fire: the
+	// calendar proof in states.ts holds every celebration disjoint.
+	fireworks(),
+	confetti()
 ];

@@ -14,26 +14,36 @@ import { C } from '../palette.ts';
 import * as G from '../geometry.ts';
 import { AMBIENT_HIDE } from '../crossfade.ts';
 import { switchOn, when, whenElse } from '../condition.ts';
+import { secondPhase, triangleAlpha } from '../expr.ts';
 import {
+	WEARS_HAT,
+	WEED,
 	COLD,
 	GLOVE_COLD,
 	GOAL_MET,
 	HIGH_UV,
+	LEFT_ARM_RESTS,
 	NIGHT,
-	NIGHT_AND_DRY,
 	PUFFED,
+	RIGHT_ARM_RESTS,
 	STORM,
 	STORM_OR_NIGHT,
 	SWEAT_ALL,
-	SWEAT_TWO
+	SWEAT_ONE,
+	SWEAT_TWO,
+	REUNIFICATION
 } from '../states.ts';
 import { byWeekday } from '../weekday.ts';
+import { heroGhost, heroPartyHat, heroSantaHat } from './costumes.ts';
 import { HEADSET_WINDOW } from '../meetings.ts';
+import { TRICOLOUR_BANDS } from '../data/celebrations.ts';
 import {
 	GOAL_POLE,
 	HERO_ARMS,
 	HERO_DRIP,
 	HERO_LEAVES,
+	HERO_LEAVES_WEED,
+	HERO_WEED_FAN,
 	HERO_LEGS,
 	HERO_STROKE,
 	HERO_SWEAT
@@ -56,12 +66,43 @@ import {
 const LIMB = G.HERO_LIMB_BOX;
 
 /**
- * The step-goal flag: a pole and a pennant, HELD BY THE RIGHT HAND.
+ * The pole itself, identical under either pennant.
  *
- * THE POLE IS AUTHORED TO BE GRIPPED, and that is not a guess - it runs down x93,
- * which is exactly the centre of `rightOut`'s cream cap, and spans y19..74, which
+ * IT IS AUTHORED TO BE GRIPPED, and that is not a guess - it runs down x93, which
+ * is exactly the centre of `rightOut`'s cream cap, and spans y19..74, which
  * brackets that cap's centre at y60.5. Asserted in data/blobs.ts. A pole that
  * happens to pass through a fist to within half a pixel was drawn to be in it.
+ */
+const pole = (): Node =>
+	el(
+		'Line',
+		{
+			startX: GOAL_POLE.x,
+			startY: GOAL_POLE.top,
+			endX: GOAL_POLE.x,
+			endY: GOAL_POLE.bottom
+		},
+		[el('Stroke', { color: C.BONE, thickness: GOAL_POLE.thickness, cap: 'ROUND' })]
+	);
+
+/**
+ * The three bands of the German tricolour, flying right off the same pole.
+ *
+ * THE COLOURS ARE HERE AND THE BOXES ARE NOT, the split data/fireworks.ts made:
+ * which three hexes make a flag is a look, where the bands sit is geometry, and
+ * data/celebrations.ts derives the latter off GOAL_POLE so the flag cannot come
+ * unstuck from the pole it hangs on.
+ */
+const TRICOLOUR_COLOURS = [C.FLAG_BLACK, C.FLAG_RED, C.FLAG_GOLD];
+
+/**
+ * What hangs off the pole: the tricolour on 3 October, the goal pennant otherwise.
+ *
+ * REUNIFICATION IS LISTED FIRST, so on a 3 October when the wearer also hits their
+ * step goal there is one flag rather than two overlapping ones - and no negation
+ * is needed anywhere, the same way the Wednesday cup beats the cocktail for the
+ * same fist. The pole is drawn by both branches, because it is the pole that is
+ * held; only the cloth changes.
  *
  * IT IS A SEPARATE, ADDITIVE Condition rather than a branch of the arm switch, and
  * that is a fix. Until 1.1.0 the flag and the arm were two independent Conditions,
@@ -69,39 +110,60 @@ const LIMB = G.HERO_LIMB_BOX;
  * dispatch, which made the flag EXCLUSIVE with the arm - so from 1.2.0 the goal
  * state showed a pole floating in mid-air, and on a cold day a mitten floating
  * beside it with no arm to be on. Nothing reported it: the gate proves the output
- * has not changed, and cannot notice that it was already wrong.
+ * has not changed, and cannot notice that it was already wrong. HOLDS_POLE and the
+ * proof behind it in states.ts are what stop the same thing happening to this flag
+ * at 02:00, when GOAL_MET's implied daylight is no longer doing the work.
  *
  * DRAWN BEFORE THE ARM, so the hand paints over the pole and reads as gripping it
  * rather than as sitting behind it. That was the pre-1.1.0 order too.
  */
 const flag = (): Node =>
-	when('hero_goal', GOAL_MET, [
-		el('PartDraw', { ...LIMB, name: 'hero_flag' }, [
-			el(
-				'Line',
-				{
-					startX: GOAL_POLE.x,
-					startY: GOAL_POLE.top,
-					endX: GOAL_POLE.x,
-					endY: GOAL_POLE.bottom
-				},
-				[el('Stroke', { color: C.BONE, thickness: GOAL_POLE.thickness, cap: 'ROUND' })]
-			),
-			el(
-				'RoundRectangle',
-				{ x: 93, y: 21, width: 12, height: 9, cornerRadiusX: 2, cornerRadiusY: 2 },
-				[el('Fill', { color: C.GREEN })]
-			)
-		])
+	switchOn([
+		{
+			name: 'hero_reunification',
+			when: REUNIFICATION,
+			then: [
+				// BANDS FIRST, POLE OVER THEM. A flag hangs behind the staff carrying it;
+				// drawn the other way the black hoist covers the pole for a third of its
+				// length and the whole thing reads as a sticker beside a stick. There is
+				// no z-index in WFF, so this order IS the depth - and it is the rule for
+				// every flag after this one, not a detail of this one.
+				el('PartDraw', { ...LIMB, name: 'hero_flag_reunification' }, [
+					...TRICOLOUR_BANDS.map((band, i) =>
+						el('Rectangle', { ...band }, [el('Fill', { color: TRICOLOUR_COLOURS[i] })])
+					),
+					pole()
+				])
+			]
+		},
+		{
+			name: 'hero_goal',
+			when: GOAL_MET,
+			then: [
+				el('PartDraw', { ...LIMB, name: 'hero_flag' }, [
+					pole(),
+					el(
+						'RoundRectangle',
+						{ x: 93, y: 21, width: 12, height: 9, cornerRadiusX: 2, cornerRadiusY: 2 },
+						[el('Fill', { color: C.GREEN })]
+					)
+				])
+			]
+		}
 	]);
 
 /**
- * The right arm: night rest, or the daytime "out" pose.
+ * The right arm: night rest, or the "out" pose whose fist the pole passes through.
+ *
+ * IT NO LONGER RESTS ON NIGHT ALONE. GOAL_MET implies DAYTIME, so for as long as
+ * the goal pennant was the only thing on the pole, "night" and "holding the pole"
+ * could not both be true and NIGHT was enough. REUNIFICATION carries no such
+ * implication - 3 October is a whole day, 02:00 included - so the bare NIGHT test
+ * would drop this arm out from under the tricolour. RIGHT_ARM_RESTS is NIGHT with
+ * that hole closed, and states.ts proves the closure at every hour.
  *
  * TWO WAYS, NOT THREE. The goal flag used to be a third branch here; it is its own
- * Condition now, above. Since GOAL_MET requires DAYTIME and DAYTIME is exactly
- * NIGHT's complement, the flag can only ever appear alongside the "out" pose - which
- * is the one whose hand the pole passes through. states.ts proves that partition.
+ * Condition now, above.
  *
  * USED TO BE TWO NESTED Conditions, the outer one testing SALUTE_BUSY and
  * defaulting into this pair. The salute never fires any more - see meetings.ts - so
@@ -111,7 +173,7 @@ const flag = (): Node =>
 const rightArm = (): Node =>
 	whenElse(
 		'hero_arm_r_rest',
-		NIGHT,
+		RIGHT_ARM_RESTS,
 		[limbPart(LIMB, 'hero_arm_right_down', [HERO_ARMS.rightDown], HERO_STROKE)],
 		[limbPart(LIMB, 'hero_arm_right_out', [HERO_ARMS.rightOut], HERO_STROKE)]
 	);
@@ -121,8 +183,12 @@ const rightArm = (): Node =>
  * cocktail and game controller all anchor against.
  *
  * IT RESTS ONLY WHEN IT IS ALSO DRY, because a hand that has an umbrella to hold up
- * cannot be hanging by its side. That is NIGHT_AND_DRY, and the group() inside it is
- * load-bearing; see states.ts.
+ * cannot be hanging by its side - AND ONLY WHEN IT IS EMPTY, because a hand with a
+ * birthday cake in it cannot either. The second half is LEFT_ARM_RESTS, added when
+ * the calendar brought the first all-day props; before that every prop's own gate
+ * implied daylight, so an empty hand at night was a safe assumption. It was not
+ * quite: the cocktail follows WEATHER.IS_DAY rather than the clock, and the two
+ * disagree at high latitudes. See HANDS_FULL in states.ts, and the proof under it.
  *
  * USED TO BE FOUR WAYS: busy-and-raised, saluting, resting and a Default "up". The
  * middle two only existed for the salute, which no longer fires, and
@@ -132,7 +198,7 @@ const rightArm = (): Node =>
 const leftArm = (): Node =>
 	whenElse(
 		'hero_arm_rest',
-		NIGHT_AND_DRY,
+		LEFT_ARM_RESTS,
 		[limbPart(LIMB, 'hero_arm_left_down', [HERO_ARMS.leftDown], HERO_STROKE)],
 		[limbPart(LIMB, 'hero_arm_left_up', [HERO_ARMS.leftUp], HERO_STROKE)]
 	);
@@ -188,7 +254,14 @@ const eyes = (): Node =>
 		]
 	);
 
-/** A small circle when startled or asleep, otherwise the open smile plus its mask. */
+/**
+ * A small circle when startled or asleep, otherwise the open smile plus its mask.
+ *
+ * 4 MAY HAD ITS OWN SCOWL HERE, AND IT IS GONE. The first cut read the state as the
+ * hero playing a villain - narrowed eyes, a downturned mouth. It is two friendly
+ * Jedi instead, so the face is the ordinary one and the sabers carry the whole
+ * idea. Nothing about the expression is calendar-aware any more.
+ */
 const mouth = (): Node =>
 	whenElse(
 		'hero_mouth_round',
@@ -240,13 +313,13 @@ const gloves = (): Node =>
 	when('hero_cold_hands', GLOVE_COLD, [
 		whenElse(
 			'hero_glove_r_rest',
-			NIGHT,
+			RIGHT_ARM_RESTS,
 			[glovePart(LIMB, 'hero_glove_right_down', [HERO_ARMS.rightDown])],
 			[glovePart(LIMB, 'hero_glove_right_out', [HERO_ARMS.rightOut])]
 		),
 		whenElse(
 			'hero_glove_rest',
-			NIGHT_AND_DRY,
+			LEFT_ARM_RESTS,
 			[glovePart(LIMB, 'hero_glove_left_down', [HERO_ARMS.leftDown])],
 			[glovePart(LIMB, 'hero_glove_left_up', [HERO_ARMS.leftUp])]
 		)
@@ -276,24 +349,35 @@ const shades = (): Node =>
 		])
 	]);
 
-/** Forehead pearls in three steps, plus the two drips. */
+/**
+ * The drips, from 100bpm, plus forehead pearls in three steps from 120.
+ *
+ * NO DEFAULT ON THE CONDITION, which is the whole of the 100-119 band: the
+ * cheeks trickle and the forehead stays bare. It used to fall through to the
+ * middle pearl, so the first pearl arrived at the same instant the first drip
+ * did and the two bands were indistinguishable.
+ */
 const sweat = (): Node =>
 	when('hero_puffed', PUFFED, [
-		switchOn(
-			[
-				{
-					name: 'hero_sweat_all',
-					when: SWEAT_ALL,
-					then: [beadPart(G.HERO_SWEAT_BOX, 'hero_sweat_three', HERO_SWEAT, HERO_SWEAT.three)]
-				},
-				{
-					name: 'hero_sweat_two',
-					when: SWEAT_TWO,
-					then: [beadPart(G.HERO_SWEAT_BOX, 'hero_sweat_pair', HERO_SWEAT, HERO_SWEAT.two)]
-				}
-			],
-			[beadPart(G.HERO_SWEAT_BOX, 'hero_sweat_one', HERO_SWEAT, HERO_SWEAT.one)]
-		),
+		switchOn([
+			{
+				name: 'hero_sweat_all',
+				when: SWEAT_ALL,
+				then: [beadPart(G.HERO_SWEAT_BOX, 'hero_sweat_three', HERO_SWEAT, HERO_SWEAT.three)]
+			},
+			{
+				name: 'hero_sweat_two',
+				when: SWEAT_TWO,
+				then: [beadPart(G.HERO_SWEAT_BOX, 'hero_sweat_pair', HERO_SWEAT, HERO_SWEAT.two)]
+			},
+			// The Expression cannot be called hero_sweat_one: that name is already the
+			// PartDraw's below. Two namespaces, but one reader.
+			{
+				name: 'hero_sweat_any',
+				when: SWEAT_ONE,
+				then: [beadPart(G.HERO_SWEAT_BOX, 'hero_sweat_one', HERO_SWEAT, HERO_SWEAT.one)]
+			}
+		]),
 		...dripGroups(LIMB, 'hero', HERO_DRIP)
 	]);
 
@@ -397,16 +481,56 @@ const headset = (): Node =>
 				{ centerX: 67, centerY: 70, width: 40, height: 36, startAngle: 100, endAngle: 180 },
 				[el('Stroke', { color: C.HEADSET, thickness: 2.2, cap: 'ROUND' })]
 			),
-			el('Ellipse', { x: 64.5, y: 85.5, width: 5, height: 5 }, [el('Fill', { color: C.HEADSET })]),
-			el('Ellipse', { x: 65.5, y: 86.5, width: 3, height: 3 }, [el('Fill', { color: C.MIC_LED })])
-		])
+			el('Ellipse', { x: 64.5, y: 85.5, width: 5, height: 5 }, [el('Fill', { color: C.HEADSET })])
+		]),
+		micLed()
+	]);
+
+/**
+ * The mic LED, pulsing - the controller A-button's own triangleAlpha/secondPhase
+ * idiom on the same 2s period, so a worn headset reads as active rather than as
+ * a static accessory. A SEPARATE Group from the mic boom: a Group carrying a
+ * Transform needs an integer box, and the LED's own (65.5,86.5) is not one - so
+ * the fractional half-pixel lives on the Ellipse inside instead, the same split
+ * the controller's own button makes.
+ */
+const MIC_LED_BOX = G.box(65, 86, 4, 4);
+
+const micLed = (): Node =>
+	el('Group', { name: 'hero_headset_mic_led', ...MIC_LED_BOX, alpha: 255 }, [
+		el('Transform', { target: 'alpha', value: triangleAlpha(secondPhase(2)) }),
+		el(
+			'PartDraw',
+			{ ...G.at(MIC_LED_BOX.width, MIC_LED_BOX.height), name: 'hero_headset_mic_led_dot' },
+			[el('Ellipse', { x: 0.5, y: 0.5, width: 3, height: 3 }, [el('Fill', { color: C.MIC_LED })])]
+		)
 	]);
 
 export const blobHero = (): Node =>
 	el('Group', { name: 'blob_hero', ...G.ANCHORS.HERO, alpha: 255 }, [
 		heroGyro(),
 		el('Variant', AMBIENT_HIDE),
-		...HERO_LEAVES.map((leaf) => leafPart(G.LEAF_BOX, leaf)),
+		// The tuft: the 20 April fan, nothing at all under a hat, or the ordinary
+		// hair. A Condition where three bare PartDraws used to sit, which is why this
+		// change reads as a thousand differences to the path-based differ and as one
+		// to a reader: inserting a <Condition> renumbers every sibling after it
+		// inside blob_hero.
+		//
+		// WEARS_HAT DRAWS NOTHING, and an empty branch is the point rather than an
+		// oversight - a party hat's cone rising out of a five-blade fan reads as a hat
+		// balanced on a bush. Expressed as a case in this switch rather than as a
+		// second Condition around it, so the three outcomes stay one decision.
+		switchOn(
+			[
+				{
+					name: 'hero_weed',
+					when: WEED,
+					then: HERO_LEAVES_WEED.map((leaf) => leafPart(G.LEAF_BOX, leaf, HERO_WEED_FAN.pivot))
+				},
+				{ name: 'hero_hatted', when: WEARS_HAT, then: [] }
+			],
+			HERO_LEAVES.map((leaf) => leafPart(G.LEAF_BOX, leaf))
+		),
 		limbPart(LIMB, 'hero_limbs', HERO_LEGS, HERO_STROKE),
 		flag(),
 		rightArm(),
@@ -416,9 +540,20 @@ export const blobHero = (): Node =>
 		]),
 		eyes(),
 		mouth(),
+		// OVER the body and face, UNDER the weather accessories. A sheet covers what
+		// the blob looks like; a scarf, shades or a headset are worn over the costume
+		// the same way they are worn over the blob. Additive rather than a branch, so
+		// the arms and legs it does not reach still draw - see the header of costumes.ts.
+		heroGhost(LIMB),
 		scarf(),
 		gloves(),
 		shades(),
 		sweat(),
-		headset()
+		headset(),
+		// LAST, AFTER THE HEADSET. A hat goes on over a headband, not under one -
+		// and the brim is the widest white thing on the head, so anything drawn
+		// after it would look tucked beneath it. The leaf tuft is the other thing
+		// this covers, which is also correct: it is hair.
+		heroSantaHat(LIMB),
+		heroPartyHat(LIMB)
 	]);

@@ -15,7 +15,7 @@
  *
  *   node tools/cycle-states.ts                              # loop forever
  *   node tools/cycle-states.ts --laps=1                      # one pass
- *   node tools/cycle-states.ts --only=rainy,thunderstorm,night
+ *   node tools/cycle-states.ts --only=rainy,thunderstorm,nightfull
  *
  * Ctrl-C is safe: the screen timeout and the real build are restored by a
  * SIGINT handler that shares its cleanup path with normal completion and a
@@ -49,14 +49,33 @@ const STATE_FILE = resolve(REPO, 'tools', 'cycle-states.state');
 // parallax to see and nothing to hold on screen. The two animated ramps get
 // MULTIPLE points along their range: rainy/thunderstorm/downpour are
 // 50/90/100% precipitation (rain drop count, size and speed);
-// sweating/puffing/drenched are 100/135/200bpm (drip speed, forehead pearl
-// count). 'headset' is the one pose where an accessory crosses the head
+// sweating/puffing/flushed/soaked/drenched are 100/120/140/160/200bpm - one
+// per forehead-pearl band, and the drip rate steps at every one of them, from
+// a bead every five seconds to one every 1.7. 'headset' is the one pose where
+// an accessory crosses the head
 // rather than sitting beside it - worth judging at real size. 'fricontroller'
 // is the one new animated element (pulsing face button) - a still frame can't
-// show whether the pulse reads as "on" vs a flicker.
+// show whether the pulse reads as "on" vs a flicker. 'fireworks' is thirty
+// independently-phased sparks - a still frame shows one arbitrary instant of
+// thirty, not whether the bursts read as popping in sequence.
+//
+// OF THE SEVEN NEW CALENDAR STATES, ONLY THREE ARE HERE, and the other four are
+// deliberately absent: reunification, labour, force and christmas draw nothing that
+// moves, so a still frame is the whole truth about them and cycling them on a
+// wrist would only cost twenty seconds each. What is here moves:
+//
+//   birthday   twenty scraps of confetti on twenty phases, PLUS a candle flame
+//              flickering on its own - a still shows one instant of both
+//   halloween  the ghost sheet drifts, and whether that reads as floating or as
+//              a rendering glitch is not a question a screenshot can answer
+//   weed       nothing moves, but the whole point is whether five narrow blades
+//              still read as the blob's hair at real size rather than at 450px
 const BASE_ORDER = [
 	'baseline',
-	'night',
+	// ONE OF THE THREE NIGHTS. docs/states/ carries all three because the moon's
+	// shadow is the difference between them; nothing here moves differently under
+	// one phase than another, and the z's drift is what this stop is for.
+	'nightfull',
 	'sunny',
 	'uv',
 	'cold',
@@ -67,10 +86,16 @@ const BASE_ORDER = [
 	'downpour',
 	'sweating',
 	'puffing',
+	'flushed',
+	'soaked',
 	'drenched',
 	'goal',
 	'headset',
-	'fricontroller'
+	'fricontroller',
+	'fireworks',
+	'weed',
+	'halloween',
+	'birthday'
 ];
 
 // --- CLI ---------------------------------------------------------------

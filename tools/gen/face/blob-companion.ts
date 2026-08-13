@@ -17,6 +17,8 @@ import * as G from '../geometry.ts';
 import { AMBIENT_HIDE } from '../crossfade.ts';
 import { switchOn, when, whenElse } from '../condition.ts';
 import {
+	WEARS_HAT,
+	WEED,
 	COLD,
 	GLOVE_COLD,
 	HIGH_UV,
@@ -24,13 +26,17 @@ import {
 	PUFFED,
 	STORM,
 	SWEAT_ALL,
+	SWEAT_ONE,
 	SWEAT_TWO
 } from '../states.ts';
 import { byWeekday } from '../weekday.ts';
+import { companionPartyHat, companionPumpkin, companionSantaHat } from './costumes.ts';
 import {
 	COMPANION_DRIP,
 	COMPANION_HAND_LIMBS,
 	COMPANION_LEAVES,
+	COMPANION_LEAVES_WEED,
+	COMPANION_WEED_FAN,
 	COMPANION_LIMBS,
 	COMPANION_STROKE,
 	COMPANION_SWEAT
@@ -147,38 +153,47 @@ const scarf = (): Node =>
 		])
 	]);
 
-/** Forehead pearls in three steps, plus the two drips. */
+/** The drips, from 100bpm, plus forehead pearls in three steps from 120 - see blob-hero.ts. */
 const sweat = (): Node =>
 	when('companion_puffed', PUFFED, [
-		switchOn(
-			[
-				{
-					name: 'companion_sweat_all',
-					when: SWEAT_ALL,
-					then: [
-						beadPart(
-							G.COMPANION_SWEAT_BOX,
-							'companion_sweat_three',
-							COMPANION_SWEAT,
-							COMPANION_SWEAT.three
-						)
-					]
-				},
-				{
-					name: 'companion_sweat_two',
-					when: SWEAT_TWO,
-					then: [
-						beadPart(
-							G.COMPANION_SWEAT_BOX,
-							'companion_sweat_pair',
-							COMPANION_SWEAT,
-							COMPANION_SWEAT.two
-						)
-					]
-				}
-			],
-			[beadPart(G.COMPANION_SWEAT_BOX, 'companion_sweat_one', COMPANION_SWEAT, COMPANION_SWEAT.one)]
-		),
+		switchOn([
+			{
+				name: 'companion_sweat_all',
+				when: SWEAT_ALL,
+				then: [
+					beadPart(
+						G.COMPANION_SWEAT_BOX,
+						'companion_sweat_three',
+						COMPANION_SWEAT,
+						COMPANION_SWEAT.three
+					)
+				]
+			},
+			{
+				name: 'companion_sweat_two',
+				when: SWEAT_TWO,
+				then: [
+					beadPart(
+						G.COMPANION_SWEAT_BOX,
+						'companion_sweat_pair',
+						COMPANION_SWEAT,
+						COMPANION_SWEAT.two
+					)
+				]
+			},
+			{
+				name: 'companion_sweat_any',
+				when: SWEAT_ONE,
+				then: [
+					beadPart(
+						G.COMPANION_SWEAT_BOX,
+						'companion_sweat_one',
+						COMPANION_SWEAT,
+						COMPANION_SWEAT.one
+					)
+				]
+			}
+		]),
 		...dripGroups(G.COMPANION_LIMB_BOX, 'companion', COMPANION_DRIP)
 	]);
 
@@ -186,7 +201,22 @@ export const blobCompanion = (): Node =>
 	el('Group', { name: 'blob_companion', ...G.ANCHORS.COMPANION, alpha: 255 }, [
 		companionGyro(),
 		el('Variant', AMBIENT_HIDE),
-		...COMPANION_LEAVES.map((leaf) => leafPart(G.COMPANION_LEAF_BOX, leaf)),
+		// The tuft: the 20 April fan - three blades rather than the hero's five, see
+		// COMPANION_WEED_FAN for why this one drops a pair - nothing under a hat, or
+		// the ordinary hair. Same three-way switch the hero's tuft makes.
+		switchOn(
+			[
+				{
+					name: 'companion_weed',
+					when: WEED,
+					then: COMPANION_LEAVES_WEED.map((leaf) =>
+						leafPart(G.COMPANION_LEAF_BOX, leaf, COMPANION_WEED_FAN.pivot)
+					)
+				},
+				{ name: 'companion_hatted', when: WEARS_HAT, then: [] }
+			],
+			COMPANION_LEAVES.map((leaf) => leafPart(G.COMPANION_LEAF_BOX, leaf))
+		),
 		limbPart(G.COMPANION_LIMB_BOX, 'companion_limbs', COMPANION_LIMBS, COMPANION_STROKE),
 		whenElse(
 			'companion_zapped',
@@ -215,6 +245,9 @@ export const blobCompanion = (): Node =>
 						]
 					),
 					eyes(),
+					// Same placement rule as the hero's sheet: over the body and face,
+					// under anything that would be worn on top of a costume.
+					companionPumpkin(G.COMPANION_LIMB_BOX),
 					shades(),
 					scarf(),
 					when('companion_cold_hands', GLOVE_COLD, [
@@ -224,7 +257,13 @@ export const blobCompanion = (): Node =>
 							COMPANION_HAND_LIMBS.map((i) => COMPANION_LIMBS[i])
 						)
 					]),
-					sweat()
+					sweat(),
+					// Last on the companion for the same reason it is last on the hero.
+					// It sits INSIDE companion_alive, so a storm X-ray on Christmas Day
+					// shows a skeleton and no hat - which is right: the hat is on the body
+					// the lightning just replaced.
+					companionSantaHat(G.COMPANION_LIMB_BOX),
+					companionPartyHat(G.COMPANION_LIMB_BOX)
 					// The companion's headset is SCRAPPED FOR NOW, 2026-08-08, after the
 					// first shoot made both blobs' headsets hard to judge at once. The
 					// hero's is being revised alone; once that shape is settled, this

@@ -21,7 +21,10 @@
 
 import { objectKeys } from 'hhson-lib';
 import type { Source } from './expr.ts';
+import { evaluate } from './eval.ts';
+import { CELEBRATIONS } from './states.ts';
 import { DAY_OF_WEEK, WEEKDAYS, type Weekday } from './palette.ts';
+import { MOON, MOON_DISC, moonShadowX } from './data/weather.ts';
 
 /**
  * Every source that gets a numeric literal.
@@ -50,6 +53,15 @@ export const isNumericSource = (name: string): name is NumericSource => name in 
 /** Values shared by every state - the "good day" the preview is shot on. */
 export const BASE: Record<NumericSource, number> = {
 	DAY: 19,
+	// August, so the base "good day" falls on no celebration at all.
+	//
+	// THIS PAIR IS LOAD-BEARING, and more so than it looks: DAY 19 is the
+	// BIRTHDAY's own day of the month, so it is MONTH alone that keeps the base
+	// frame - and every state that inherits it - out of a party hat. Moving either
+	// number is a two-line edit that would put confetti over the contact sheet, so
+	// the assertion under STATES below checks it rather than this comment claiming
+	// it. See HOLIDAY in states.ts for the seven windows it has to miss.
+	MONTH: 8,
 	// Monday, so the base "good day" is the brand red and every non-weekday frame
 	// keeps the colour the face has always had. 1 = SUNDAY, measured on the watch.
 	DAY_OF_WEEK: DAY_OF_WEEK.mon,
@@ -59,8 +71,12 @@ export const BASE: Record<NumericSource, number> = {
 	// live one, which is exactly the failure it exists to catch.
 	MINUTE: 12,
 	HEART_RATE: 88,
-	STEP_COUNT: 1912,
-	STEP_PERCENT: 19,
+	STEP_COUNT: 2011,
+	// The watch reports this as its own source, not a computed STEP_COUNT/STEP_GOAL
+	// ratio (see docs/capabilities.md's caveat on it), but the "good day" mock has
+	// no other number to be, so it is round(2011 / 10000 * 100) - agreeing with the
+	// two lines above it rather than a third, unrelated number.
+	STEP_PERCENT: 20,
 	STEP_GOAL: 10000,
 	BATTERY_PERCENT: 88,
 	BATTERY_IS_LOW: 0,
@@ -69,9 +85,10 @@ export const BASE: Record<NumericSource, number> = {
 	'WEATHER.CONDITION': 1,
 	'WEATHER.IS_DAY': 1,
 	'WEATHER.CHANCE_OF_PRECIPITATION': 0,
-	// Moderate (3-5 on the WHO scale), deliberately BELOW the >= 6 the shades fire
-	// at, so the base "good day" is not wearing sunglasses.
-	'WEATHER.UV_INDEX': 4,
+	// Low (0-2 on the WHO scale), deliberately BELOW the >= 3 the shades fire at,
+	// so the base "good day" is not wearing sunglasses - and every state that
+	// inherits it, `sunny` included, is bare-eyed unless it says otherwise.
+	'WEATHER.UV_INDEX': 2,
 	MOON_PHASE_POSITION: 19.79,
 	// Flat wrist, so parallax sits at rest and does not blur the comparison
 	// between snapshots.
@@ -95,7 +112,11 @@ export type Display = {
 
 export const BASE_DISPLAY: Display = { time: '19:12', weekday: 'Mon' };
 
-export type StateDelta = Partial<Record<NumericSource, number>> & Partial<Display>;
+export type StateDelta = Partial<Record<NumericSource, number>> &
+	Partial<Display> & {
+		/** Whether loading this state should switch the preview into ambient mode. */
+		ambient?: boolean;
+	};
 
 /**
  * A table of states by name.
@@ -176,19 +197,70 @@ export const weekdayStates = (): StateTable => {
 };
 
 /**
+ * Night, as everything except the moon sees it.
+ *
+ * Written once because there are three night frames and they must differ by the
+ * MOON PHASE ALONE - a second copy of this delta that drifted by an hour would
+ * make two of them incomparable, and the difference the frames exist to show is
+ * 24px of shadow.
+ */
+const NIGHT: StateDelta = {
+	time: '23:12',
+	HOUR_0_23: 23,
+	'WEATHER.IS_DAY': 0,
+	'WEATHER.UV_INDEX': 0
+};
+
+/**
+ * The three phases the moon mark is worth photographing at, IN DAYS since the
+ * new moon - which is what MOON_PHASE_POSITION reads (see MOON in
+ * data/weather.ts for how that was measured).
+ *
+ * DERIVED FROM THE SYNODIC MONTH, not typed as 0 / 7.38 / 14.77. The shadow's
+ * whole travel is `2 x disc / synodicDays` per day, so where a half moon falls
+ * is a consequence of that one constant; the assertion under STATES checks each
+ * frame against the face's OWN shadow expression rather than against these
+ * numbers, so a frame cannot quietly stop showing the phase it is named for.
+ *
+ * BASE sits at 19.79 - waning gibbous, the probe reading from the watch - and
+ * none of the three inherits it.
+ */
+const MOON_AT = {
+	/** Shadow fully clear of the disc. */
+	full: MOON.synodicDays / 2,
+	/** Shadow across half the disc, waxing. */
+	half: MOON.synodicDays / 4,
+	/** Shadow exactly over the disc: no moon at all. */
+	new: 0
+};
+
+/**
  * Per state, ONLY the values that state is about. Everything else stays at BASE,
  * which is the point: the snapshots differ by exactly one idea each.
  *
  * Ordering matches docs/states/ numbering.
  */
 export const STATES: StateTable = {
-	ambient: {},
+	ambient: { ambient: true },
 	baseline: {},
-	night: { time: '23:12', HOUR_0_23: 23, 'WEATHER.IS_DAY': 0, 'WEATHER.UV_INDEX': 0 },
-	// The full summer day: warm, clear AND strong sun, so both halves of the old
-	// sunny state fire - shades and cocktail together, which is what a real 25
-	// degree cloudless afternoon looks like.
-	sunny: { 'WEATHER.TEMPERATURE': 25, 'WEATHER.UV_INDEX': 8 },
+	// THREE NIGHTS, differing only in the moon. The moon mark is the one element
+	// on this face driven by a source that cannot be provoked - the shadow moves
+	// 1.6px a day, MOON_SHADOW_RATE - so without a frame per phase the only record
+	// that it travels at all is the expression that moves it.
+	nighthalf: { ...NIGHT, MOON_PHASE_POSITION: MOON_AT.half },
+	nightfull: { ...NIGHT, MOON_PHASE_POSITION: MOON_AT.full },
+	nightnew: { ...NIGHT, MOON_PHASE_POSITION: MOON_AT.new },
+
+	// The weekday palette, seven frames, one per hero/companion pairing. Spread in
+	// here rather than at the end because that is where docs/states/ shows them -
+	// see CAPTURE_ORDER, and the comment on this object.
+	...weekdayStates(),
+	// THE COCKTAIL ALONE, and TEMPERATURE is the only thing it changes. The face
+	// still puts shades on a hot high-UV day - HIGH_UV and HOT_AND_SUNNY are
+	// independent - but a frame that fired both documented neither, since nothing
+	// in it said which trigger owned which prop. UV therefore stays at BASE's 2,
+	// under the gate, and `uv` below is the frame the sunglasses belong to.
+	sunny: { 'WEATHER.TEMPERATURE': 25 },
 	// High UV WITHOUT the warm clear day: 14 degrees, partly cloudy (code 14, the
 	// one non-clear code confirmed on hardware). Shades, no drink. This frame is
 	// what proves the split - a bright cold spring afternoon.
@@ -208,25 +280,58 @@ export const STATES: StateTable = {
 	// of its own - rainy and thunderstorm bracket the range - but it is in
 	// cycle-states.ts, because the whole point of the ramp is how it moves.
 	downpour: { 'WEATHER.CHANCE_OF_PRECIPITATION': 100, 'WEATHER.CONDITION': 12 },
-	// The sweat frames BRACKET the ramp rather than sampling its middle: 100 is
-	// exactly on the gate, where the drip is shortest and slowest with one bead
-	// per cheek, and 200 is the ceiling. Anything between is a linear blend.
+	// ONE FRAME PER BAND, sitting EXACTLY ON each gate. The drips are continuous
+	// and the ends alone would document them, but the forehead cluster is not:
+	// four discrete bands, and a frame inside a band cannot tell you where the
+	// band starts. On the gate is also how `cold` and `rainy` are pinned, and it
+	// tests the `>=` boundary rather than assuming it.
 	//
-	// THREE frames, not two, because the forehead cluster fills in three discrete
-	// steps and the middle one is only reachable between 120 and 149. The drips
-	// are continuous and would be documented by the ends alone; the pearls are
-	// not. 135 sits mid-band so the frame cannot be read as a boundary case.
+	//   100  drips begin, forehead still bare - a slow seep
+	//   120  the middle pearl
+	//   140  the outer pair, replacing it
+	//   160  all three, and the second drip fades in
+	//   200  no new pearls, but the top of both ramps: fastest and furthest
 	//
-	// To look at a point inside the ramp, override rather than adding a state:
+	// To look at a point inside a band, override rather than adding a state:
 	//   node tools/mock-state.ts on sweating --set=HEART_RATE=150 --live
 	sweating: { HEART_RATE: 100 },
-	puffing: { HEART_RATE: 135 },
+	puffing: { HEART_RATE: 120 },
+	flushed: { HEART_RATE: 140 },
+	soaked: { HEART_RATE: 160 },
 	drenched: { HEART_RATE: 200 },
 	// STEP_PERCENT is what the trigger reads, against the wearer's own STEP_GOAL,
 	// so 100 means "goal met" regardless of what that goal is; STEP_COUNT is only
 	// there so the digits on screen agree with it. Ten thousand exactly, not
 	// 10240 - and landing ON the threshold tests the >= boundary.
 	goal: { STEP_COUNT: 10000, STEP_PERCENT: 100 },
+
+	// The small hours of New Year's Day - MONTH, DAY and HOUR_0_23 all have to
+	// agree, so this is the one state that sets all three away from BASE. 02:15
+	// sits well past the old one-hour cutoff, which is the point: it proves the
+	// window now runs to 04:00, not just to 01:00. See NEW_YEAR in states.ts.
+	fireworks: { MONTH: 1, DAY: 1, HOUR_0_23: 2, MINUTE: 15, time: '02:15' },
+
+	// ---- the rest of the calendar -------------------------------------------
+	//
+	// MONTH AND DAY AND NOTHING ELSE. Unlike the fireworks these six run all day,
+	// so there is no hour to set, and every one of them is a whole-day occasion -
+	// which means the frame differs from `baseline` by exactly the date, and the
+	// costume is the only thing that can account for the difference.
+	//
+	// THE WEEKDAY STAYS AT MONDAY, so both blobs keep the brand red in all six.
+	// The real 20 April is not a Monday, but the alternative is six frames that
+	// each also change colour, and then a reader cannot tell which half of the
+	// change is the celebration. `fireworks` already made this call.
+	weed: { MONTH: 4, DAY: 20 },
+	labour: { MONTH: 5, DAY: 1 },
+	force: { MONTH: 5, DAY: 4 },
+	reunification: { MONTH: 10, DAY: 3 },
+	halloween: { MONTH: 10, DAY: 31 },
+	birthday: { MONTH: 12, DAY: 19 },
+	// THE MIDDLE OF THE THREE. 24 and 26 are the edges the window is defined by,
+	// and CANDIDATES below brackets both of them; a docs frame sitting on an edge
+	// would instead read as "Christmas is the 24th".
+	christmas: { MONTH: 12, DAY: 25 },
 
 	// ---- the meeting schedule -----------------------------------------------
 	//
@@ -284,9 +389,31 @@ export const STATES: StateTable = {
 		HOUR_0_23: 10,
 		MINUTE: 35,
 		'WEATHER.TEMPERATURE': 25
-	},
+	}
+};
 
-	...weekdayStates()
+/**
+ * Which frame documents which celebration.
+ *
+ * THE NAMES DO NOT MATCH AND CANNOT BE DERIVED. `NEW_YEAR` is documented by a
+ * frame called `fireworks` - the predicate is named for the day and the frame for
+ * what you see - and `LABOUR_DAY`/`REUNIFICATION` shed their suffix because a state
+ * name is a command-line argument. So the mapping is a fact, and it is written
+ * here once instead of being an exempt-list that happens to have seven entries.
+ *
+ * Everything after it is checked: that it covers every predicate, that each frame
+ * exists, that each frame really does fall on its own day, and - the one that
+ * matters most - that NO OTHER frame does.
+ */
+const CALENDAR_FRAME: Partial<Record<string, string>> = {
+	NEW_YEAR: 'fireworks',
+	WEED: 'weed',
+	LABOUR_DAY: 'labour',
+	FORCE: 'force',
+	REUNIFICATION: 'reunification',
+	HALLOWEEN: 'halloween',
+	BIRTHDAY: 'birthday',
+	CHRISTMAS: 'christmas'
 };
 
 /**
@@ -329,26 +456,130 @@ export const valuesFor = (
 };
 
 /**
+ * THE ORDINARY FRAMES MUST BE ORDINARY, AND THE CALENDAR ONES MUST NOT BE.
+ *
+ * Every frame except the seven calendar ones is about one weather reading, one
+ * heart rate or one clock time, and every one of them inherits BASE's MONTH and
+ * DAY without saying so. If that pair ever lands inside a celebration window,
+ * `cold` grows a party hat and `night` gets a pumpkin - and nothing fails,
+ * because a costume drawing is not an error. BASE.DAY is 19, which IS the
+ * birthday's day of the month, so this is one changed constant away rather than a
+ * remote possibility.
+ *
+ * The other direction is worth as much: `christmas` setting DAY to a day the
+ * CHRISTMAS predicate does not cover would produce a frame of an ordinary
+ * Thursday filed under Christmas, and the screenshot would look like the feature
+ * had failed to render. Both directions are checked against the PREDICATES, not
+ * against a copy of the dates, so moving a window moves both ends at once.
+ */
+{
+	const covered = objectKeys(CALENDAR_FRAME);
+	if (covered.length !== CELEBRATIONS.length) {
+		throw new Error(
+			`CALENDAR_FRAME maps ${covered.length} celebrations but states.ts defines ` +
+				`${CELEBRATIONS.length} - a new one needs a frame here`
+		);
+	}
+
+	for (const [name, predicate] of CELEBRATIONS) {
+		const frame = CALENDAR_FRAME[name];
+		if (frame === undefined) {
+			throw new Error(`no frame in CALENDAR_FRAME for the ${name} predicate`);
+		}
+		if (!(frame in STATES)) {
+			throw new Error(`CALENDAR_FRAME points ${name} at "${frame}", which is not in STATES`);
+		}
+		if (!evaluate(predicate, valuesFor(frame))) {
+			const values = valuesFor(frame);
+			throw new Error(
+				`the "${frame}" frame is set to ${values.DAY}.${values.MONTH} at ${values.HOUR_0_23}:00, ` +
+					`which is not ${name} - it would document an ordinary day`
+			);
+		}
+	}
+
+	const calendarFrames = new Set(Object.values(CALENDAR_FRAME));
+	for (const state of objectKeys(STATES)) {
+		if (calendarFrames.has(state)) {
+			continue;
+		}
+		const values = valuesFor(state);
+		for (const [name, predicate] of CELEBRATIONS) {
+			if (evaluate(predicate, values)) {
+				throw new Error(
+					`the "${state}" frame falls on ${name} (${values.DAY}.${values.MONTH}) - it would be ` +
+						'shot in costume. Move BASE.MONTH/BASE.DAY clear of every window in HOLIDAY.'
+				);
+			}
+		}
+	}
+}
+
+/**
+ * THE THREE NIGHT FRAMES SHOW THE THREE PHASES THEY ARE NAMED FOR.
+ *
+ * `nightfull` differs from `nightnew` by one number, the shadow it moves is
+ * black on a black sky, and a frame that showed the wrong phase would look
+ * exactly like a correct one - there is nothing else on screen to contradict it.
+ * So each frame is checked against the face's own shadow expression, at the disc
+ * position the face draws: covering it, half across it, clear of it.
+ *
+ * The rate is rounded to 4dp (see MOON_SHADOW_RATE), so the landings are
+ * approximate by design; a twentieth of a pixel is not a phase.
+ */
+{
+	const edge = MOON_DISC.x;
+	const wants: Array<[string, number]> = [
+		['nightnew', edge],
+		['nighthalf', edge + MOON.disc / 2],
+		['nightfull', edge + MOON.disc]
+	];
+	for (const [state, want] of wants) {
+		const got = evaluate(moonShadowX(), valuesFor(state));
+		if (Math.abs(got - want) > 0.05) {
+			throw new Error(
+				`the "${state}" frame puts the moon's shadow at x${got}, not x${want} - it would be ` +
+					'filed under a phase it does not show'
+			);
+		}
+	}
+}
+
+/**
  * Every value of every source that an expression could plausibly turn on: both
  * sides of each threshold the face gates at, plus the far ends of each range.
  *
  * THE BOUNDARIES ARE THE WHOLE POINT. `>= 7` and `> 7` agree on every integer
  * except exactly 7, so a grid that samples 3 and 9 "proves" a changed operator
  * harmless. Every threshold in the face therefore appears here with its
- * neighbour: 6/7/8 for the night window, 99/100 for the sweat gate, 4/5 and
- * 10/11 for gloves and scarf, 89/90 for the storm, 5/6 for UV, -1/0/1 for
+ * neighbour: 6/7/8 for the night window, 99/100 for the drip gate, 4/5 and
+ * 10/11 for gloves and scarf, 89/90 for the storm, 2/3 for UV, -1/0/1 for
  * freezing.
  */
-const CANDIDATES: Record<NumericSource, number[]> = {
-	DAY: [1, 19, 31],
+export const CANDIDATES: Record<NumericSource, number[]> = {
+	// EVERY CELEBRATION DAY WITH ITS TWO NEIGHBOURS. Seven windows now hang off
+	// this source, and `== 19` versus `>= 19` agree on every day of the month
+	// except 18 - so a day sampled without the day before it proves nothing about
+	// the operator. 23/24 and 26/27 bracket Christmas at both ends, which is the
+	// only window with two edges to get wrong.
+	DAY: [1, 2, 3, 4, 5, 18, 19, 20, 21, 23, 24, 25, 26, 27, 30, 31],
+	// ALL TWELVE. The celebrations claim five different months and the neighbours
+	// of those five cover ten more, so a hand-picked subset would have been every
+	// month but July - and "every month except one" is a list that looks like an
+	// oversight and reads like a rule.
+	MONTH: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
 	DAY_OF_WEEK: [1, 2, 3, 4, 5, 6, 7],
 	// The meeting windows read hours and minutes together, so both carry every
 	// edge of every window from meetings.ts as well as the night boundaries.
-	HOUR_0_23: [0, 6, 7, 8, 9, 10, 15, 16, 17, 22, 23],
+	// 3/4 brackets the fireworks window's upper edge (HOUR_0_23 < 4).
+	HOUR_0_23: [0, 3, 4, 6, 7, 8, 9, 10, 15, 16, 17, 22, 23],
 	MINUTE: [0, 4, 5, 12, 19, 20, 21, 29, 30, 35, 44, 45, 46, 59],
-	HEART_RATE: [0, 88, 99, 100, 119, 120, 139, 140, 149, 150, 200, 220],
-	STEP_COUNT: [0, 1912, 10000],
-	STEP_PERCENT: [0, 19, 99, 100, 140],
+	// Every sweat gate with its neighbour - 100 drips, 120/140/160 pearls - plus
+	// 199/200, the top tread of the drip-rate staircase and the one threshold
+	// with no Condition behind it to make it visible.
+	HEART_RATE: [0, 88, 99, 100, 119, 120, 139, 140, 159, 160, 199, 200, 220],
+	STEP_COUNT: [0, 2011, 10000],
+	STEP_PERCENT: [0, 20, 99, 100, 140],
 	STEP_GOAL: [10000],
 	BATTERY_PERCENT: [0, 7, 15, 50, 88, 100],
 	BATTERY_IS_LOW: [0, 1],
@@ -357,7 +588,7 @@ const CANDIDATES: Record<NumericSource, number[]> = {
 	'WEATHER.CONDITION': [1, 12, 14],
 	'WEATHER.IS_DAY': [0, 1],
 	'WEATHER.CHANCE_OF_PRECIPITATION': [0, 19, 20, 28, 49, 50, 51, 75, 89, 90, 92, 100],
-	'WEATHER.UV_INDEX': [0, 4, 5, 6, 7, 11],
+	'WEATHER.UV_INDEX': [0, 2, 3, 4, 5, 6, 7, 11],
 	MOON_PHASE_POSITION: [0, 7.38, 14.77, 22.15, 29.53],
 	// Beyond the +-35 clamp in both directions, since the parallax gains clamp
 	// before they scale.

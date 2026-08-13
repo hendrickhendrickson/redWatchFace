@@ -29,7 +29,7 @@ import { messageOf } from '../gen/error.ts';
 import { face } from '../gen/face.ts';
 import { renderSvg } from '../gen/svg.ts';
 import { GYRO_CLAMP } from '../gen/geometry.ts';
-import { build, DEFAULTS, STATE_NAMES } from './src/frame.ts';
+import { build, DEFAULTS, STATE_NAMES, loadPreset } from './src/frame.ts';
 
 const failed: string[] = [];
 const ok = (label: string, cond: boolean, detail = ''): void => {
@@ -46,7 +46,7 @@ const count = (text: string, pattern: RegExp): number => (text.match(pattern) ??
 	const bad: string[] = [];
 	for (const state of STATE_NAMES) {
 		try {
-			const frame = build({ ...DEFAULTS, state });
+			const frame = build(loadPreset(DEFAULTS, state));
 			if (!frame.svg.startsWith('<svg')) {
 				bad.push(`${state}: not an svg`);
 			}
@@ -69,8 +69,8 @@ const count = (text: string, pattern: RegExp): number => (text.match(pattern) ??
 // --- Animation -------------------------------------------------------------
 
 {
-	const before = build({ ...DEFAULTS, state: 'rainy', secondsOfDay: 100 });
-	const after = build({ ...DEFAULTS, state: 'rainy', secondsOfDay: 100.4 });
+	const before = build({ ...loadPreset(DEFAULTS, 'rainy'), secondsOfDay: 100 });
+	const after = build({ ...loadPreset(DEFAULTS, 'rainy'), secondsOfDay: 100.4 });
 	ok('a 0.4s step moves the rain', before.svg !== after.svg);
 }
 
@@ -156,11 +156,15 @@ const count = (text: string, pattern: RegExp): number => (text.match(pattern) ??
 // --- Clipping --------------------------------------------------------------
 
 /**
- * A Part clips to its own box, and the companion proves it: `companion_limbs` row 0 draws
- * a cream cap centred at local x4.5 with rx 6.5, so it starts at x-2 - OUTSIDE the
- * box - and arrives FLAT-SIDED on the watch. That observation is what the entire
- * hero_props restructuring came out of. A preview that drew it round would hide the
- * one bug class this face has already been bitten by.
+ * A Part clips to its own box - that used to be provable here because
+ * `companion_limbs` row 0 drew a cream cap centred at local x4.5 with rx 6.5, so
+ * it started at x-2, OUTSIDE the box, and arrived FLAT-SIDED on the watch. That
+ * observation is what the entire hero_props restructuring came out of, and it
+ * was also a real bug on this exact cap - three of the four limb caps still
+ * overhung their box (the right arm and both legs, 1px each) until data/blobs.ts
+ * moved every hand/foot end 1-2px inward. This now proves the fix instead: the
+ * same cap, at its corrected position, sits fully inside the box it's clipped
+ * to.
  */
 {
 	const svg = build({ ...DEFAULTS }).svg;
@@ -175,14 +179,14 @@ const count = (text: string, pattern: RegExp): number => (text.match(pattern) ??
 		count(svg, /<clipPath id="clip\d+"><rect x="0" y="0"/g) === clips
 	);
 
-	const cap = /<ellipse cx="4\.5" cy="38" rx="6\.5" ry="6"/.test(svg);
+	const cap = /<ellipse cx="6\.5" cy="38" rx="6\.5" ry="6"/.test(svg);
 	const box = /<clipPath id="clip\d+"><rect x="0" y="0" width="62" height="72"/.test(svg);
 	ok(
-		'the companion cap that overhangs its box is drawn, and the box cuts it',
+		'the companion cap that used to overhang its box now sits fully inside it',
 		cap && box,
 		cap
 			? box
-				? 'cap spans x-2..11 in a 62x72 box starting at 0'
+				? 'cap spans x0..13 in a 62x72 box starting at 0 - no longer clipped flat'
 				: 'limb box missing'
 			: 'cap missing'
 	);
@@ -199,8 +203,8 @@ const count = (text: string, pattern: RegExp): number => (text.match(pattern) ??
 {
 	const tree = face();
 	const bad: string[] = [];
-	for (const state of ['baseline', 'night', 'rainy', 'thunderstorm', 'friday']) {
-		const frame = build({ ...DEFAULTS, state });
+	for (const state of ['baseline', 'nightfull', 'rainy', 'thunderstorm', 'friday']) {
+		const frame = build(loadPreset(DEFAULTS, state));
 		const direct = renderSvg(tree, { values: frame.values, display: frame.display });
 		if (direct !== frame.svg) {
 			bad.push(`${state}: ${direct.length} vs ${frame.svg.length} chars`);

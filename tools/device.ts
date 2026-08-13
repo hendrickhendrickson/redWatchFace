@@ -149,7 +149,7 @@ export function nudge(serial: Serial): void {
 
 /**
  * stdio:'inherit', NOT captured. Two reasons: a swallowed exit code once hid a
- * build that silently never ran (see TODO.md), and if CTRL_C_EVENT ever hits
+ * build that silently never ran (see docs/device.md), and if CTRL_C_EVENT ever hits
  * cmd.exe mid-batch it prints "Terminate batch job (Y/N)?" and blocks on
  * stdin - inherited stdio at least makes that prompt visible and answerable
  * instead of hanging forever.

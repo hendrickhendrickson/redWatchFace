@@ -5,8 +5,13 @@
  * rather than one builder called twice with a scale factor. The companion's trio is
  * not the hero's shrunk: its sizes are 9/12/15 against 13/18/24, ratios of 0.69,
  * 0.67 and 0.63, so there is no scale to find. And THE TWO FACE OPPOSITE WAYS - the
- * hero's z's grow left to right, the companion's right to left - which is what keeps
+ * hero's z's trail off to the right, the companion's to the left - which is what keeps
  * the pair from reading as one repeated motif.
+ *
+ * NEITHER TRIO MOVES FOR THE CHRISTMAS TREE, which stands in the companion's strip.
+ * Both were briefly reshaped to clear it and both looked worse for it; the reasoning
+ * that put them back is in ANCHORS.COMPANION_SLEEP_ZZZ, and it is a rule about which
+ * state pays, not a fact about geometry.
  *
  * THE PHASES ARE A SECOND APART ON PURPOSE, so the two sets do not pulse together.
  * That offset was the only difference between two otherwise identical Transform
@@ -110,6 +115,58 @@ export const ZZZ_SETS: ZzzSet[] = [
 		const sizes = set.zeds.map((zed) => zed.size);
 		if (sizes.some((size, i) => i > 0 && size <= sizes[i - 1])) {
 			problems.push(`${set.part} sizes do not increase: ${sizes.join(' -> ')}`);
+		}
+	}
+
+	/**
+	 * THE SMALLEST Z HAS TO COME OFF THE BLOB, and that is a fact about two groups
+	 * that never meet in the markup - the z's sit in their own section, the body in
+	 * the blob's, and nothing between them relates the two.
+	 *
+	 * IT IS THE ONE THING THAT WAS ACTUALLY WRONG when the companion's trio moved for
+	 * the Christmas tree. Every box fitted, the tree cleared it, the validator passed
+	 * and the render showed three z's rising out of the MOON. A trio floating in the
+	 * sky is not a trio the machine can tell from a trio leaving a sleeping blob unless
+	 * someone writes down that the two have to touch.
+	 *
+	 * MEASURED AGAINST THE BODY ELLIPSE, NOT ITS BOX. Both blobs are ellipses and both
+	 * trios leave from a corner, which is exactly where a box is furthest from the
+	 * shape it encloses - the companion's smallest z is 3px inside the box and 5px
+	 * clear of the blob. `radial` is the ellipse equation: 1 is the outline, below is
+	 * inside, and the upper bound is what "adjacent to" means here. Hero 1.06,
+	 * companion 1.26; the anchor that put the trio on the moon scores 1.65, which is
+	 * why the bound is 1.5 rather than anything rounder.
+	 */
+	const BODIES = {
+		hero: { anchor: G.ANCHORS.HERO, body: G.HERO_BOX },
+		companion: { anchor: G.ANCHORS.COMPANION, body: G.COMPANION_BOX }
+	};
+	const ADJACENT = 1.5;
+
+	for (const set of ZZZ_SETS) {
+		const { anchor, body } = BODIES[set.gyro];
+		const cx = anchor.x + body.x + body.width / 2;
+		const cy = anchor.y + body.y + body.height / 2;
+		// The trio's origin is its smallest z - the one nearest the mouth it came out of.
+		const first = set.zeds[0];
+		const left = set.anchor.x + first.box.x;
+		const top = set.anchor.y + first.box.y;
+		// The glyph's closest point to the body's centre.
+		const near = {
+			x: Math.min(Math.max(cx, left), left + first.box.width),
+			y: Math.min(Math.max(cy, top), top + first.box.height)
+		};
+		const radial =
+			((near.x - cx) / (body.width / 2)) ** 2 + ((near.y - cy) / (body.height / 2)) ** 2;
+		if (radial <= 1) {
+			problems.push(
+				`${set.part}_${first.tier} is inside the ${set.gyro}'s body (radial ${radial.toFixed(2)})`
+			);
+		} else if (radial > ADJACENT) {
+			problems.push(
+				`${set.part}_${first.tier} floats ${radial.toFixed(2)} from the ${set.gyro} - ` +
+					`the trio has to leave the blob, not the background`
+			);
 		}
 	}
 

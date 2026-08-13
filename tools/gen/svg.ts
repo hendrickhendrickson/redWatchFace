@@ -28,10 +28,12 @@
  *
  * IT IS NOT PIXEL TRUTH, and three things guarantee that:
  *
- *   - TEXT. The family is SYNC_TO_DEVICE, which means "whatever the watch uses",
- *     so glyph advance belongs to the device and not to this file. WFF exposes no
- *     text-width source either, which is why geometry.ts records that the date row
- *     is centred by ESTIMATE. Anything text-shaped here is indicative.
+ *   - TEXT. The family is SYNC_TO_DEVICE, measured as Roboto on the Pixel Watch 4
+ *     (docs/wff-findings.md) and loaded as such here - but glyph advance, hinting
+ *     and antialiasing still belong to whichever rasteriser draws it, Skia on the
+ *     watch versus the browser here, so shape is close and metrics are not. WFF
+ *     exposes no text-width source either, which is why geometry.ts records that
+ *     the date row is centred by ESTIMATE. Anything text-shaped here is indicative.
  *   - EASING. The ambient cross-fade's interpolation curves are named, not
  *     specified; the windows are honoured, the exact curve is approximated.
  *   - SCALE. The design canvas is 450x450, the Pixel Watch 4 reports 426, and the
@@ -68,6 +70,19 @@ export type RenderOpts = {
 	 * solves it the same way.
 	 */
 	display?: { time: string; weekday: string };
+	/**
+	 * Prefixes every clipPath id this render emits.
+	 *
+	 * clipSeq RESETS TO 0 ON EVERY CALL, so two renders inserted into the same page
+	 * - the live stage and a gallery of other renders, say - mint the same ids
+	 * ("clip0", "clip1", ...). SVG/HTML id uniqueness is DOCUMENT-WIDE, not scoped
+	 * per <svg> root, so a `url(#clip3)` in one render can resolve to a clipPath
+	 * defined by a DIFFERENT render further down the page - which is exactly the
+	 * kind of "a gallery thumbnail's props flicker as unrelated controls change"
+	 * bug this field exists to make impossible. Leave it unset for a render that is
+	 * the only one on the page; give every other simultaneous render its own.
+	 */
+	idPrefix?: string;
 };
 
 /**
@@ -123,7 +138,8 @@ type Resolved = {
 	attrs: Attrs;
 	/** Extra translation contributed by a <Gyro> child. */
 	gyro: { x: number; y: number };
-	paint: { fill?: Attrs; stroke?: Attrs };
+	/** The whole Fill/Stroke element, not just its attrs, so a gradient child is reachable. */
+	paint: { fill?: Element; stroke?: Element };
 };
 
 /**
@@ -158,10 +174,10 @@ const resolve = (element: Element, opts: RenderOpts): Resolved => {
 				gyro.y = run(asAst(String(child.attrs['y'])), opts.values);
 				break;
 			case 'Fill':
-				paint.fill = child.attrs;
+				paint.fill = child;
 				break;
 			case 'Stroke':
-				paint.stroke = child.attrs;
+				paint.stroke = child;
 				break;
 			default:
 				break;
@@ -232,27 +248,75 @@ const EASE: Partial<Record<string, (w: number) => number>> = {
 	EASE_OUT: (w) => 1 - (1 - w) * (1 - w)
 };
 
+/** A gradient def id, unique per gradient rendered - clipSeq's sibling, same reason. */
+let gradSeq = 0;
+
+/**
+ * A `<RadialGradient>` under a `<Fill>`, turned into an SVG `<radialGradient>` def.
+ *
+ * `gradientUnits="userSpaceOnUse"` is load-bearing: WFF's centerX/centerY/radius are
+ * in the same local box the Ellipse's own x/y/width/height are, and userSpaceOnUse is
+ * the one SVG mode that resolves against that ambient coordinate system - the same
+ * one the enclosing Part's `<g transform="translate(...)">` already establishes -
+ * rather than against the gradient's own bounding box. `objectBoundingBox` (the SVG
+ * default) would ignore the authored centre entirely.
+ *
+ * Returns undefined for a plain `<Fill color="...">` with no gradient child, which is
+ * every Fill in this face but the moon's.
+ */
+const radialGradientFill = (fill: Element, defs: string[]): string | undefined => {
+	const gradient = fill.children.find(isElement('RadialGradient'));
+	if (gradient === undefined) {
+		return undefined;
+	}
+	const colors = String(gradient.attrs['colors'] ?? '')
+		.trim()
+		.split(/\s+/);
+	const positions = String(gradient.attrs['positions'] ?? '')
+		.trim()
+		.split(/\s+/);
+	const stops = colors
+		.map((hex, i) => {
+			const { fill: stopFill, opacity } = colour(hex);
+			const offset = positions[i] ?? String(i / Math.max(1, colors.length - 1));
+			const stopOpacity = opacity !== 1 ? ` stop-opacity="${opacity}"` : '';
+			return `<stop offset="${offset}" stop-color="${stopFill}"${stopOpacity} />`;
+		})
+		.join('');
+	const id = `grad${gradSeq++}`;
+	defs.push(
+		`<radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="${num(gradient.attrs['centerX'])}" ` +
+			`cy="${num(gradient.attrs['centerY'])}" r="${num(gradient.attrs['radius'])}">${stops}</radialGradient>`
+	);
+	return `url(#${id})`;
+};
+
 /** fill / stroke attributes for a drawn shape. */
-const paintAttrs = (p: Resolved['paint']): string => {
+const paintAttrs = (p: Resolved['paint'], defs: string[]): string => {
 	const out: string[] = [];
 	if (p.fill) {
-		const { fill, opacity } = colour(p.fill['color']);
-		out.push(`fill="${fill}"`);
-		if (opacity !== 1) {
-			out.push(`fill-opacity="${opacity}"`);
+		const gradientFill = radialGradientFill(p.fill, defs);
+		if (gradientFill !== undefined) {
+			out.push(`fill="${gradientFill}"`);
+		} else {
+			const { fill, opacity } = colour(p.fill.attrs['color']);
+			out.push(`fill="${fill}"`);
+			if (opacity !== 1) {
+				out.push(`fill-opacity="${opacity}"`);
+			}
 		}
 	} else {
 		// A shape with only a <Stroke> must not be filled black by SVG's default.
 		out.push('fill="none"');
 	}
 	if (p.stroke) {
-		const { fill, opacity } = colour(p.stroke['color']);
+		const { fill, opacity } = colour(p.stroke.attrs['color']);
 		out.push(`stroke="${fill}"`);
 		if (opacity !== 1) {
 			out.push(`stroke-opacity="${opacity}"`);
 		}
-		out.push(`stroke-width="${num(p.stroke['thickness'], 1)}"`);
-		const cap = CAP[String(p.stroke['cap'] ?? 'BUTT')];
+		out.push(`stroke-width="${num(p.stroke.attrs['thickness'], 1)}"`);
+		const cap = CAP[String(p.stroke.attrs['cap'] ?? 'BUTT')];
 		if (cap !== undefined) {
 			out.push(`stroke-linecap="${cap}"`);
 		}
@@ -427,7 +491,7 @@ const render = (node: Node, opts: RenderOpts, defs: string[]): string => {
 				return '';
 			}
 
-			const id = `clip${clipSeq++}`;
+			const id = `${opts.idPrefix ?? ''}clip${clipSeq++}`;
 			defs.push(`<clipPath id="${id}"><rect x="0" y="0" width="${w}" height="${h}" /></clipPath>`);
 
 			const transforms = [`translate(${x} ${y})`];
@@ -494,22 +558,22 @@ const render = (node: Node, opts: RenderOpts, defs: string[]): string => {
 			const h = num(attrs['height']);
 			const cx = num(attrs['x']) + w / 2;
 			const cy = num(attrs['y']) + h / 2;
-			return `<ellipse cx="${cx}" cy="${cy}" rx="${w / 2}" ry="${h / 2}" ${paintAttrs(paint)} />`;
+			return `<ellipse cx="${cx}" cy="${cy}" rx="${w / 2}" ry="${h / 2}" ${paintAttrs(paint, defs)} />`;
 		}
 		case 'Rectangle':
-			return `<rect x="${num(attrs['x'])}" y="${num(attrs['y'])}" width="${num(attrs['width'])}" height="${num(attrs['height'])}" ${paintAttrs(paint)} />`;
+			return `<rect x="${num(attrs['x'])}" y="${num(attrs['y'])}" width="${num(attrs['width'])}" height="${num(attrs['height'])}" ${paintAttrs(paint, defs)} />`;
 		case 'RoundRectangle':
 			return (
 				`<rect x="${num(attrs['x'])}" y="${num(attrs['y'])}" width="${num(attrs['width'])}" height="${num(attrs['height'])}"` +
-				` rx="${num(attrs['cornerRadiusX'])}" ry="${num(attrs['cornerRadiusY'])}" ${paintAttrs(paint)} />`
+				` rx="${num(attrs['cornerRadiusX'])}" ry="${num(attrs['cornerRadiusY'])}" ${paintAttrs(paint, defs)} />`
 			);
 		case 'Line':
 			return (
 				`<line x1="${num(attrs['startX'])}" y1="${num(attrs['startY'])}"` +
-				` x2="${num(attrs['endX'])}" y2="${num(attrs['endY'])}" ${paintAttrs(paint)} />`
+				` x2="${num(attrs['endX'])}" y2="${num(attrs['endY'])}" ${paintAttrs(paint, defs)} />`
 			);
 		case 'Arc':
-			return `<path d="${arcPath(attrs)}" ${paintAttrs(paint)} />`;
+			return `<path d="${arcPath(attrs)}" ${paintAttrs(paint, defs)} />`;
 
 		// --- The clock -----------------------------------------------------------
 		case 'DigitalClock':
@@ -552,7 +616,11 @@ const svgText = (content: string, font: Attrs, align: string, w: number, h: numb
 	const x = anchor === 'middle' ? w / 2 : anchor === 'end' ? w : 0;
 	const { fill, opacity } = colour(font['color']);
 	const style = [
-		`font-family="system-ui, sans-serif"`,
+		// SYNC_TO_DEVICE resolves to Roboto on the Pixel Watch 4 - measured, see
+		// docs/wff-findings.md's memory-footprint finding. `system-ui` is only the
+		// fallback for a host that could not load the family tools/preview/index.html
+		// requests (offline, or a build of this renderer with no page around it).
+		`font-family="Roboto, system-ui, sans-serif"`,
 		`font-size="${num(font['size'], 16)}"`,
 		`font-weight="${WEIGHT[String(font['weight'] ?? 'NORMAL')] ?? '400'}"`,
 		font['slant'] === 'ITALIC' ? 'font-style="italic"' : '',
@@ -591,6 +659,7 @@ const renderPartText = (element: Element, opts: RenderOpts, w: number, h: number
  */
 export const renderSvg = (nodes: Node[], opts: RenderOpts): string => {
 	clipSeq = 0;
+	gradSeq = 0;
 	const defs: string[] = [];
 	const body = nodes.map((node) => render(node, opts, defs)).join('');
 	return (

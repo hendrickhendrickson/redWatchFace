@@ -39,6 +39,25 @@ export const CANVAS_W = 450;
 export const CANVAS_H = 450;
 
 /**
+ * The ROUND bezel the square canvas is shown through.
+ *
+ * The design canvas is a square and the watch is not: `clipShape` is CIRCLE, so
+ * the four corners are never seen and anything placed in them is invisible with
+ * nothing to report it. A shape can sit comfortably inside 450x450 and still be
+ * half off the glass - the bottom-left corner is 93px outside the circle.
+ *
+ * Lived in data/fireworks.ts as a private constant, where it checked that a spark
+ * is still on the glass when it first reaches full brightness. The Christmas tree
+ * is the second thing to need it: it stands in the empty canvas at bottom left,
+ * which is exactly where the bezel bites.
+ */
+export const BEZEL = { centre: CANVAS_W / 2, radius: CANVAS_W / 2 };
+
+/** How far past the bezel a canvas point is. NEGATIVE IS INSIDE. */
+export const pastBezel = (x: number, y: number): number =>
+	Math.hypot(x - BEZEL.centre, y - BEZEL.centre) - BEZEL.radius;
+
+/**
  * Layout map, y in design space. Kept here rather than in prose so the numbers
  * below can be checked against it.
  *
@@ -97,8 +116,22 @@ export const HERO_BOX = box(14, 36, 72, 80);
 export const HERO_BODY_SHAPE = at(72, 80);
 export const HERO_BODY_RADIUS = { cornerRadiusX: 36, cornerRadiusY: 34 };
 
-/** Limbs, accessories and anything that reaches outside the body. */
-export const HERO_LIMB_BOX = box(0, 0, 106, 132);
+/**
+ * Limbs, accessories and anything that reaches outside the body.
+ *
+ * IT WAS 106 WIDE, AND THE FLAG IS WHY IT IS NOT. The step-goal pole runs down x93,
+ * so 106 left thirteen pixels to its right - enough for the 12-wide goal pennant
+ * with one to spare, and not enough for a tricolour, which needs about twenty
+ * before three bands stop merging into a brown smear. The first cut flew the flag
+ * LEFT off the pole instead, which fits and is wrong: a flag flies away from its
+ * bearer, and one flying back over the hero's own head reads as a mistake.
+ *
+ * WIDENING IS SAFE IN A WAY MOVING IS NOT. Every part inside is authored in
+ * limb-local coordinates and the group's canvas origin is unchanged, so nothing
+ * moves - the box only stops cutting things off sooner. ANCHORS.HERO takes its size
+ * from here, and an assertion below proves the two still agree.
+ */
+export const HERO_LIMB_BOX = box(0, 0, 122, 132);
 
 export const HERO_MOUTH_ROUND = box(30, 42, 11, 11);
 export const HERO_MOUTH_OPEN = box(24, 38, 22, 20);
@@ -206,8 +239,49 @@ export const ANCHORS = {
 	 * clipped, and a prop centred on the hero's raised hand would have to. See the
 	 * header of face/hero-props.ts, and note that the hand's position in THIS
 	 * group's coordinates is derived from these two anchors rather than typed.
+	 *
+	 * IT WAS 38 WIDE UNTIL THE LIGHTSABER NEEDED A LONGER BLADE. The blade runs on a
+	 * diagonal because the vertical room above the fist is only 35px and a vertical
+	 * blade in it reads as a torch; lengthening it therefore means leaning it
+	 * further, and leaning it further means running out of box to the right. 52 buys
+	 * a 33px blade against the 25 that fitted before.
+	 *
+	 * WIDENING IS FREE AND MOVING IS NOT. Every prop in data/props.ts is placed
+	 * against HAND, which is derived from `x` - so growing `width` moves nothing at
+	 * all, while changing `x` would move the group and the hand by the same amount
+	 * and leave every prop exactly where it was, which is a much more confusing kind
+	 * of no-op. `y` and `height` are the ones to leave alone: the controller and the
+	 * cocktail hang off tabulated group-local y values, and those WOULD move.
 	 */
-	HERO_PROPS: box(199, 262, 38, 50),
+	HERO_PROPS: box(199, 262, 52, 50),
+
+	/**
+	 * Whatever the COMPANION is holding. The same trick as HERO_PROPS, one blob down.
+	 *
+	 * The companion carried nothing at all until 1 May arrived with a sickle, and it
+	 * needs this group for the same reason the hero's props do: its group is exactly
+	 * as wide as its limbs (62), and the hand that takes the sickle sits at group-local
+	 * x56.5 - five and a half pixels from the right edge. A 24-wide blade centred there
+	 * runs to x68.5 and the last six pixels are simply not drawn. The companion's OWN
+	 * limb row already demonstrates the failure from the other side: COMPANION_LIMBS[0]
+	 * draws its cream cap from x-2 and the cap arrives flat-sided.
+	 *
+	 * So: a sibling rather than a child, absolute canvas coordinates, and
+	 * companionGyro() repeated by hand inside it - without which the sickle slides off
+	 * the fist across a tilt sweep, exactly as the hero's props would.
+	 *
+	 * IT GREW TWICE, from 34x40 at (185,330) to 54x66 at (165,312), and both times for
+	 * the lightsaber: once outward for a blade at all, once UPWARD when the companion's
+	 * was made the same length as the hero's rather than a scaled-down toy. A 27px
+	 * blade raised out of a hand 36px down a 56-tall group does not fit in it.
+	 *
+	 * MOVING THIS GROUP MOVES NOTHING. Everything in it is placed against
+	 * COMPANION_HAND, which is derived from this origin, so the two cancel;
+	 * COMPANION_HAND_SHIPPED in data/props.ts is the restatement that proves it on
+	 * every build. That is only true because nothing here carries a tabulated
+	 * group-local y - unlike the hero's side, where the controller and the cocktail do.
+	 */
+	COMPANION_PROPS: box(165, 312, 54, 66),
 
 	/** The storm burst behind the companion. */
 	COMPANION_BURST: box(123, 306, 104, 104),
@@ -226,9 +300,58 @@ export const ANCHORS = {
 	 */
 	SKY_MARK: box(156, 278, 36, 36),
 
+	/**
+	 * The Christmas tree, standing in the empty canvas at bottom left.
+	 *
+	 * THE ONLY REALLY EMPTY PLACE ON THIS FACE, and it is smaller than it looks.
+	 * The stat row ends at y252 and the companion starts at x143, which leaves the
+	 * lower left - but the bezel cuts that corner off, and the companion's sleep
+	 * z's sit at x105..151 on exactly the nights Christmas can fall on.
+	 * data/celebrations.ts asserts all four corners against the bezel and against
+	 * the z's rather than trusting this note.
+	 *
+	 * IT GREW TWICE AND CAME DOWN TO THE GROUND: 46x82 at (58,280), then 60x84 at
+	 * (78,254), now 62x112 at (80,282). The middle version was closer and bigger and
+	 * still wrong - its base sat at y338 against blobs whose feet are at y394, so it
+	 * hung in the air above them.
+	 *
+	 * THE THREE EDGES IT STOPS AT ARE ALL HARD. Above, the heart-rate chip ends at
+	 * y252 and runs x92..162, straight through where a tree this wide wants its star.
+	 * Right, the companion's own group starts at x143. Below-left, the bezel: at y394
+	 * anything left of x77 is behind the case, so the tree cannot simply slide further
+	 * from the blobs to find room.
+	 *
+	 * WHAT MADE IT FIT WAS MOVING THE COMPANION'S SLEEP Z'S, which used to own exactly
+	 * this strip - see ANCHORS.COMPANION_SLEEP_ZZZ. Christmas night draws both, so no
+	 * TREE SHAPE may touch any z GLYPH; the two group boxes overlap and are meant to.
+	 * data/celebrations.ts asserts the shapes rather than trusting this note.
+	 */
+	CHRISTMAS_TREE: box(80, 282, 62, 112),
+
 	/** The hero's sleep z's, up and to its right. */
 	SLEEP_ZZZ: box(294, 304, 64, 55),
-	/** The companion's, smaller and lower. */
+	/**
+	 * The companion's, level with its head and trailing off to its left.
+	 *
+	 * IT DOES NOT MOVE FOR THE CHRISTMAS TREE, and that is the point of this note.
+	 * The tree stands on the blobs' ground line, which puts it in exactly this strip -
+	 * the bezel cuts everything left of x77 at that height, so there is nowhere else
+	 * for the tree to go - and the obvious response is to move the z's. It was tried
+	 * twice. At (150,282) the trio sat on ANCHORS.SKY_MARK and read as three z's coming
+	 * off the MOON; at (130,294,24,54), reshaped tall and narrow to fit the corridor
+	 * between the canopy and the head, it read as a column of z's standing to attention.
+	 *
+	 * WHICH STATE PAYS IS THE ACTUAL QUESTION, and it is not a geometric one. `night`
+	 * is on for a third of every day and `christmas` for three days a year, so the
+	 * three-day state absorbs the collision: on Christmas night the z's cross the
+	 * tree's canopy, which reads as z's drifting past a tree rather than as either
+	 * shape being wrong. Nothing asserts they are apart, because they are not.
+	 *
+	 * WHAT IS STILL ASSERTED is that the trio LEAVES THE BLOB - data/zzz.ts, against
+	 * the body ellipse rather than its box, since the z's set off from a corner. That
+	 * is the check both failed positions would have been caught by, and neither of them
+	 * had anything to do with the tree.
+	 */
 	COMPANION_SLEEP_ZZZ: box(105, 338, 46, 44),
 
 	/**

@@ -16,3 +16,8 @@ node_modules/
 
 # The preview is a dev server, never a build artefact.
 tools/preview/dist/
+
+# Per-machine Claude Code permissions, holding absolute JDK and SDK paths. The skill symlinks
+# next to it ARE committed. This was only ever ignored via a global ~/.config/git/ignore, which
+# is one machine's luck rather than a property of the repo.
+.claude/settings.local.json

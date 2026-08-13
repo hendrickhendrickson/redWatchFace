@@ -237,10 +237,152 @@ export const C = {
 	SUN: '#ffc93c',
 	MOON: '#e8eef5',
 	MOON_DISC: '#e8e6dc',
+	/** The disc's terminator edge and its two craters - all three steps darker
+	 *  than MOON_DISC, in the same warm-grey family, so the shading reads as
+	 *  one rock rather than a lit circle with grey dots stuck on it. */
+	MOON_SHADE: '#cdc7b4',
+	MOON_CRATER: '#b3ad9a',
 	CLOUD: '#cbd5df',
 
 	/** Flag pole, cocktail glass, umbrella shaft. */
 	BONE: '#e8e0d4',
+
+	/**
+	 * The German tricolour, flown from the step-goal pole on 3 October.
+	 *
+	 * FLAG_BLACK IS NOT #000000, AND THAT IS THE WHOLE POINT. The scene background
+	 * is OLED black, so a true black band would not be a dark band on this face -
+	 * it would be a 20x4 hole in the flag, and the tricolour would read as two
+	 * stripes floating above a pole. #2f2f33 is far enough off the background to
+	 * hold an edge and dark enough to read as black beside a saturated red, which
+	 * is the only context it ever appears in.
+	 *
+	 * The other two are the real flag: RAL-ish #dd0000 and #ffce00, unmodified,
+	 * because they have no such problem.
+	 */
+	FLAG_BLACK: '#2f2f33',
+	FLAG_RED: '#dd0000',
+	FLAG_GOLD: '#ffce00',
+
+	/**
+	 * The 1 May tools: the hero's hammer and the companion's sickle.
+	 *
+	 * COOLER THAN BONE, deliberately. C.BONE is the flag pole, the cocktail glass
+	 * and the umbrella shaft - a warm off-white that reads as "pale object". A tool
+	 * has to read as METAL, and against this palette the only thing that
+	 * distinguishes metal from bone at 20px is the temperature of the grey.
+	 *
+	 * STEEL_DARK is the hammer's striking face and nothing else: one band of it at
+	 * the head's end is what stops a plain rectangle reading as a brick.
+	 */
+	STEEL: '#b8c2cc',
+	STEEL_DARK: '#7d8894',
+	/** The hammer's handle, the sickle's, and the Christmas tree's trunk. */
+	WOOD: '#96633a',
+
+	/**
+	 * The Santa hats, 24 to 26 December.
+	 *
+	 * DEEPER THAN THE MONDAY HERO, which is #ee4e43 - a red hat on a red blob is
+	 * the one collision this costume can have, and it is a one-in-seven chance
+	 * rather than an unlucky one. It survives mainly because the geometry keeps the
+	 * cone ABOVE the crown and puts the white brim between the two; the deeper red
+	 * is the second line of defence, not the first.
+	 */
+	SANTA: '#c62828',
+
+	/**
+	 * The tree. DARKER AND BLUER THAN THE BLOBS' OWN LEAVES (#5fb874 / #4fa968),
+	 * which is what stops a conifer three inches from the companion reading as more
+	 * of its hair. The trunk is C.WOOD, shared with the 1 May tools rather than
+	 * restated.
+	 */
+	TREE: '#2f7d4f',
+	TREE_DARK: '#23603c',
+
+	/**
+	 * The 31 October costumes.
+	 *
+	 * GHOST IS NOT C.WHITE and not C.CREAM. A pure white sheet covering most of a
+	 * blob is the brightest thing on an otherwise dark face and reads as a hole
+	 * punched in it; and C.CREAM is the clock's colour, which would tie the costume
+	 * to the type. This is a bone white with a little blue in it - a sheet in
+	 * moonlight rather than a sheet of paper.
+	 *
+	 * PUMPKIN_CARVE is a very dark brown rather than C.INK, the navy the blobs' own
+	 * eyes use. Navy holes in an orange gourd read as painted-on; the carved parts
+	 * of a jack-o'-lantern are the inside of the shell, so they take its hue.
+	 */
+	GHOST: '#eef1f5',
+	GHOST_SHADE: '#c8d2dc',
+	PUMPKIN: '#ef7d18',
+	PUMPKIN_DARK: '#c25c0b',
+	PUMPKIN_CARVE: '#3a1d05',
+	/** The pumpkin's stalk. Greyer than the tree, which is a living conifer. */
+	STALK: '#5d7a3c',
+
+	/**
+	 * 19 December: the party hats and the cupcake.
+	 *
+	 * PARTY is the one hue this palette did not already have. Every other
+	 * celebration colour is either a real-world constraint (the tricolour, Santa
+	 * red) or borrowed from what was here; a party hat is neither, and magenta is
+	 * the only region of the wheel far enough from all seven weekday body colours
+	 * that the hat cannot collide with the blob wearing it on any day of the week.
+	 *
+	 * The cupcake's case is C.SCARF and its pleats C.SCARF_DARK, reused rather than
+	 * restated - the scarf's blue is already this face's "small folded fabric".
+	 */
+	PARTY: '#c860d0',
+	/**
+	 * The party hats' stripes and pompoms. GOLD ON MAGENTA is the widest gap on the
+	 * wheel this palette can produce, which is what a 3px band needs to survive being
+	 * drawn on a shape 34px across - anything closer in hue reads as a smudge in the
+	 * magenta rather than as a stripe. Shared with C.FLAG_GOLD's neighbourhood
+	 * deliberately: there is no third yellow here worth having.
+	 */
+	PARTY_STRIPE: '#ffd24a',
+	FROSTING: '#f6b9cb',
+	FROSTING_DARK: '#e295ac',
+
+	/**
+	 * 4 May: the lightsaber's blade.
+	 *
+	 * THE BLADE IS TWO STROKES, NOT ONE, and this is only the outer of them. A
+	 * lightsaber does not read as a coloured stick - it reads as a WHITE-HOT CORE
+	 * inside a coloured glow, which is why C.WHITE runs down the middle of this on a
+	 * thinner stroke. One stroke of this blue alone looks like a drinking straw.
+	 *
+	 * Brighter and cooler than C.SCARF (#3f78c4), which is the same family and would
+	 * otherwise be the obvious reuse: a scarf is fabric in shadow and this is meant
+	 * to be emitting light, and at this size brightness is the only cue for that.
+	 */
+	SABER: '#4aa8ff',
+	/**
+	 * The companion's blade, 4 May. GREEN because a duel needs two colours and green
+	 * is the other one this fiction has; also because the companion is the small blob
+	 * and a second blue would read as the hero's saber duplicated rather than as a
+	 * second character. Matched to SABER for brightness, not for hue: both have to
+	 * look like they are emitting rather than reflecting.
+	 */
+	SABER_GREEN: '#5ce87a',
+
+	/**
+	 * The hilt, 4 May, AND THE FIRST VERSION OF IT WAS WRONG. It was C.STEEL - the
+	 * hammer's grey, #b8c2cc - which is a PALE grey, and a pale grey object beside a
+	 * white-hot blade reads as plastic: the blade is the brightest thing on the face,
+	 * so anything next to it has to be dark to read as solid at all. The hammer gets
+	 * away with the same grey because nothing beside it is lit.
+	 *
+	 * THREE TONES AND NOT ONE, which is the other half of "metallic". A single flat
+	 * fill has no highlight and no shadow, and at 13px that is the whole difference
+	 * between a machined object and a drawn one: HILT is the body, HILT_DARK the grip
+	 * rings cut into it, and EMITTER the brighter shroud at the top where the blade
+	 * comes out - the one place a real hilt catches its own light.
+	 */
+	HILT: '#4a515a',
+	HILT_DARK: '#282d34',
+	EMITTER: '#9aa3ae',
 	COCKTAIL: '#ffab4a',
 	/** Weather unavailable, and the heart-rate placeholder dash. */
 	WX_NONE: '#d9a695',

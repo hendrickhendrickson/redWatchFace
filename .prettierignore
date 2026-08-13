@@ -11,6 +11,11 @@ build/
 package-lock.json
 tools/preview/package-lock.json
 
+# Same argument, different tool: Claude Code rewrites this in 2-space JSON every time a command
+# is approved, and this repo's prettier wants tabs. Formatting it fixes nothing - the next
+# approval puts it back and takes `npm run verify` down with it.
+.claude/settings.local.json
+
 # Generated, both of them.
 tools/preview/dist/
 watchface/src/main/res/raw/watchface.xml
@@ -20,6 +25,3 @@ watchface/src/main/res/raw/watchface.xml
 # nothing.
 tools/gen/face.model.json
 
-# Long-form notes with hand-aligned tables and ASCII diagrams that prettier reflows into
-# something less readable than what is there.
-TODO.md

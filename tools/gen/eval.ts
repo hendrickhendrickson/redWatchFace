@@ -25,7 +25,7 @@
  * reason the generator exists.
  *
  * OPERATOR PRECEDENCE IS C-LIKE, and specifically && binds tighter than ||. That
- * is not a guess: docs/authoring-strategy.md records a live bug where
+ * is not a guess: docs/authoring.md records a live bug where
  * and(or(a, b), c) put headsets on at every hour of the day, which is exactly the
  * mis-binding standard precedence produces when or() returns a flat
  * unparenthesised string. The evaluator reproduces that faithfully - it models

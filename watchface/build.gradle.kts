@@ -83,7 +83,7 @@ tasks.register<Exec>("validateWatchFaceXml") {
 }
 
 // ---------------------------------------------------------------------------
-// watchface.xml is generated from tools/gen/*.ts (see docs/authoring-strategy.md).
+// watchface.xml is generated from tools/gen/*.ts (see docs/authoring.md).
 // The generated file IS committed, so a clone without node still builds a correct
 // APK and `git diff` on the XML stays reviewable. This task guards the other
 // direction: the committed file must match what the generator produces.
@@ -106,7 +106,7 @@ tasks.register<Exec>("checkWatchFaceXmlUpToDate") {
         // opt-out - and a check that silently skips is how this build already
         // manages to report SUCCESSFUL having verified nothing.
         if (!genScript.exists()) {
-            throw GradleException("Missing ${genScript.path} - watchface.xml is generated (see docs/authoring-strategy.md).")
+            throw GradleException("Missing ${genScript.path} - watchface.xml is generated (see docs/authoring.md).")
         }
         (!mockBackup.exists()).also {
             if (!it) logger.lifecycle("Skipping: a mock is in place (tools/mock-state.ts off to clear it).")

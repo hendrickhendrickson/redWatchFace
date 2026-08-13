@@ -2,7 +2,7 @@
  * Captures one screenshot per state into docs/states/, with fixed values.
  *
  *   node tools/capture-states.ts
- *   node tools/capture-states.ts --only=4-cold,4b-gloves
+ *   node tools/capture-states.ts --only=cold,gloves
  *   node tools/capture-states.ts --sheet-only
  *
  * HOW THE STATES ARE FORCED - and why this changed on 2026-08-04
@@ -20,8 +20,11 @@
  * takes care of itself. The cost is one BUILD PER STATE, about nine minutes
  * for the full set. Correctness is worth more than the time saved.
  *
- * --only re-captures a subset. It skips the orphan prune, the ambient shot
- * and the contact sheet, since all three are whole-set operations.
+ * --only re-captures a subset, BY STATE NAME rather than by file name - the
+ * digits in a file name exist to order docs/states/ in a file explorer, and
+ * nothing outside this directory should ever have to know them. It skips the
+ * orphan prune, the ambient shot and the contact sheet, since all three are
+ * whole-set operations.
  *
  * THE CONTACT SHEET HAS NO CAPTIONS. It used to draw a label under each
  * thumbnail via System.Drawing; the TypeScript rewrite uses sharp, which has
@@ -32,11 +35,7 @@
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import sharp from 'sharp';
-import {
-	numberedCaptures,
-	WEEKDAY_CAPTURES,
-	type NumberedCapture
-} from './gen/data/capture-states.ts';
+import { AMBIENT_FILE, numberedCaptures, type NumberedCapture } from './gen/data/capture-states.ts';
 import {
 	REPO,
 	adb,
@@ -81,15 +80,24 @@ if (sheetOnly && only !== undefined) {
 const dir = resolve(REPO, outDir);
 mkdirSync(dir, { recursive: true });
 
-const states: NumberedCapture[] = [...numberedCaptures(), ...WEEKDAY_CAPTURES];
-const expected = [...states.map((s) => `${s.file}.png`), '0-ambient.png', 'all-states.png'];
-const sheetOrder = ['0-ambient', ...states.map((s) => s.file)];
+const states: NumberedCapture[] = numberedCaptures();
+const expected = [...states.map((s) => `${s.file}.png`), `${AMBIENT_FILE}.png`, 'all-states.png'];
+const sheetOrder = [AMBIENT_FILE, ...states.map((s) => s.file)];
 
 // --- Contact sheet -------------------------------------------------------
 
 const CELL = 220;
 const PAD = 6;
 const BG = { r: 18, g: 18, b: 18 };
+
+/**
+ * Thumbnails per row. Five rather than three, because the sheet is 36 frames now
+ * and a 3-wide grid is twelve rows of a 426px-square face - taller than any
+ * screen it is read on, so the comparison the sheet exists for happens by
+ * scrolling and remembering. The frames it groups are 3, 4 and 7 long, so no
+ * width makes every group its own row; five keeps the whole sheet in one view.
+ */
+const COLS = 5;
 
 type Written = { path: string; file: string };
 
@@ -98,7 +106,7 @@ async function writeContactSheet(written: Written[], outPath: string): Promise<v
 	const ordered = [...written].sort(
 		(a, b) => (rank.get(a.file) ?? 999) - (rank.get(b.file) ?? 999)
 	);
-	const cols = Math.min(3, ordered.length);
+	const cols = Math.min(COLS, ordered.length);
 	const rows = Math.ceil(ordered.length / cols);
 	const overlays: { input: Buffer; left: number; top: number }[] = [];
 	for (const [i, entry] of ordered.entries()) {
@@ -126,9 +134,9 @@ async function writeContactSheet(written: Written[], outPath: string): Promise<v
 // sparse, easy to mistake for good), or a frame caught mid ambient crossfade.
 //
 // Thresholds are measured, not guessed. Across a full sweep:
-//     good states      bright 3.7-5.3%   lit 9-12%   sat 4.3-6.0%
-//     dimmed           bright 0.3%       lit 5.4%    sat 3.7%
-//     true ambient     bright 1.3%       lit 2.0%    sat 0.00%
+//     good states      bright 3.1-6.6%   lit 9.0-12.4%   sat 2.4-7.0%
+//     dimmed           bright 0.3%       lit 5.4%        sat 3.7%
+//     true ambient     bright 1.3%       lit 2.1%        sat 0.00%
 //
 // BRIGHT (fraction of pixels over luminance 200) is the sharp signal: a
 // `max >= 240` test let a half-brightness capture through, because the watch
@@ -138,6 +146,16 @@ async function writeContactSheet(written: Written[], outPath: string): Promise<v
 // channel, so saturation barely moves) - caught by comparing the hero's body
 // pixel: (122,40,34) dimmed vs (238,78,67) good, i.e. 51%. sat separates the
 // face (colourful) from ambient (strictly greyscale).
+//
+// SAT'S FLOOR WAS 0.035 AND REJECTED A PERFECTLY GOOD FRAME. `halloween` puts a
+// bone-white sheet over the reddest object on the screen and measures 0.024 -
+// below a floor calibrated when the least colourful state managed 0.043. It
+// retried four times, warned, and wrote the correct image anyway. The floor is
+// the ambient discriminator and ambient is STRICTLY greyscale at 0.000, so it
+// was never buying anything above 0.015; anything a costume can do to the
+// palette lands far above that and far below a greyscale screen. Widen this
+// again the same way - by measuring the whole sweep - rather than by nudging it
+// past whichever frame just failed.
 type FrameStats = { max: number; brightFraction: number; litFraction: number; satFraction: number };
 
 async function getFrameStats(path: string): Promise<FrameStats | null> {
@@ -187,7 +205,7 @@ async function getFrameStats(path: string): Promise<FrameStats | null> {
 // 0.013 - this asks "is the interactive face on screen", and ambient is not.
 async function testIsFace(path: string): Promise<boolean> {
 	const s = await getFrameStats(path);
-	return s !== null && s.brightFraction >= 0.02 && s.litFraction < 0.14 && s.satFraction > 0.035;
+	return s !== null && s.brightFraction >= 0.02 && s.litFraction < 0.14 && s.satFraction > 0.015;
 }
 
 async function testIsAmbient(path: string): Promise<boolean> {
@@ -198,7 +216,7 @@ async function testIsAmbient(path: string): Promise<boolean> {
 // --- Sheet-only: no device, no build, no mock. Reads what is already on disk. ---
 
 async function sheetOnlyRun(): Promise<never> {
-	const onDisk: { file: string }[] = [{ file: '0-ambient' }, ...states];
+	const onDisk: { file: string }[] = [{ file: AMBIENT_FILE }, ...states];
 	const written: Written[] = [];
 	for (const s of onDisk) {
 		const p = join(dir, `${s.file}.png`);
@@ -255,24 +273,31 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	let wantAmbient = false;
-	let onlyFiles = only;
-	if (onlyFiles !== undefined && onlyFiles.includes('0-ambient')) {
-		wantAmbient = true;
-		onlyFiles = onlyFiles.filter((f) => f !== '0-ambient');
-	}
+	// --only TAKES THE STATE NAME - `gloves`, not `05-gloves`. The number in a file
+	// name orders docs/states/ in a file explorer and does nothing else, so it must
+	// never be what a person or a doc has to type: it is recalculated on every full
+	// sweep, so any reference to it goes stale silently. cycle-states.ts has always
+	// taken state names; this is the same vocabulary. The numbered form is still
+	// accepted, but it is the current number, not the one you last saw.
+	const isAmbient = (t: string): boolean => t === 'ambient' || t === AMBIENT_FILE;
+	const wantAmbient = only !== undefined && only.some(isAmbient);
+	const wanted = only?.filter((t) => !isAmbient(t));
+
 	let partial = false;
 	let activeStates = states;
-	if (onlyFiles !== undefined || wantAmbient) {
-		const filterSet = onlyFiles ?? [];
-		activeStates = states.filter((s) => filterSet.includes(s.file));
-		if (activeStates.length === 0 && !wantAmbient) {
+	if (wanted !== undefined) {
+		// Per-token, not "did anything match": one typo in a list of three used to
+		// capture the other two and report success.
+		const unknown = wanted.filter((t) => !states.some((s) => s.mock === t || s.file === t));
+		if (unknown.length > 0) {
 			die(
-				`--only matched no states. Valid: ${expected.filter((e) => e !== 'all-states.png').join(', ')}`
+				`--only: no such state ${unknown.join(', ')}. ` +
+					`Valid: ambient, ${states.map((s) => s.mock).join(', ')}`
 			);
 		}
+		activeStates = states.filter((s) => wanted.includes(s.mock) || wanted.includes(s.file));
 		partial = true;
-		const names = [...activeStates.map((s) => s.file), ...(wantAmbient ? ['0-ambient'] : [])];
+		const names = [...activeStates.map((s) => s.mock), ...(wantAmbient ? ['ambient'] : [])];
 		console.log(`  partial run: ${names.join(', ')}`);
 	}
 
@@ -315,7 +340,7 @@ async function main(): Promise<void> {
 
 	// Ambient. A display mode rather than a data state, so it uses the base
 	// values and its own timeout dance. Reachable on its own with
-	// --only=0-ambient, which matters because it is the one snapshot that can
+	// --only=ambient, which matters because it is the one snapshot that can
 	// regress from a change to the clock mock without any other state moving.
 	if (!partial || wantAmbient) {
 		try {
@@ -323,7 +348,7 @@ async function main(): Promise<void> {
 			installMockedState('ambient');
 			w = findWatch();
 			if (w !== null) {
-				const local = join(dir, '0-ambient.png');
+				const local = join(dir, `${AMBIENT_FILE}.png`);
 				const remote = '/data/local/tmp/wf_ambient.png';
 				// ENTER_AMBIENT does not work: the broadcast is accepted but the
 				// display will not dim a screen that was just woken. Shorten the
@@ -344,8 +369,8 @@ async function main(): Promise<void> {
 					wake(w);
 				}
 				if (existsSync(local)) {
-					written.push({ path: local, file: '0-ambient' });
-					console.log(`  wrote ${outDir}/0-ambient.png  (ambient)`);
+					written.push({ path: local, file: AMBIENT_FILE });
+					console.log(`  wrote ${outDir}/${AMBIENT_FILE}.png  (ambient)`);
 					if (!got) {
 						console.warn('  ambient shot may not be settled AOD');
 					}

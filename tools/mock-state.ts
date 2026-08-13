@@ -55,8 +55,10 @@ const face = resolve(repo, 'watchface/src/main/res/raw/watchface.xml');
 // Under build/ because aapt rejects a resource filename containing a dot.
 const backup = resolve(repo, 'watchface/build/mock-state-backup.xml');
 
-// Partial: keyed by source name, and `values['DAY']` is a lookup that can miss.
-type Values = Partial<Record<string, number | string>>;
+// Partial: keyed by source name, and `values['DAY']` is a lookup that can miss. `boolean` is here
+// only for StateDelta's `ambient` flag - a display-only bit like `time`/`weekday`, never a source
+// token, so it is excluded from substitution the same way those two are (see `substitutable` below).
+type Values = Partial<Record<string, number | string | boolean>>;
 
 /**
  * Templates that cannot become numeric literals.
@@ -92,10 +94,10 @@ const CLOCK_RE = /<DigitalClock\b[\s\S]*?<\/DigitalClock>/;
  *
  * The first version collapsed the clock to a single bold cream PartText, which
  * is what interactive looks like - and made every ambient snapshot a lie,
- * because ambient is a LIGHTER weight in plain white. `0-ambient.png` shipped
- * with the wrong font weight and was reported as a bug in the watch face rather
- * than in this file. So the two-copy crossfade is mirrored here exactly, Variant
- * timings included.
+ * because ambient is a LIGHTER weight in plain white. The ambient snapshot
+ * shipped with the wrong font weight and was reported as a bug in the watch face
+ * rather than in this file. So the two-copy crossfade is mirrored here exactly,
+ * Variant timings included.
  */
 const clockMock = (values: Values): string =>
 	`<Group name="mock_time_interactive" x="0" y="0" width="450" height="450" alpha="255">
@@ -246,7 +248,7 @@ if (xml.includes('DAY_OF_WEEK_S')) {
 //    Longest name first so no token is a prefix of another.
 const kept = new Set<string>(live ? LIVE_SOURCES : []);
 const substitutable = objectKeys(values)
-	.filter((key) => key !== 'time' && key !== 'weekday' && !kept.has(key))
+	.filter((key) => key !== 'time' && key !== 'weekday' && key !== 'ambient' && !kept.has(key))
 	.sort((a, b) => b.length - a.length);
 for (const key of substitutable) {
 	xml = xml.split(`[${key}]`).join(String(values[key]));

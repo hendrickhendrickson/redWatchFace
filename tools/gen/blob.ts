@@ -14,11 +14,21 @@
 
 import { el, type Node } from './xml.ts';
 import { C, mouth, type Hex, type Weekday } from './palette.ts';
-import { grow, group, heartRamp, secondPhase, tilt, triangleAlpha } from './expr.ts';
+import {
+	grow,
+	heartRamp,
+	heartStaircase,
+	phaseAt,
+	secondPhase,
+	tilt,
+	triangleAlpha,
+	triangleAt
+} from './expr.ts';
 import * as G from './geometry.ts';
 import { T } from './states.ts';
 import {
 	DRIP_RAMP_SPAN,
+	DRIP_RATE,
 	type DripFigure,
 	type Leaf,
 	type Limb,
@@ -148,9 +158,20 @@ export const glovePart = (box: G.Box, name: string, hands: readonly Limb[]): Nod
 
 // --- The leaf tuft ----------------------------------------------------------
 
-/** One leaf, rotated about the centre of the shared tuft box. */
-export const leafPart = (box: G.Box, leaf: Leaf): Node =>
-	el('PartDraw', { ...box, name: leaf.name, pivotX: 0.5, pivotY: 0.5, angle: leaf.angle }, [
+/**
+ * One leaf, rotated about a point in the shared tuft box.
+ *
+ * THE PIVOT IS A FRACTION of the box, which is the form WFF's pivotX/pivotY take.
+ * It defaults to the box's centre because that is where both ordinary tufts have
+ * always swung; the weed fans pass the crown of the body instead, so their blades
+ * radiate from the top of the head rather than from a point inside it.
+ */
+export const leafPart = (
+	box: G.Box,
+	leaf: Leaf,
+	pivot: { x: number; y: number } = { x: 0.5, y: 0.5 }
+): Node =>
+	el('PartDraw', { ...box, name: leaf.name, pivotX: pivot.x, pivotY: pivot.y, angle: leaf.angle }, [
 		el('Ellipse', { ...leaf.blade }, [el('Fill', { color: leaf.dark ? C.LEAF_DARK : C.GREEN })]),
 		...(leaf.vein
 			? [
@@ -168,36 +189,53 @@ export const leafPart = (box: G.Box, leaf: Leaf): Node =>
  *
  * The subset is indices into the figure's own table, so the middle bead has one
  * definition instead of appearing in both the "all three" and the "just one" block.
+ *
+ * A SLOW SHIMMER, NOT A FLAT FILL. Each band pops in and out with its own
+ * Condition - a real threshold, correctly a hard gate - but sitting there at a
+ * single flat alpha once visible read as a sticker rather than sweat. The same
+ * triangleAt()/secondPhase() curve the birthday candle flickers on, just slower
+ * and shallower: a light breathe between 200 and 255, not a flicker to zero.
  */
 export const beadPart = (
 	box: G.Box,
 	name: string,
 	figure: SweatFigure,
 	pick: readonly number[]
-): Node =>
-	el(
-		'PartDraw',
-		{ ...box, name },
-		pick.map((index) => {
-			// `at`, not `beads[index]`: the index comes from the caller's `pick` list, so nothing
-			// here guarantees it is in range - which is what the throw below is about. See
-			// /hhson-typescript on indexing.
-			const bead = figure.beads.at(index);
-			if (bead === undefined) {
-				throw new Error(`${name}: no bead ${index} in a table of ${figure.beads.length}`);
-			}
-			return el('Ellipse', { ...bead }, [el('Fill', { color: C.SWEAT })]);
-		})
-	);
+): Node => {
+	const beads = pick.map((index) => {
+		// `at`, not `beads[index]`: the index comes from the caller's `pick` list, so nothing
+		// here guarantees it is in range - which is what the throw below is about. See
+		// /hhson-typescript on indexing.
+		const bead = figure.beads.at(index);
+		if (bead === undefined) {
+			throw new Error(`${name}: no bead ${index} in a table of ${figure.beads.length}`);
+		}
+		return el('Ellipse', { ...bead }, [el('Fill', { color: C.SWEAT })]);
+	});
+	return el('Group', { name: `${name}_shimmer`, ...box, alpha: 255 }, [
+		el('Transform', { target: 'alpha', value: grow(200, 55, triangleAt(secondPhase(4))) }),
+		el('PartDraw', { ...G.at(box.width, box.height), name }, beads)
+	]);
+};
 
 /**
- * The two drip groups, sliding down the cheeks a second out of phase.
+ * The two drip groups, sliding down the cheeks half a cycle out of phase.
  *
  * FOUR HAND-WRITTEN EXPRESSIONS PER BLOB became four compositions. Each was a
  * single attribute several hundred characters long, restating the whole-second
  * sawtooth four times inside itself and burying the numbers 4, 6, 100, 2, 255, 3,
  * 140 and 20 where no reader would find them - and the same eight again in the
  * hero with 12 and 18 instead. expr.ts had every one of those idioms already.
+ *
+ * TWO THINGS NOW ANSWER THE HEART RATE, not one. How far a bead slides is the
+ * ramp this always had; how often one runs is DRIP_RATE, a staircase from a seep
+ * every five seconds at 100bpm to one every 1.7 at 200. Rate is what actually
+ * reads as effort - the fall alone changed a 12px streak into a 30px streak and
+ * looked much the same at either end.
+ *
+ * OFF THE WHOLE-SECOND SAWTOOTH, therefore: secondPhase()'s period is baked into
+ * a `%`, so it cannot be a live value. phaseAt() is the fract() form the rain
+ * uses, with the rate as an expression.
  *
  * THE SECOND DRIP CARRIES AN EXTRA GATE so it fades in late, bracketing the
  * all-three-beads threshold: a warm but resting wearer gets one trickle, not two.
@@ -208,6 +246,7 @@ export const dripGroups = (box: G.Box, prefix: string, drip: DripFigure): Node[]
 		drip.fallExtra,
 		heartRamp(T.PUFFED_BPM, T.PUFFED_BPM + DRIP_RAMP_SPAN)
 	);
+	const rate = heartStaircase(DRIP_RATE.base, DRIP_RATE.treads);
 	const beads = (name: string) =>
 		el(
 			'PartDraw',
@@ -216,7 +255,10 @@ export const dripGroups = (box: G.Box, prefix: string, drip: DripFigure): Node[]
 		);
 
 	return ['a', 'b'].map((tag, index) => {
-		const phase = group(secondPhase(2, index));
+		// Half a CYCLE apart, not the fixed one second it used to be - the two
+		// drips have to stay evenly spaced as the rate changes, or they converge
+		// into one at speed.
+		const phase = phaseAt(rate, index * 0.5);
 		const alpha =
 			index === 0
 				? triangleAlpha(phase)

@@ -26,6 +26,7 @@ export type Source =
 	| 'MINUTE'
 	| 'HOUR_0_23'
 	| 'DAY'
+	| 'MONTH'
 	| 'DAY_OF_WEEK'
 	| 'DAY_OF_WEEK_S'
 	| 'HEART_RATE'
@@ -122,6 +123,11 @@ export const group = (expr: Expr): Expr => `(${expr})` as Expr;
 export const ramp = (v: Expr, lo: number, hi: number): Expr =>
 	`clamp((${v} - ${n(lo)}) / ${n(hi - lo)}, 0, 1)` as Expr;
 
+/** WFF's own clamp(), for composing an expression that needs one directly rather
+ *  than through ramp()'s specific 0..1 shape. */
+export const clamp = (v: Expr, lo: number, hi: number): Expr =>
+	`clamp(${v}, ${n(lo)}, ${n(hi)})` as Expr;
+
 /** The precipitation ramp. ONE binding for what was 73 verbatim copies. */
 export const PRECIP = ramp(src('WEATHER.CHANCE_OF_PRECIPITATION'), 50, 100);
 
@@ -131,6 +137,37 @@ export const precipGate = (from: number): Expr =>
 
 /** Sweat intensity, from the resting band up to a hard effort. */
 export const heartRamp = (lo: number, hi: number): Expr => ramp(src('HEART_RATE'), lo, hi);
+
+/**
+ * A STEP rather than a ramp: 0 below `bpm`, 1 at or above it.
+ *
+ * A ONE-BPM-WIDE RAMP, not a comparison, because this has to compose into
+ * arithmetic - Conditions cannot be referenced from an expression. HEART_RATE is
+ * reported in whole bpm, so no reading ever lands strictly inside the one-wide
+ * window and the result is exactly 0 or exactly 1 in practice; a fractional
+ * reading would only blend, which is the behaviour ramp() exists for anyway.
+ */
+export const heartStep = (bpm: number): Expr => heartRamp(bpm - 1, bpm);
+
+/** One tread of a heartStaircase: `add` joins the total from `bpm` upward. */
+export type HeartTread = { bpm: number; add: number };
+
+/**
+ * A STAIRCASE in the heart rate: `base`, plus each tread once the pulse reaches it.
+ *
+ * The drip rate is the reason this exists. A rate cannot simply be ramp()'d,
+ * because SECOND_MILLISECOND wraps 59.999 -> 0 and a fract() phase only survives
+ * that wrap when `60 * rate` is a whole number (docs/capabilities.md). A
+ * continuous rate is a whole number at almost no point on its range, so it would
+ * snap a falling bead back to the top once a minute. Discrete treads, each
+ * chosen to divide the minute, hold that invariant at every reachable rate - and
+ * the only discontinuity left is when the pulse itself crosses a tread, which
+ * happens rarely and moves the bead once rather than every 60 seconds.
+ */
+export const heartStaircase = (base: number, treads: readonly HeartTread[]): Expr =>
+	[n(base), ...treads.map((tread) => `${n(tread.add)} * ${heartStep(tread.bpm)}`)].join(
+		' + '
+	) as Expr;
 
 // --- Phase ------------------------------------------------------------------
 
@@ -143,6 +180,18 @@ export const heartRamp = (lo: number, hi: number): Expr => ramp(src('HEART_RATE'
  */
 export const phase = (hz: number, offset: number): Expr =>
 	`fract([SECOND_MILLISECOND] * ${n(hz)} + ${n(offset)})` as Expr;
+
+/**
+ * The same sawtooth with a LIVE rate - an expression rather than a constant.
+ *
+ * The parentheses around `rate` are load-bearing: the rate is a sum, and
+ * `[SECOND_MILLISECOND] * a + b` would multiply the first term only.
+ *
+ * Whatever produces the rate still owes the 60x-whole-number invariant that
+ * phase() gets for free from a hand-picked constant - see heartStaircase.
+ */
+export const phaseAt = (rate: Expr, offset: number): Expr =>
+	`fract([SECOND_MILLISECOND] * ${group(rate)}${offset ? ` + ${n(offset)}` : ''})` as Expr;
 
 /**
  * The OLD whole-second sawtooth, 0..1 over `n` seconds.
@@ -197,7 +246,23 @@ export const drift = (amount: number, by: Expr): Expr => `0 - ${n(amount)} * ${b
  * arc. Two shapes, two names, and the reason written down; folding them together
  * with a parameter would hide the one thing that distinguishes them.
  */
-export const driftAlpha = (p: Expr): Expr => `255 * (2 * ${p} - clamp(4 * ${p} - 2, 0, 2))` as Expr;
+export const driftAlpha = (p: Expr): Expr => `255 * (${triangleAt(p)})` as Expr;
+
+/**
+ * The SAME CURVE as driftAlpha, without the 255. A 0..1 triangle peaking at the
+ * midpoint of the phase.
+ *
+ * Extracted so a caller composing its own range - the candle and cake flickers
+ * pass it through grow() rather than driftAlpha's fixed 0..255 - can reuse the
+ * curve without a round trip through the wrong units first.
+ *
+ * driftAlpha is now this times 255, and emits the byte-identical string it always
+ * did - which is the only reason this could be extracted from under a shipped
+ * expression at all.
+ */
+export function triangleAt(p: Expr): Expr {
+	return `2 * ${p} - clamp(4 * ${p} - 2, 0, 2)` as Expr;
+}
 
 // --- Gyro -------------------------------------------------------------------
 

@@ -40,14 +40,21 @@
 
 import { el, type Node } from '../xml.ts';
 import { C } from '../palette.ts';
+import { saberPart } from './saber.ts';
 import * as G from '../geometry.ts';
 import { AMBIENT_HIDE } from '../crossfade.ts';
 import { switchOn } from '../condition.ts';
-import { HOT_AND_SUNNY } from '../states.ts';
+import { BIRTHDAY, FORCE, HOT_AND_SUNNY, LABOUR_DAY } from '../states.ts';
 import { WEDNESDAY_MEETING, FRIDAY_GAME_ICON } from '../meetings.ts';
-import { triangleAlpha, secondPhase } from '../expr.ts';
+import { drift, driftAlpha, grow, group, secondPhase, triangleAlpha, triangleAt } from '../expr.ts';
 import { heroGyro } from '../blob.ts';
 import {
+	CAKE,
+	CAKE_BOX,
+	CAKE_CANDLE,
+	CAKE_CASE,
+	CAKE_FROSTING,
+	CAKE_PLEATS,
 	COCKTAIL,
 	COCKTAIL_BOX,
 	COCKTAIL_GLASS,
@@ -58,10 +65,19 @@ import {
 	CUP_BOX,
 	CUP_SHAPES,
 	DIAMOND,
+	FLAME_BOX,
+	FLAME_INNER,
+	FLAME_OUTER,
+	HAMMER,
+	HAMMER_BOX,
+	HAMMER_FACE,
+	HAMMER_HEAD,
+	HAMMER_SHAFT,
 	HANDLE,
 	HANDLE_ARC,
 	PULSE_BOX,
 	PULSE_BUTTON,
+	SABER,
 	STEAM,
 	STEAM_SEGMENTS,
 	type Seg
@@ -69,8 +85,14 @@ import {
 
 const fill = (colour: string) => [el('Fill', { color: colour })];
 
-const stroke = (segment: Seg, colour: string, thickness: number): Node =>
-	el('Line', { ...segment }, [el('Stroke', { color: colour, thickness, cap: 'ROUND' })]);
+const stroke = (
+	segment: Seg,
+	colour: string,
+	thickness: number,
+	// BUTT ends the stroke flat ON its endpoint. The hammer's head needs it: a round
+	// cap on a 7.5px stroke rounds the striking face off by nearly four pixels.
+	cap: 'ROUND' | 'BUTT' = 'ROUND'
+): Node => el('Line', { ...segment }, [el('Stroke', { color: colour, thickness, cap })]);
 
 /**
  * The Wednesday coffee cup.
@@ -106,10 +128,30 @@ const coffee = (): Node[] => [
 		el('Ellipse', { ...CUP_SHAPES.base }, fill(C.WHITE)),
 		el('Rectangle', { ...CUP_SHAPES.body }, fill(C.WHITE)),
 		el('Ellipse', { ...CUP_SHAPES.rim }, fill(C.WHITE)),
-		el('Ellipse', { ...CUP_SHAPES.coffee }, fill(C.COFFEE)),
-		...STEAM_SEGMENTS.map((segment) => stroke(segment, C.STEAM, STEAM.thickness))
-	])
+		el('Ellipse', { ...CUP_SHAPES.coffee }, fill(C.COFFEE))
+	]),
+	steam()
 ];
+
+/**
+ * The steam, drifting up and fading - the same drift()/driftAlpha() idiom the
+ * sleep z's use, on STEAM.period's short loop so it reads as a light simmer
+ * rather than a gust. A SEPARATE Group from the cup, sharing its box: the wisps
+ * are the only part of the cup that moves, and a Group carrying a Transform
+ * needs an integer box exactly like the cup's own - which CUP_BOX already is.
+ */
+const steam = (): Node => {
+	const p = group(secondPhase(STEAM.period));
+	return el('Group', { name: 'hero_coffee_steam', ...CUP_BOX, alpha: 255 }, [
+		el('Transform', { target: 'y', value: drift(STEAM.rise, p) }),
+		el('Transform', { target: 'alpha', value: driftAlpha(p) }),
+		el(
+			'PartDraw',
+			{ ...G.at(CUP_BOX.width, CUP_BOX.height), name: 'hero_coffee_steam_wisps' },
+			STEAM_SEGMENTS.map((segment) => stroke(segment, C.STEAM, STEAM.thickness))
+		)
+	]);
+};
 
 /**
  * The Friday game controller. Layout traced off a photograph of the real thing,
@@ -179,8 +221,92 @@ const cocktail = (): Node[] => [
 	])
 ];
 
+/**
+ * The 1 May hammer, swung up and to the left: a shaft, a head across it, and a
+ * darker striking face at the blunt end.
+ *
+ * SHAFT FIRST, HEAD OVER IT. The shaft runs the full length of the tool and the
+ * head covers where the two meet, so the joint needs no separate treatment - the
+ * same order the coffee cup stacks its rim over its body in.
+ *
+ * EVERY PIECE IS A STROKE, INCLUDING THE HEAD. A thick Line with BUTT caps is a
+ * rectangle at any angle, which is what lets a leaning hammer be drawn without a
+ * rotated PartDraw - and the head's three narrowing steps are what give its right
+ * end a point, since no stroke in WFF can taper along its own length. BUTT and not
+ * ROUND: a round cap on a 7.5px stroke would round the striking face off by nearly
+ * four pixels and turn the blunt end into a ball.
+ *
+ * The companion carries the sickle; see face/companion-props.ts, which exists
+ * because of this pairing.
+ */
+const hammer = (): Node[] => [
+	el('PartDraw', { name: 'hero_hammer', ...HAMMER_BOX }, [
+		stroke(HAMMER_SHAFT, C.WOOD, HAMMER.shaft.thickness),
+		...HAMMER_HEAD.map((step) => stroke(step.seg, C.STEEL, step.thickness, 'BUTT')),
+		stroke(HAMMER_FACE.seg, C.STEEL_DARK, HAMMER_FACE.thickness, 'BUTT')
+	])
+];
+
+/**
+ * ONE FIST, FIVE THINGS THAT WANT IT, AND THE ORDER IS THE ANSWER.
+ *
+ * THE CELEBRATION IS LISTED FIRST. 1 May is a whole day and the Wednesday standup
+ * is fifteen minutes of it, so when the two collide the hammer wins - which is
+ * both what a reader expects and the only way to say it without a negation: the
+ * cup's own Compare already means "Wednesday 10:30 AND NOT a public holiday" for
+ * free, exactly as it has always meant "and not the cocktail".
+ */
+/**
+ * The birthday cupcake, with one candle burning.
+ *
+ * THE FLAME IS A SECOND GROUP because it is the only part that moves. A Group's
+ * x/y must be integers, so its half-pixel offset lives on the ellipses inside -
+ * the split the controller's pulsing A button already makes, and derived from one
+ * centre in data/props.ts so the two halves cannot drift apart.
+ *
+ * IT FLICKERS BETWEEN 160 AND 255, NOT 0 AND 255. triangleAlpha - the idiom the
+ * rain drops and the controller button use - reaches zero at both ends of its
+ * phase, which is right for something that should vanish and reappear and wrong
+ * for a flame: a candle that goes fully out twice a second reads as broken, not as
+ * lit. A floor also makes the frozen capture clock a non-issue, and data/props.ts
+ * asserts the alpha at that exact instant rather than trusting the reasoning.
+ */
+const cupcake = (): Node[] => [
+	el('PartDraw', { name: 'hero_cupcake', ...CAKE_BOX }, [
+		el('RoundRectangle', { ...CAKE_CASE }, fill(C.SCARF)),
+		...CAKE_PLEATS.map((pleat) => el('Rectangle', { ...pleat }, fill(C.SCARF_DARK))),
+		// Bottom tier first, so each one above overlaps the one below and the swirl
+		// has no seam. Alternating shade is what gives three flat ellipses depth.
+		...CAKE_FROSTING.map((tier, i) =>
+			el('Ellipse', { ...tier }, fill(i % 2 === 0 ? C.FROSTING_DARK : C.FROSTING))
+		),
+		el('Rectangle', { ...CAKE_CANDLE }, fill(C.CREAM))
+	]),
+	el('Group', { name: 'hero_cupcake_flame', ...FLAME_BOX, alpha: 255 }, [
+		el('Transform', {
+			target: 'alpha',
+			value: grow(
+				CAKE.flicker.floor,
+				255 - CAKE.flicker.floor,
+				triangleAt(secondPhase(CAKE.flicker.period))
+			)
+		}),
+		el('PartDraw', { ...G.at(FLAME_BOX.width, FLAME_BOX.height), name: 'hero_cupcake_wick' }, [
+			el('Ellipse', { ...FLAME_OUTER }, fill(C.SUN)),
+			el('Ellipse', { ...FLAME_INNER }, fill(C.CREAM))
+		])
+	])
+];
+
+/** The 4 May lightsaber, blue. The companion draws the same shape in green - see
+ *  face/saber.ts, which owns the six strokes both of them share. */
+const lightsaber = (): Node[] => [saberPart('hero_lightsaber', SABER, C.SABER)];
+
 export const heroProps = (): Node =>
 	switchOn([
+		{ name: 'hero_cake', when: BIRTHDAY, then: cupcake() },
+		{ name: 'hero_saber', when: FORCE, then: lightsaber() },
+		{ name: 'hero_hammer', when: LABOUR_DAY, then: hammer() },
 		{ name: 'hero_coffee', when: WEDNESDAY_MEETING, then: coffee() },
 		{ name: 'hero_controller', when: FRIDAY_GAME_ICON, then: controller() },
 		{ name: 'hero_drink', when: HOT_AND_SUNNY, then: cocktail() }

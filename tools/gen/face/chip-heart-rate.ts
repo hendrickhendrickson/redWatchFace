@@ -19,6 +19,7 @@ import { AMBIENT_HIDE } from '../crossfade.ts';
 import { whenElse } from '../condition.ts';
 import { HEART_RATE_VALID } from '../states.ts';
 import { chipValue } from '../chip.ts';
+import { launch } from '../launch.ts';
 import {
 	HEART_LOBES,
 	HEART_LOBES_BOX,
@@ -33,6 +34,9 @@ const coral = [el('Fill', { color: C.CORAL })];
 export const chipHeartRate = (): Node =>
 	el('Group', { name: 'chip_heart_rate', ...CHIP, alpha: 255 }, [
 		el('Variant', AMBIENT_HIDE),
+		// The chip's own 70x36 box is the tap region - icon and number both, which is
+		// the whole reason this sits on the group rather than on either part.
+		launch('HEALTH_HEART_RATE'),
 		el('PartDraw', { name: 'hr_icon_lobes', ...HEART_LOBES_BOX }, [
 			...HEART_LOBES.map((l) => el('Ellipse', { ...l }, coral))
 		]),

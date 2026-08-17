@@ -12,10 +12,15 @@ success.
 ## The commands
 
 ```powershell
-./gradlew :watchface:assembleDebug
-./gradlew :watchface:installDebug
-./gradlew :watchface:validateWatchFaceXml     # -> PASSED against version #5
-./gradlew :watchface:checkMemoryFootprint     # -> PASS
+npm run build          # :watchface:assembleDebug
+npm run validate       # :watchface:validateWatchFaceXml  -> PASSED against version #5
+npm run footprint      # :watchface:checkMemoryFootprint  -> PASS
+npm run release        # signed APK for someone else's watch; needs keystore.properties
+npm run devices        # which watch, reconnecting over mDNS if none is attached
+npm run deploy         # build + install, md5-verified against the APK just built
+npm run deploy:fresh   # uninstall first, for the per-machine signature mismatch
+npm run activate       # make this face the active one
+npm run preview:png    # re-shoot res/drawable/preview.png, byte-verified
 
 node tools/capture-states.ts                  # photograph every state into docs/states/
 node tools/capture-states.ts --only=cold,gloves
@@ -23,6 +28,11 @@ node tools/cycle-states.ts                    # show every state on the wrist, l
 node tools/cycle-states.ts --restore          # recover after a hard kill
 node tools/mock-state.ts on <state> | off | status | list
 ```
+
+**Do not hand-assemble a `gradlew` or `adb` line.** The scripts wrap `tools/device-cli.ts`, which
+defaults `JAVA_HOME` to JDK 21 and resolves the watch itself — so `ANDROID_SERIAL` needs no pinning
+and a running emulator is never the target, which bare `installDebug` cannot promise. The three
+tools that take arguments stay direct, since npm would need a `--` in the middle of each.
 
 **Always name a state, never a number.** Every tool takes the state name — `gloves`, `wedcoffee` —
 and `node tools/mock-state.ts list` prints the full set. The digits in `docs/states/05-gloves.png`

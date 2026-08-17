@@ -10,6 +10,51 @@ open work is in [TODO.md](TODO.md).
 
 ## Unreleased
 
+### The face can be given to someone else
+
+- **`npm run release` builds a signed APK**, off a key in a gitignored `keystore.properties`
+  (`keystore.properties.example` is the template). Everything before this was signed with
+  `~/.android/debug.keystore`, which is generated per machine — the reason a second machine cannot
+  update this watch's install, and a wall that would have landed permanently on anyone given the
+  face the first time that keystore was regenerated. Missing credentials **fail** the release build
+  rather than emitting an unsigned APK no watch will install, and a missing individual key is named,
+  because AGP's own message is `path may not be null or empty string`.
+- **A UTF-8 BOM in `keystore.properties` is stripped, not diagnosed.** `Properties.load(InputStream)`
+  is ISO-8859-1, so a BOM — which most Windows editors add unasked — swallows the first key and
+  produces exactly that unreadable error. Found by writing the file with `Out-File`, which is the
+  way anyone on this platform would create it.
+- **`minSdk` is 37, up from 36, and `targetSdk` with it.** 36 was never right: it is the level WFF
+  needs to _install_, not the level v5 needs to _render_. A v5 face on Wear OS 6 installs and then
+  draws nothing, and neither jar-gated check can see it, because the v4 XSD lists the v5
+  enumerations. The manifest already carried this as a known hazard; it is now enforced. `targetSdk`
+  37 sits above `compileSdk` 36, which AGP 8.10.1 accepts silently where the mismatch warned on
+  every build.
+- Distribution reality is written down in [docs/device.md](docs/device.md): there is no non-debugging
+  path onto another Wear OS 7 watch. Play needs an account, Watch Face Push is allowlist-only, and
+  the phone-embedded-APK route died with Wear OS 2.
+
+### Every command is an npm script, Gradle and adb included
+
+- **`npm run` is now the index.** The invocations were written out in six places — `README.md` three
+  times, `docs/authoring.md`, `docs/device.md` and both skills — and had drifted: the README's
+  `--only=night` example named a state deleted when night split into `nighthalf` / `nightfull` /
+  `nightnew`, so a copied line aborted the run. Anything with a fixed invocation is a script now, and
+  running it is what keeps it right.
+- **`tools/device-cli.ts` is the front door to `tools/device.ts`**, not a second implementation of
+  it: `devices`, `activate`, `install`, `uninstall`, `shot` and a `gradle` passthrough, all reusing
+  the orchestration `capture-states.ts` and `cycle-states.ts` already share. So every script resolves
+  the watch through `findWatch()` — `ANDROID_SERIAL` needs no pinning and an attached emulator is
+  never the target — and defaults `JAVA_HOME` to JDK 21. `runGradleInstall()` is now a one-line case
+  of a general `runGradle()`.
+- **`./gradlew` cannot be an npm script on Windows.** npm's `script-shell` is unset, so scripts run
+  under `cmd.exe`, where a leading `./` gives `'.' is not recognized`. Routing through the CLI avoids
+  the question rather than answering it per-shell.
+- **`npm run deploy`, not `install`.** A script named `install` would be run by npm's own lifecycle
+  on every `npm install`. `deploy:fresh` is the uninstall-first form for the signature mismatch a
+  second machine hits.
+- The three tools taking arguments — `mock-state`, `capture-states`, `cycle-states` — stay direct
+  `node` calls. Wrapping them would put a `--` in the middle of every invocation and hide `--set=`.
+
 ### The moon gets a RadialGradient and two craters
 
 - **The lit disc is shaded, not flat-filled.** A `RadialGradient` — in the v5 schema since the

@@ -18,10 +18,11 @@ sharp at any resolution and costs essentially nothing against the memory budget.
 </p>
 
 > [!IMPORTANT]
-> **v5 means Wear OS 7 in practice.** `minSdk` is still 36, so a Wear OS 6 watch will happily
-> install this and then fail to render. The format had to go to v5 because `[WEATHER.*]` never
-> publishes at v4. If this ever goes to anyone else, raise `minSdk` to 37 — which also means
-> `compileSdk`/`targetSdk` 37 and a higher AGP pin.
+> **v5 means Wear OS 7, and `minSdk` now says so.** The format had to go to v5 because `[WEATHER.*]`
+> never publishes at v4, and a v5 face on Wear OS 6 installs happily and then fails to render.
+> `minSdk`/`targetSdk` are therefore 37; `compileSdk` stays 36, since there is no code to compile
+> and raising it needs a higher AGP pin. An **API 36 emulator can no longer install the APK** —
+> see [docs/device.md](docs/device.md).
 
 ## Contents
 
@@ -33,6 +34,7 @@ sharp at any resolution and costs essentially nothing against the memory budget.
 - [How the blobs are drawn](#how-the-blobs-are-drawn)
 - [watchface.xml is generated](#watchfacexml-is-generated)
 - [The preview app](#the-preview-app)
+- [Commands](#commands)
 - [Verifying a build](#verifying-a-build)
 - [Constraints worth knowing up front](#constraints-worth-knowing-up-front)
 - [Documentation](#documentation)
@@ -48,16 +50,13 @@ Android Studio is optional; the CLI toolchain alone gives a green build.
 git submodule update --init          # hhson-lib: shared rules + utils
 npm ci                               # links hhson-lib, symlinks its skills, installs the toolchain
 npm run verify                       # typecheck + lint + test + selftest + diff + check
-./gradlew :watchface:installDebug
+npm run deploy                       # build, install, and md5-verify it reached the watch
+npm run activate                     # make it the active face, without touching the watch
 ```
 
-Then make it the active face without touching the watch:
-
-```powershell
-adb shell am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE `
-  --es operation set-watchface `
-  --es watchFaceId de.redplant.watchface.blob
-```
+`npm run` is the index for everything below, the Gradle and `adb` commands included — see
+[Commands](#commands). `npm run deploy` finds the watch itself, so `ANDROID_SERIAL` never needs
+setting and a running emulator is never the target.
 
 The full setup — the headless no-admin recipe, wireless `adb` pairing, and the traps in both — is in
 **[docs/device.md](docs/device.md)**. The Gradle wrapper is committed (`gradlew`, `gradlew.bat`,
@@ -291,7 +290,7 @@ about.
 node tools/capture-states.ts                     # photograph every state into docs/states/
 node tools/capture-states.ts --only=gloves       # one; follow with --sheet-only
 node tools/cycle-states.ts                       # show them on the wrist, looping
-node tools/cycle-states.ts --only=rainy,thunderstorm,night
+node tools/cycle-states.ts --only=rainy,thunderstorm,nightfull
 
 # any point BETWEEN the named states — rain and sweat are ramps, not switches
 node tools/mock-state.ts on sweating --set=HEART_RATE=150 --live
@@ -426,13 +425,8 @@ Worth knowing before editing them, because WFF has **no `<Path>` element**:
 Edit the TypeScript, then regenerate — a hand edit to the XML survives until the next build and then
 vanishes.
 
-```bash
-npm run gen                         # regenerate watchface.xml
-npm run verify                      # the whole gate
-npm run diff                        # prove it still renders the same as the baseline
-npm run selftest                    # prove the differ can still fail
-node tools/gen/build.ts --equiv "<a>" "<b>"   # do two expressions agree over the grid?
-```
+`npm run gen` regenerates it and `npm run verify` is the gate — the full list is in
+[Commands](#commands).
 
 **The gate is a semantic differ, not a byte comparison.** `tools/gen/model.ts` compares draw order,
 tags, attributes and text against the committed baseline `tools/gen/face.model.json`, normalising
@@ -485,12 +479,50 @@ browser instead of costing a Gradle build, an install, a broadcast and a wake.
 ```bash
 cd tools/preview && npm install     # once, isolated from the root package.json
 npm run preview                     # the authoring loop
-npm run preview:check               # prove the preview animates, clamps, clips and crossfades
-node tools/gen/build.ts --svg       # the same renderer, straight to a file
 ```
 
 It is **not pixel truth** — text metrics belong to the device, the easing curves are approximated,
 and its scale is a fourth geometry alongside 450 / 426 / 454. The wrist stays the arbiter.
+
+## Commands
+
+Everything with a fixed invocation is an `npm` script, the Gradle and `adb` ones included, so there
+is one copy of each and running it is what keeps it right. `npm run` lists them.
+
+| command                 | does                                                                 |
+| ----------------------- | -------------------------------------------------------------------- |
+| `npm run gen`           | regenerate `watchface.xml` from `tools/gen/`                         |
+| `npm run diff`          | semantic model vs the committed `face.model.json` — must be empty    |
+| `npm run check`         | committed XML vs what the generator emits, byte for byte             |
+| `npm run selftest`      | prove the differ can still fail                                      |
+| `npm run snapshot`      | accept an _intended_ rendering change as the new baseline            |
+| `npm run verify`        | typecheck + lint + test + selftest + diff + check                    |
+| `npm run build`         | `:watchface:assembleDebug`                                           |
+| `npm run validate`      | `:watchface:validateWatchFaceXml` — look for `PASSED`, not the build |
+| `npm run footprint`     | `:watchface:checkMemoryFootprint` — look for `PASS`                  |
+| `npm run release`       | signed APK for another wrist — needs `keystore.properties`           |
+| `npm run devices`       | which watch is attached, reconnecting over mDNS if none is           |
+| `npm run deploy`        | build + install, verified by md5 against the APK just built          |
+| `npm run deploy:fresh`  | uninstall first — for the per-machine signature mismatch             |
+| `npm run activate`      | make this face the active one                                        |
+| `npm run preview`       | the Svelte preview, the authoring loop                               |
+| `npm run preview:check` | prove the preview animates, clamps, clips and crossfades             |
+| `npm run preview:png`   | re-shoot `res/drawable/preview.png`, byte-verified                   |
+
+The Gradle and watch scripts run through `tools/device-cli.ts`, which resolves the device itself and
+defaults `JAVA_HOME` to the JDK 21 Gradle needs. Three tools take arguments and are run directly,
+since routing them through npm would put a `--` in the middle of every one:
+
+```bash
+node tools/mock-state.ts on <state> [--live] [--set=KEY=VALUE] | off | status | list
+node tools/capture-states.ts [--only=a,b] [--sheet-only]
+node tools/cycle-states.ts [--only=a,b] [--laps=N] [--restore]
+node tools/gen/build.ts --equiv "<a>" "<b>"   # do two expressions agree over the grid?
+node tools/gen/build.ts --svg                 # the preview's renderer, straight to a file
+```
+
+**State names come from `node tools/mock-state.ts list`.** An unknown one aborts the run rather than
+silently leaving the source live.
 
 ## Verifying a build
 

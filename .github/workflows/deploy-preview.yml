@@ -1,0 +1,81 @@
+# Publishes tools/preview to GitHub Pages on every push to main.
+#
+# Only the preview ships. The gate (`npm run verify`) is not run here on purpose: it proves the
+# generated face matches its snapshot, which is a property of the commit, not of the deployment,
+# and coupling the two would mean a red test takes the preview site down with it.
+name: Deploy preview
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The site is a view of whatever main is *now*. If a second push lands mid-run, the older run is
+# publishing a page that is already stale, so it loses rather than queues.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        # Deliberately NOT `submodules: recursive`. hhson-lib is private, so the built-in
+        # GITHUB_TOKEN cannot read it — and worse, asking checkout for submodules makes it install
+        # a global `url.https://github.com/.insteadOf git@github.com:`, which rewrites .gitmodules'
+        # SSH URL to HTTPS and bypasses the deploy key below. Fetching them by hand keeps the SSH
+        # URL intact so the key is actually used.
+
+      - name: Authorise the hhson-lib submodule
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+        env:
+          DEPLOY_KEY: ${{ secrets.HHSON_LIB_DEPLOY_KEY }}
+
+      - name: Fetch submodules
+        run: git submodule update --init --recursive
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tools/preview/package-lock.json
+
+      # The root install exists only to put hhson-lib in node_modules/ — tools/preview resolves it
+      # by walking up, and tools/gen imports it in eight places. --omit=dev skips the whole
+      # lint/test/sharp toolchain, none of which a Vite build touches.
+      - name: Install hhson-lib
+        run: npm ci --omit=dev
+
+      - name: Install preview dependencies
+        run: npm --prefix tools/preview ci
+
+      - name: Build
+        run: npm --prefix tools/preview run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: tools/preview/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

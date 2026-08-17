@@ -335,8 +335,8 @@ p = fract([SECOND_MILLISECOND] * rate + offset)              # any offset, any r
 - **Memory: 10 MB ambient / 100 MB active.** Currently ~3.2 / 2.4 MB with no bitmaps and no
   embedded fonts, so the budget only starts to matter with images or frame sequences.
   ⚠ ambient is the tighter of the two because the tool disables resource de-duplication there.
-- **v5 means Wear OS 7 in practice.** `minSdk` is still 36, so a Wear OS 6 watch will install
-  this and then fail to render. Dropping to v4 loses weather entirely.
+- **v5 means Wear OS 7 in practice**, which is why `minSdk` is 37 — at 36 a Wear OS 6 watch installs
+  this and then fails to render. Dropping to v4 loses weather entirely.
 - **Debugging is guess-and-check** — a code-free APK produces no logs.
 - **The charging screen is not yours.**
 

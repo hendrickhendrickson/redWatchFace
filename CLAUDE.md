@@ -14,6 +14,34 @@ it ships in the APK.
 `tools/gen/` is the source of truth. Hand-editing the XML is silently undone by the next
 `npm run gen`, and `npm run check` exists to catch exactly that.
 
+## Commands
+
+**`npm run` is the index.** Every command with a fixed invocation is a script — including the ones
+that are not JavaScript — so do not hand-assemble a `gradlew` or `adb` line. The scripts that touch
+the watch go through `tools/device-cli.ts`, which resolves the device itself: `ANDROID_SERIAL` never
+needs setting, and an attached emulator is never the target.
+
+```
+npm run gen | diff | check | selftest | snapshot   the generator and its gate → docs/authoring.md
+npm run verify                                     the whole gate, and the one to run before a commit
+npm run build | validate | footprint               gradle: assemble, WFF-validate, memory check
+npm run release                                    signed APK for someone else's watch → docs/device.md
+npm run devices | deploy | deploy:fresh | activate the watch → docs/device.md
+npm run preview | preview:check | preview:png      the Svelte preview, and re-shooting preview.png
+```
+
+Three tools take arguments and so are run directly rather than through npm, which would need a `--`
+in the middle of every one:
+
+```
+node tools/mock-state.ts on <state> [--live] [--set=KEY=VALUE] | off | status | list
+node tools/capture-states.ts [--only=a,b] [--sheet-only]
+node tools/cycle-states.ts [--only=a,b] [--laps=N] [--restore]
+```
+
+**State names come from `node tools/mock-state.ts list`, never from a doc.** A wrong one aborts the
+run; the README carried a `--only=night` example for months, and there is no `night`.
+
 ## The gate
 
 ```

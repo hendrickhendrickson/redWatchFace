@@ -438,9 +438,10 @@ What made it hard to spot, because nothing in the build complains:
   same way it brokers heart rate.
 - The failure mode is indistinguishable from "no location yet".
 
-Consequences carried in the code: **`minSdk` is still 36 while the format is v5**, so a Wear OS 6
-watch can install this and then fail to render; and `checkMemoryFootprint` no longer passes
-`--schema-version`, because that tool only accepts up to 4 and rejects 5 outright.
+Consequences carried in the code: **`minSdk` is 37 to match the format**, since at 36 a Wear OS 6
+watch installs this and then fails to render — which also puts the face out of reach of an API 36
+emulator; and `checkMemoryFootprint` no longer passes `--schema-version`, because that tool only
+accepts up to 4 and rejects 5 outright.
 
 ## Weather availability is intermittent
 

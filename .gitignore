@@ -14,8 +14,17 @@ tools/*.jar
 # tools/preview's own install too.
 node_modules/
 
-# The preview is a dev server, never a build artefact.
+# The preview's build output. CI builds it from source and hands it straight to Pages
+# (.github/workflows/deploy-preview.yml), so the directory is never committed.
 tools/preview/dist/
+
+# Release signing. keystore.properties.example IS committed; the filled-in copy and
+# the key it points at are not. Losing the key is unrecoverable - every watch that
+# has the face installed would need to uninstall before it could update again - so
+# the store belongs somewhere backed up, not merely somewhere ignored.
+keystore.properties
+*.jks
+*.keystore
 
 # Per-machine Claude Code permissions, holding absolute JDK and SDK paths. The skill symlinks
 # next to it ARE committed. This was only ever ignored via a global ~/.config/git/ignore, which

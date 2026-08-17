@@ -18,8 +18,17 @@
 		"format": "prettier --write .",
 		"test": "vitest run",
 		"verify": "npm run typecheck && npm run lint && npm run test && npm run selftest && npm run diff && npm run check",
+		"build": "node tools/device-cli.ts gradle :watchface:assembleDebug",
+		"validate": "node tools/device-cli.ts gradle :watchface:validateWatchFaceXml",
+		"footprint": "node tools/device-cli.ts gradle :watchface:checkMemoryFootprint",
+		"release": "node tools/device-cli.ts gradle :watchface:assembleRelease",
+		"devices": "node tools/device-cli.ts devices",
+		"deploy": "node tools/device-cli.ts install",
+		"deploy:fresh": "node tools/device-cli.ts uninstall && node tools/device-cli.ts install",
+		"activate": "node tools/device-cli.ts activate",
 		"preview": "npm --prefix tools/preview run dev",
 		"preview:check": "node tools/preview/check.ts",
+		"preview:png": "node tools/device-cli.ts shot watchface/src/main/res/drawable/preview.png",
 		"postinstall": "node ./submodules/hhson-lib/scripts/link-skills.mjs"
 	},
 	"dependencies": {

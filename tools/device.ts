@@ -154,14 +154,18 @@ export function nudge(serial: Serial): void {
  * stdin - inherited stdio at least makes that prompt visible and answerable
  * instead of hanging forever.
  */
-export function runGradleInstall(): boolean {
+export function runGradle(...args: string[]): boolean {
 	ensureJavaHome();
-	const r = spawnSync(GRADLEW, [':watchface:installDebug', '--console=plain'], {
+	const r = spawnSync(GRADLEW, [...args, '--console=plain'], {
 		shell: true,
 		cwd: REPO,
 		stdio: 'inherit'
 	});
 	return r.status === 0;
+}
+
+export function runGradleInstall(): boolean {
+	return runGradle(':watchface:installDebug');
 }
 
 export function mockOn(state: string, opts: { live?: boolean } = {}): void {

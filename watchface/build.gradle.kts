@@ -1,8 +1,57 @@
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.Properties
 
 plugins {
     id("com.android.application")
+}
+
+// ---------------------------------------------------------------------------
+// Release signing.
+//
+// Debug builds are signed with ~/.android/debug.keystore, which is generated
+// per machine - fine for the wrist in front of you, useless for anyone else,
+// because Android refuses to replace a package signed with a different key
+// (see docs/device.md, "A new machine cannot update the watch's existing
+// install"). A build that goes to another person must therefore be signed with
+// a key that outlives this machine.
+//
+// keystore.properties is gitignored. Copy keystore.properties.example and fill
+// it in; docs/device.md has the keytool line that creates the store.
+// ---------------------------------------------------------------------------
+
+val keystorePropsFile = rootProject.file("keystore.properties")
+
+// Read as UTF-8 with any BOM stripped, rather than Properties.load(InputStream),
+// which is ISO-8859-1 and would both mangle a non-ASCII password and - the way
+// this was actually found - silently swallow the first key when a Windows editor
+// writes the file with a BOM. `storeFile` then comes back null and AGP fails with
+// "path may not be null or empty string", which points nowhere near the cause.
+val keystoreProps: Properties? = keystorePropsFile.takeIf { it.exists() }?.let { file ->
+    Properties().apply { load(file.readText(Charsets.UTF_8).removePrefix("﻿").reader()) }
+}
+
+// Name the missing key. Every one of these is required, and a blank value fails
+// just as hard as an absent one - AGP's own message for either is unreadable.
+fun keystoreValue(key: String): String {
+    val value = keystoreProps?.getProperty(key)
+    if (value.isNullOrBlank()) {
+        throw GradleException("${keystorePropsFile.path}: '$key' is missing or empty.")
+    }
+    return value
+}
+
+// Absent credentials must stop a release build, not quietly produce an unsigned
+// APK that no watch will install. Deliberately NOT the onlyIf-on-missing-tool
+// pattern the jar tasks use: those skip because the jars are an optional
+// download, whereas an unsigned release is a broken artifact.
+gradle.taskGraph.whenReady {
+    if (keystoreProps == null && allTasks.any { it.name.contains("Release") }) {
+        throw GradleException(
+            "Release build requested but ${keystorePropsFile.path} is missing.\n" +
+                "Copy keystore.properties.example and fill it in (see docs/device.md)."
+        )
+    }
 }
 
 android {
@@ -11,17 +60,35 @@ android {
 
     defaultConfig {
         applicationId = "de.redplant.watchface.blob"
-        // WFF v4 requires Wear OS 6 / API 36. Lower this only together with
-        // the format.version property in AndroidManifest.xml.
-        minSdk = 36
-        targetSdk = 36
+        // Wear OS 7. NOT the API level WFF v5 needs to *install* - API 36 would
+        // do that - but the one it needs to *render*: a v5 face on Wear OS 6
+        // installs happily and then draws nothing, and neither the validator nor
+        // the footprint tool can see it. Keep this in step with the
+        // format.version property in AndroidManifest.xml.
+        minSdk = 37
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0"
+    }
+
+    signingConfigs {
+        if (keystoreProps != null) {
+            create("release") {
+                storeFile = rootProject.file(keystoreValue("storeFile"))
+                storePassword = keystoreValue("storePassword")
+                keyAlias = keystoreValue("keyAlias")
+                keyPassword = keystoreValue("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            // findByName, not getByName: the config only exists when the
+            // properties file does, and the task graph check above is what
+            // reports its absence.
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 

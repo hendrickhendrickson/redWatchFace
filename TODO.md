@@ -35,6 +35,16 @@ that used to live here is in [docs/wff-findings.md](docs/wff-findings.md).
 
 ## Face
 
+- [ ] **`hero_hatted` is an empty `Compare`, and it fails the schema.** `blob-hero.ts:530` is
+      `{ name: 'hero_hatted', when: WEARS_HAT, then: [] }`, which serialises to
+      `<Compare expression="hero_hatted" />` with no children. `validateWatchFaceXml` rejects it —
+      _"the content of element 'Compare' is not complete"_ at line 538 — and `checkMemoryFootprint`
+      then cannot parse the file at all, so **both jar-gated checks fail on `HEAD` today**. On
+      birthday and over Christmas the hero therefore has no leaves rather than a hat. The semantic
+      differ cannot see it: the empty `Compare` is in `face.model.json` as the committed baseline, so
+      `npm run diff` is clean. Found 2026-08-16 by `npm run validate`, which is the only thing in the
+      repo that can find it. Either fill the branch with the hat, or drop it until the hat exists.
+
 - [ ] **The moon's `RadialGradient` and craters have never been seen on the wrist.** Checked against
       the `nighthalf` / `nightfull` / `nightnew` preview states and the schema validator, neither of
       which can tell a real gradient from a silently-ignored one - `Fill/@color` is still `required`
@@ -73,9 +83,10 @@ that used to live here is in [docs/wff-findings.md](docs/wff-findings.md).
       expressions, so it could drive more than a hex swap.
 - [ ] Swapping one stat for a tappable `ComplicationSlot`, which is the only door to calendar,
       sunrise/sunset, contacts and third-party data.
-- [ ] Distribution: anyone else at redPlant needs a WFF-signed APK sideloaded the same way. Play
-      Store distribution would need a separate bundle and a developer account, and Watch Face Push is
-      allowlist-only.
+- [ ] Play Store distribution, if the face ever wants an update channel rather than a sideload. It
+      would need an AAB, a developer account and a `versionCode` that moves. The signing and the
+      `minSdk` floor it depends on are already done — see
+      [docs/device.md](docs/device.md#handing-the-face-to-someone-else).
 
 The ranked list of unused WFF features worth acting on is
 [docs/capabilities.md](docs/capabilities.md) Part 3 — `renderMode="MASK"` and `Reference` are the two

@@ -129,6 +129,13 @@
 		c.dateISO = iso;
 		c.dayOfWeek = dateValues(iso).values.DAY_OF_WEEK ?? c.dayOfWeek;
 	};
+
+	const onPickTime = (e: Event & { currentTarget: HTMLInputElement }) => {
+		const time = e.currentTarget.value;
+		if (!time) return;
+		const [h, m] = time.split(':').map((s) => parseInt(s, 10));
+		c.secondsOfDay = h * 3600 + m * 60;
+	};
 </script>
 
 <main>
@@ -242,7 +249,7 @@
 			</label>
 			<label class="row">
 				<span>Time</span>
-				<input type="time" value={frame.display.time} disabled />
+				<input type="time" value={frame.display.time} onchange={onPickTime} />
 			</label>
 			<div class="row">
 				<button

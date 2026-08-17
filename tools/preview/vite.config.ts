@@ -16,6 +16,11 @@ import { defineConfig } from 'vite';
  * imports, which this is not.
  */
 export default defineConfig({
+	// Relative asset URLs, so the built page works wherever it is mounted: the project-page path
+	// (/redWatchFace/) before the custom domain's DNS resolves, and the domain root after. An
+	// absolute base would have to be right about which of those it is, and be wrong for a while.
+	// Safe here only because this is one page with no client-side routing.
+	base: './',
 	plugins: [svelte()],
 	server: {
 		fs: { allow: ['../..'] }
